@@ -323,25 +323,16 @@ where
             let fee_asset_vault_key = AssetVaultKey::from_account_id(native_asset_id)
                 .expect("fee asset should be a fungible asset");
 
-            // extract the fee asset amount from the transaction inputs
-            let fee_asset_witnesses =
-                tx_inputs.read_vault_asset_witnesses(vault_root, [fee_asset_vault_key].into());
-            if let Ok(witnesses) = fee_asset_witnesses {
-                // we requested one witness and if there was no error only one witness should have
-                // been returned
-                assert_eq!(witnesses.len(), 1, "expected exactly one witness");
-                match witnesses[0].find(fee_asset_vault_key) {
-                    Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
-                    Some(Asset::NonFungible(_)) => {
-                        return Err(TransactionExecutorError::FeeAssetMustBeFungible);
-                    },
-                    // If the witness does not contain the asset, its balance is zero.
-                    None => 0,
-                }
-            } else {
-                // if read_vault_asset_witnesses() returned an error, we assume that the witness
-                // was not found because because otherwise the read request was valid
-                0
+            let fee_asset = tx_inputs
+                .read_vault_asset(vault_root, fee_asset_vault_key)
+                .map_err(TransactionExecutorError::FeeAssetRetrievalFailed)?;
+            match fee_asset {
+                Some(Asset::Fungible(fee_asset)) => fee_asset.amount(),
+                Some(Asset::NonFungible(_)) => {
+                    return Err(TransactionExecutorError::FeeAssetMustBeFungible);
+                },
+                // If the asset was not found, its balance is zero.
+                None => 0,
             }
         };
         let host = TransactionExecutorHost::new(

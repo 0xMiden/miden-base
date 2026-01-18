@@ -3,8 +3,8 @@ use alloc::vec::Vec;
 use core::fmt::Debug;
 
 use miden_core::utils::{Deserializable, Serializable};
-use miden_crypto::merkle::NodeIndex;
 use miden_crypto::merkle::smt::{LeafIndex, SmtLeaf, SmtProof};
+use miden_crypto::merkle::{MerkleError, NodeIndex};
 
 use super::PartialBlockchain;
 use crate::account::{
@@ -19,7 +19,7 @@ use crate::account::{
     StorageSlotId,
     StorageSlotName,
 };
-use crate::asset::{AssetVaultKey, AssetWitness, PartialVault};
+use crate::asset::{Asset, AssetVaultKey, AssetWitness, PartialVault};
 use crate::block::account_tree::{AccountWitness, account_id_to_smt_index};
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::SparseMerklePath;
@@ -295,6 +295,45 @@ impl TransactionInputs {
             asset_witnesses.push(asset_witness);
         }
         Ok(asset_witnesses)
+    }
+
+    /// Reads the asset from the specified vault under the specified key; returns `None` if the
+    /// specified asset is not present in these inputs.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - A Merkle tree with the specified root is not present in the advice data of these inputs.
+    /// - Construction of the leaf node or the asset fails.
+    pub fn read_vault_asset(
+        &self,
+        vault_root: Word,
+        asset_key: AssetVaultKey,
+    ) -> Result<Option<Asset>, TransactionInputsExtractionError> {
+        // Get the node corresponding to the asset_key; if not found return None
+        let smt_index = asset_key.to_leaf_index();
+        let merkle_node = match self.advice_inputs.store.get_node(vault_root, smt_index.into()) {
+            Ok(node) => node,
+            Err(MerkleError::NodeIndexNotFoundInStore(..)) => return Ok(None),
+            Err(err) => return Err(err.into()),
+        };
+
+        // Construct SMT leaf for this asset key
+        let smt_leaf_elements = self
+            .advice_inputs
+            .map
+            .get(&merkle_node)
+            .ok_or(TransactionInputsExtractionError::MissingVaultRoot)?;
+        let smt_leaf = smt_leaf_from_elements(smt_leaf_elements, smt_index)?;
+
+        // Find the asset in the SMT leaf
+        let asset = smt_leaf
+            .entries()
+            .iter()
+            .find(|(key, _value)| key == asset_key.as_word())
+            .map(|(_key, value)| Asset::try_from(value))
+            .transpose()?;
+
+        Ok(asset)
     }
 
     /// Reads AccountInputs for a foreign account from the advice inputs.
