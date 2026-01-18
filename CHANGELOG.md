@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0 (TBD)
+
+### Changes
+
+- Skip requests to the `DataStore` for asset vault witnesses which are already in transaction inputs ([#2298](https://github.com/0xMiden/miden-base/pull/2298)).
+
 ## 0.13.0 (2026-01-16)
 
 ### Features
