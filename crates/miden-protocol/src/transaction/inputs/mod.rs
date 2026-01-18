@@ -297,6 +297,25 @@ impl TransactionInputs {
         Ok(asset_witnesses)
     }
 
+    /// Returns true if the witness for the specified asset key is present in these inputs.
+    ///
+    /// Note that this does not verify the witness' validity (i.e., that the witness is for a valid
+    /// asset).
+    pub fn has_vault_asset_witness(&self, vault_root: Word, asset_key: &AssetVaultKey) -> bool {
+        let smt_index: NodeIndex = asset_key.to_leaf_index().into();
+
+        // make sure the path is in the Merkle store
+        if !self.advice_inputs.store.has_path(vault_root, smt_index) {
+            return false;
+        }
+
+        // make sure the node pre-image is in the Merkle store
+        match self.advice_inputs.store.get_node(vault_root, smt_index) {
+            Ok(node) => self.advice_inputs.map.contains_key(&node),
+            Err(_) => false,
+        }
+    }
+
     /// Reads the asset from the specified vault under the specified key; returns `None` if the
     /// specified asset is not present in these inputs.
     ///

@@ -263,24 +263,34 @@ where
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        // Add the vault key for the fee asset to the list of asset vault keys which will need to be
-        // accessed at the end of the transaction.
+        let native_account_vault_root = account.vault().root();
         let fee_asset_vault_key =
             AssetVaultKey::from_account_id(block_header.fee_parameters().native_asset_id())
                 .expect("fee asset should be a fungible asset");
+
+        let mut tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
+            .map_err(TransactionExecutorError::InvalidTransactionInputs)?
+            .with_tx_args(tx_args);
+
+        // Add the vault key for the fee asset to the list of asset vault keys which will need to be
+        // accessed at the end of the transaction.
         asset_vault_keys.insert(fee_asset_vault_key);
 
-        // Fetch the witnesses for all asset vault keys.
-        let asset_witnesses = self
-            .data_store
-            .get_vault_asset_witnesses(account_id, account.vault().root(), asset_vault_keys)
-            .await
-            .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
+        // filter out any asset vault keys for which we already have witnesses in the advice inputs
+        asset_vault_keys.retain(|asset_key| {
+            !tx_inputs.has_vault_asset_witness(native_account_vault_root, asset_key)
+        });
 
-        let tx_inputs = TransactionInputs::new(account, block_header, blockchain, input_notes)
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)?
-            .with_tx_args(tx_args)
-            .with_asset_witnesses(asset_witnesses);
+        // if any of the witnesses are missing, fetch them from the data store and add to tx_inputs
+        if !asset_vault_keys.is_empty() {
+            let asset_witnesses = self
+                .data_store
+                .get_vault_asset_witnesses(account_id, native_account_vault_root, asset_vault_keys)
+                .await
+                .map_err(TransactionExecutorError::FetchAssetWitnessFailed)?;
+
+            tx_inputs = tx_inputs.with_asset_witnesses(asset_witnesses);
+        }
 
         Ok(tx_inputs)
     }
