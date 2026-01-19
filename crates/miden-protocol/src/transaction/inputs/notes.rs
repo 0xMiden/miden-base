@@ -373,7 +373,7 @@ mod input_notes_tests {
     use miden_core::Word;
 
     use super::InputNotes;
-    use crate::TransactionInputError;
+    use crate::errors::TransactionInputError;
     use crate::note::Note;
     use crate::transaction::InputNote;
 

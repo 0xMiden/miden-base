@@ -4,6 +4,7 @@ pub mod auth;
 pub mod components;
 pub mod faucets;
 pub mod interface;
+pub mod metadata;
 pub mod wallets;
 
 /// Macro to simplify the creation of static procedure digest constants.

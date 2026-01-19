@@ -2,10 +2,10 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use miden_core::{Felt, FieldElement, Word};
-use miden_protocol::NoteError;
 use miden_protocol::account::AccountId;
 use miden_protocol::crypto::SequentialCommit;
 use miden_protocol::crypto::rand::FeltRng;
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
