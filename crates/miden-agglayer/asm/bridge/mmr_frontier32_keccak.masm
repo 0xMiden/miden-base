@@ -1,10 +1,11 @@
 use miden::core::crypto::hashes::keccak256
-use ::miden::agglayer::collections::canonical_zeros::load_zeros_to_memory
+use ::miden::agglayer::canonical_zeros::load_zeros_to_memory
 
 # An MMR Frontier is a data structure based on an MMR, which combines some features of an MMR and an
 # SMT.
 #
 # # Basics & Terminology
+#
 #
 # The main entity in this structure is a _frontier_: it is a set of roots of all individual trees in 
 # the MMR. Let's consider the tree below as an example.

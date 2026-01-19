@@ -18,9 +18,8 @@ const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN
 
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
-const LIB_DIR: &str = "lib";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
-const CANONICAL_ZEROS_MASM_FILE: &str = "asm/lib/collections/canonical_zeros.masm";
+const ASM_BRIDGE_DIR: &str = "bridge";
 
 const AGGLAYER_ERRORS_FILE: &str = "src/errors/agglayer.rs";
 const AGGLAYER_ERRORS_ARRAY_NAME: &str = "AGGLAYER_ERRORS";
@@ -40,6 +39,10 @@ fn main() -> Result<()> {
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let build_dir = env::var("OUT_DIR").unwrap();
     let src = Path::new(&crate_dir).join(ASM_DIR);
+
+    // generate canonical zeros in `asm/bridge/canonical_zeros.masm`
+    generate_canonical_zeros(&src.join(ASM_BRIDGE_DIR))?;
+
     let dst = Path::new(&build_dir).to_path_buf();
     shared::copy_directory(src, &dst, ASM_DIR)?;
 
@@ -48,8 +51,6 @@ fn main() -> Result<()> {
 
     // set target directory to {OUT_DIR}/assets
     let target_dir = Path::new(&build_dir).join(ASSETS_DIR);
-
-    generate_canonical_zeros()?;
 
     // compile agglayer library
     let agglayer_lib =
@@ -81,7 +82,7 @@ fn compile_agglayer_lib(
     target_dir: &Path,
     mut assembler: Assembler,
 ) -> Result<Library> {
-    let source_dir = source_dir.join(LIB_DIR);
+    let source_dir = source_dir.join(ASM_BRIDGE_DIR);
 
     // Add the miden-standards library to the assembler so agglayer components can use it
     let standards_lib = miden_standards::StandardsLib::default();
@@ -237,7 +238,7 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
 // CANONICAL ZEROS FILE GENERATION
 // ================================================================================================
 
-fn generate_canonical_zeros() -> Result<()> {
+fn generate_canonical_zeros(target_dir: &Path) -> Result<()> {
     if !BUILD_GENERATED_FILES_IN_SRC {
         return Ok(());
     }
@@ -286,7 +287,7 @@ fn generate_canonical_zeros() -> Result<()> {
     // remove once CANONICAL_ZEROS advice map is available
     zero_constants.push_str(
         "
-use ::miden::agglayer::collections::mmr_frontier32_keccak::mem_store_double_word
+use ::miden::agglayer::mmr_frontier32_keccak::mem_store_double_word
     
 #! Inputs:  [zeros_ptr]
 #! Outputs: []
@@ -300,7 +301,7 @@ pub proc load_zeros_to_memory\n",
     zero_constants.push_str("\tdrop\nend\n");
 
     // write the resulting masm content into the file
-    fs::write(CANONICAL_ZEROS_MASM_FILE, zero_constants).into_diagnostic()?;
+    fs::write(target_dir.join("canonical_zeros.masm"), zero_constants).into_diagnostic()?;
 
     Ok(())
 }
