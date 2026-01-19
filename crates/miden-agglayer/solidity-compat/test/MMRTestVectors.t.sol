@@ -17,32 +17,6 @@ import "@agglayer/v2/lib/DepositContractBase.sol";
 contract MMRTestVectors is Test, DepositContractBase {
     
     /**
-     * @notice Generates test vectors by adding leaves and capturing roots.
-     *         These vectors should match the Miden implementation.
-     */
-    function test_generateVectors() public {
-        console.log("=== MMR Frontier Test Vectors ===");
-        console.log("Source: DepositContractBase.sol @ e468f9b0967334403069aa650d9f1164b1731ebb");
-        console.log("");
-        
-        for (uint256 i = 0; i < 32; i++) {
-            // Create leaf as left-padded 32-byte representation of i
-            bytes32 leaf = bytes32(i);
-            
-            _addLeaf(leaf);
-            bytes32 root = getRoot();
-            
-            console.log("--- Leaf %d ---", i);
-            console.log("leaf:");
-            console.logBytes32(leaf);
-            console.log("root_after:");
-            console.logBytes32(root);
-            console.log("deposit_count: %d", depositCount);
-            console.log("");
-        }
-    }
-    
-    /**
      * @notice Generates the canonical zeros used in the MMR.
      *         ZERO_0 = 0x0...0 (32 zero bytes)
      *         ZERO_n = keccak256(ZERO_{n-1} || ZERO_{n-1})
@@ -86,10 +60,10 @@ contract MMRTestVectors is Test, DepositContractBase {
     
     /**
      * @notice Outputs vectors in JSON format and saves to file
-     *         Run with: forge test -vv --match-test test_generateVectorsJSON
+     *         Run with: forge test -vv --match-test test_generateVectors
      *         Output file: test-vectors/mmr_frontier_vectors.json
      */
-    function test_generateVectorsJSON() public {
+    function test_generateVectors() public {
         string memory json = "{\n";
         json = string.concat(json, '  "description": "Test vectors from DepositContractBase.sol",\n');
         json = string.concat(json, '  "source_commit": "e468f9b0967334403069aa650d9f1164b1731ebb",\n');

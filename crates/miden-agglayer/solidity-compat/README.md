@@ -33,14 +33,11 @@ Or from this directory:
 # Install dependencies (first time only)
 forge install
 
-# Generate test vectors (human-readable)
-forge test -vv --match-test test_generateVectors
-
 # Generate canonical zeros (for verifying canonical_zeros.masm)
 forge test -vv --match-test test_generateCanonicalZeros
 
 # Generate JSON and save to file (test-vectors/mmr_frontier_vectors.json)
-forge test -vv --match-test test_generateVectorsJSON
+forge test -vv --match-test test_generateVectors
 
 # Run all tests
 forge test -vv
