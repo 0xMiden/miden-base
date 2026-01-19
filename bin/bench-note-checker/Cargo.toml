@@ -19,7 +19,7 @@ miden-tx        = { workspace = true }
 
 # External dependencies
 anyhow = { workspace = true }
-serde  = { features = ["derive"], version = "1.0" }
+serde  = { features = ["derive"], workspace = true }
 tokio  = { features = ["macros", "rt"], version = "1.0" }
 
 [dev-dependencies]
