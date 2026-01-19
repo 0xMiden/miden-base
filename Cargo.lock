@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "miden-agglayer"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "fs-err",
  "miden-agglayer",
@@ -1449,7 +1449,7 @@ dependencies = [
 
 [[package]]
 name = "miden-block-prover"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "miden-protocol",
  "thiserror",
@@ -1496,9 +1496,9 @@ dependencies = [
 
 [[package]]
 name = "miden-crypto"
-version = "0.19.2"
+version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc7981c1d907bb9864e24f2bd6304c4fca03a41fc4606c09edd6a7f5a8fc80fc"
+checksum = "f0b49de9b0d8370c992ee04791f68a4509078198b6f42e5f72a262e7d4456487"
 dependencies = [
  "blake3",
  "cc",
@@ -1530,9 +1530,9 @@ dependencies = [
 
 [[package]]
 name = "miden-crypto-derive"
-version = "0.19.2"
+version = "0.19.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83479e7af490784c6f2d2e02cec5210fd6e5bc6ce3d4427734e36a773bca72d2"
+checksum = "16a27c656284ef1985c1af92b9e68d2171c7996d6c8c557a2c57d1ef32f107ed"
 dependencies = [
  "quote",
  "syn 2.0.114",
@@ -1641,7 +1641,7 @@ dependencies = [
 
 [[package]]
 name = "miden-protocol"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -1680,7 +1680,7 @@ dependencies = [
 
 [[package]]
 name = "miden-protocol-macros"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "miden-protocol",
  "proc-macro2",
@@ -1704,7 +1704,7 @@ dependencies = [
 
 [[package]]
 name = "miden-standards"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -1723,7 +1723,7 @@ dependencies = [
 
 [[package]]
 name = "miden-testing"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -1743,6 +1743,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rstest",
+ "thiserror",
  "tokio",
  "winter-rand-utils",
  "winterfell",
@@ -1750,7 +1751,7 @@ dependencies = [
 
 [[package]]
 name = "miden-tx"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -1767,7 +1768,7 @@ dependencies = [
 
 [[package]]
 name = "miden-tx-batch-prover"
-version = "0.13.0"
+version = "0.14.0"
 dependencies = [
  "miden-protocol",
  "miden-tx",
