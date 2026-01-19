@@ -1,5 +1,12 @@
 use alloc::collections::BTreeMap;
 
+use miden_core::utils::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
 use miden_crypto::merkle::InnerNodeInfo;
 use miden_crypto::merkle::smt::SmtProof;
 
@@ -107,6 +114,21 @@ impl StorageMapWitness {
 impl From<StorageMapWitness> for SmtProof {
     fn from(witness: StorageMapWitness) -> Self {
         witness.proof
+    }
+}
+
+impl Serializable for StorageMapWitness {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.proof.write_into(target);
+        self.entries.write_into(target);
+    }
+}
+
+impl Deserializable for StorageMapWitness {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let proof = SmtProof::read_from(source)?;
+        let entries = BTreeMap::<Word, Word>::read_from(source)?;
+        Ok(Self { proof, entries })
     }
 }
 
