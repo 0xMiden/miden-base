@@ -33,26 +33,31 @@ Or from this directory:
 # Install dependencies (first time only)
 forge install
 
-# Generate canonical zeros (for verifying canonical_zeros.masm)
+# Generate canonical zeros (test-vectors/canonical_zeros.json)
 forge test -vv --match-test test_generateCanonicalZeros
 
-# Generate JSON and save to file (test-vectors/mmr_frontier_vectors.json)
+# Generate MMR frontier vectors (test-vectors/mmr_frontier_vectors.json)
 forge test -vv --match-test test_generateVectors
 
 # Run all tests
 forge test -vv
 ```
 
+## Generated Files
+
+- `test-vectors/canonical_zeros.json` - Canonical zeros for each tree height (ZERO_n = keccak256(ZERO_{n-1} || ZERO_{n-1}))
+- `test-vectors/mmr_frontier_vectors.json` - Leaf-root pairs after adding leaves 0..31
+
 ### Canonical Zeros
 
-The `test_generateCanonicalZeros` output should match the constants in:
-`crates/miden-agglayer/asm/lib/collections/canonical_zeros.masm`
+The canonical zeros should match the constants in:
+`crates/miden-agglayer/asm/bridge/canonical_zeros.masm`
 
 To convert Solidity hex to Miden u32 words:
 - Solidity: `0xabcdef...` (64 hex chars = 32 bytes)
 - Miden: 8 × u32 values, little-endian within each 4-byte chunk, reversed order
 
-### Test Vectors
+### MMR Frontier Vectors
 
 The `test_generateVectors` adds leaves `0, 1, 2, ...` (as left-padded 32-byte values)
 and outputs the root after each addition.
