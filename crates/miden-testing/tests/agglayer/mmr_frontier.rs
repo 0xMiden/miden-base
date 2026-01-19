@@ -147,25 +147,17 @@ const MMR_FRONTIER_VECTORS_JSON: &str =
 /// Deserialized canonical zeros from Solidity DepositContractBase.sol
 #[derive(Debug, Deserialize)]
 struct CanonicalZerosFile {
-    #[allow(dead_code)]
-    description: String,
-    #[allow(dead_code)]
-    source_commit: String,
     canonical_zeros: Vec<String>,
 }
 
 /// Deserialized MMR frontier vectors from Solidity DepositContractBase.sol
 #[derive(Debug, Deserialize)]
 struct MmrFrontierVectorsFile {
-    #[allow(dead_code)]
-    description: String,
-    #[allow(dead_code)]
-    source_commit: String,
-    vectors: Vec<TestVector>,
+    vectors: Vec<MmrFrontierTestVector>,
 }
 
 #[derive(Debug, Deserialize)]
-struct TestVector {
+struct MmrFrontierTestVector {
     leaf: String,
     root: String,
     count: u32,

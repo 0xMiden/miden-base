@@ -25,8 +25,6 @@ contract MMRTestVectors is Test, DepositContractBase {
      */
     function test_generateCanonicalZeros() public {
         string memory json = "{\n";
-        json = string.concat(json, '  "description": "Canonical zeros from DepositContractBase.sol",\n');
-        json = string.concat(json, '  "source_commit": "e468f9b0967334403069aa650d9f1164b1731ebb",\n');
         json = string.concat(json, '  "canonical_zeros": [\n');
         
         bytes32 zero = bytes32(0);
@@ -55,8 +53,6 @@ contract MMRTestVectors is Test, DepositContractBase {
      */
     function test_generateVectors() public {
         string memory json = "{\n";
-        json = string.concat(json, '  "description": "MMR frontier test vectors from DepositContractBase.sol",\n');
-        json = string.concat(json, '  "source_commit": "e468f9b0967334403069aa650d9f1164b1731ebb",\n');
         json = string.concat(json, '  "vectors": [\n');
         
         for (uint256 i = 0; i < 32; i++) {

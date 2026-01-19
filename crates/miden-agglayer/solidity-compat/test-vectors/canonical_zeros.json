@@ -1,6 +1,4 @@
 {
-  "description": "Canonical zeros from DepositContractBase.sol",
-  "source_commit": "e468f9b0967334403069aa650d9f1164b1731ebb",
   "canonical_zeros": [
     "0x0000000000000000000000000000000000000000000000000000000000000000",
     "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5",
