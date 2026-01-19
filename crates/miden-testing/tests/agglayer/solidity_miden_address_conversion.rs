@@ -5,6 +5,8 @@ use alloc::sync::Arc;
 use miden_agglayer::{EthAddressFormat, agglayer_library};
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
+use miden_processor::fast::{ExecutionOutput, FastProcessor};
+use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::address::NetworkId;
@@ -13,8 +15,33 @@ use miden_protocol::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     AccountIdBuilder,
 };
+use miden_protocol::transaction::TransactionKernel;
 
-use super::test_utils::execute_program_with_default_host;
+/// Execute a program with default host
+async fn execute_program_with_default_host(
+    program: Program,
+) -> Result<ExecutionOutput, ExecutionError> {
+    let mut host = DefaultHost::default();
+
+    let test_lib = TransactionKernel::library();
+    host.load_library(test_lib.mast_forest()).unwrap();
+
+    let std_lib = CoreLibrary::default();
+    host.load_library(std_lib.mast_forest()).unwrap();
+
+    for (event_name, handler) in std_lib.handlers() {
+        host.register_handler(event_name, handler)?;
+    }
+
+    let asset_conversion_lib = agglayer_library();
+    host.load_library(asset_conversion_lib.mast_forest()).unwrap();
+
+    let stack_inputs = StackInputs::new(vec![]).unwrap();
+    let advice_inputs = AdviceInputs::default();
+
+    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    processor.execute(&program, &mut host).await
+}
 
 #[test]
 fn test_account_id_to_ethereum_roundtrip() {
@@ -32,14 +59,22 @@ fn test_bech32_to_ethereum_roundtrip() {
         "mtst1ar2phe0pa0ln75plsczxr8ryws4s8zyp",
     ];
 
-    for bech32_address in test_addresses {
-        let (network_id, account_id) = AccountId::from_bech32(bech32_address).unwrap();
-        let eth_address = EthAddressFormat::from_account_id(account_id);
-        let recovered_account_id = eth_address.to_account_id().unwrap();
-        let recovered_bech32 = recovered_account_id.to_bech32(network_id);
+    let evm_addresses = [
+        "0x00000000b0e79c68cafc54802726c6f102cca300",
+        "0x00000000cdb3759dddfdf0103e2ef26b2d756200",
+        "0x00000000d41be5e1ebff3f503f8604619c647400",
+    ];
 
-        assert_eq!(account_id, recovered_account_id);
-        assert_eq!(bech32_address, recovered_bech32);
+    for (bech32, expected_evm) in test_addresses.iter().zip(evm_addresses.iter()) {
+        let (network_id, account_id) = AccountId::from_bech32(bech32).unwrap();
+
+        let eth = EthAddressFormat::from_account_id(account_id);
+        let recovered = eth.to_account_id().unwrap();
+        let recovered_bech32 = recovered.to_bech32(network_id);
+
+        assert_eq!(&account_id, &recovered);
+        assert_eq!(*expected_evm, eth.to_string());
+        assert_eq!(*bech32, recovered_bech32);
     }
 }
 
@@ -102,7 +137,7 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
 
             begin
                 push.{}.{}.{}.{}.{}
-                exec.eth_address::ethereum_address_format_to_account_id
+                exec.eth_address::to_account_id
                 exec.sys::truncate_stack
             end
             "#,
@@ -117,7 +152,7 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
             .assemble_program(&script_code)
             .unwrap();
 
-        let exec_output = execute_program_with_default_host(program, None).await?;
+        let exec_output = execute_program_with_default_host(program).await?;
 
         let actual_prefix = exec_output.stack[0].as_int();
         let actual_suffix = exec_output.stack[1].as_int();

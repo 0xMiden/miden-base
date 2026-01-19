@@ -4,10 +4,11 @@ use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
+use crate::Word;
 use crate::account::{hash_account, validate_account_seed};
 use crate::asset::PartialVault;
+use crate::errors::AccountError;
 use crate::utils::serde::DeserializationError;
-use crate::{AccountError, Word};
 
 /// A partial representation of an account.
 ///

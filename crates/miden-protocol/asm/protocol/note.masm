@@ -132,7 +132,7 @@ pub proc build_recipient
     #     INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
     # compute the advice map key for num_inputs by hashing the inputs commitment
-    hash
+    exec.rpo256::hash
     # => [hash(INPUTS_COMMITMENT), num_inputs_start_ptr, num_inputs_end_ptr,
     #     INPUTS_COMMITMENT, inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -158,13 +158,13 @@ pub proc build_recipient
     movdnw.2
     # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    padw adv.insert_hdword hmerge
+    padw adv.insert_hdword exec.rpo256::merge
     # => [SERIAL_HASH, SCRIPT_ROOT, INPUTS_COMMITMENT]
 
-    swapw adv.insert_hdword hmerge
+    swapw adv.insert_hdword exec.rpo256::merge
     # => [SERIAL_SCRIPT_HASH, INPUTS_COMMITMENT]
 
-    swapw adv.insert_hdword hmerge
+    swapw adv.insert_hdword exec.rpo256::merge
     # => [RECIPIENT]
 end
 
@@ -181,31 +181,31 @@ end
 #!
 #! Invocation: exec
 pub proc build_recipient_hash
-    padw hmerge
+    padw exec.rpo256::merge
     # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
 
-    swapw hmerge
+    swapw exec.rpo256::merge
     # => [MERGE_SCRIPT, INPUT_COMMITMENT]
 
-    swapw hmerge
+    swapw exec.rpo256::merge
     # [RECIPIENT]
 end
 
-#! Extracts the sender ID from the provided metadata word.
+#! Extracts the sender ID from the provided metadata header.
 #!
-#! Inputs:  [METADATA]
+#! Inputs:  [METADATA_HEADER]
 #! Outputs: [sender_id_prefix, sender_id_suffix]
 #!
 #! Where:
-#! - METADATA is the metadata of some note.
+#! - METADATA_HEADER is the metadata of a note.
 #! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which
 #!   metadata was provided.
 pub proc extract_sender_from_metadata
-    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
+    # => [attachment_kind_scheme, tag, sender_id_prefix, sender_id_suffix_and_note_type]
 
-    # drop aux felt and the felt containing tag, execution hint and payload
-    drop drop
-    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
+    # drop attachment kind, attachment scheme and tag
+    drop drop swap
+    # => [sender_id_suffix_and_note_type, sender_id_prefix]
 
     # extract suffix of sender from merged layout, which means clearing the least significant byte
     exec.account_id::shape_suffix

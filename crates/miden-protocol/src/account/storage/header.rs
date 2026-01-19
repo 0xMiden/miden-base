@@ -7,6 +7,7 @@ use super::map::EMPTY_STORAGE_MAP_ROOT;
 use super::{AccountStorage, Felt, StorageSlotType, Word};
 use crate::account::{StorageSlot, StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
+use crate::errors::AccountError;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -14,7 +15,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{AccountError, FieldElement, ZERO};
+use crate::{FieldElement, ZERO};
 
 // ACCOUNT STORAGE HEADER
 // ================================================================================================

@@ -1,6 +1,7 @@
 use alloc::vec::Vec;
 
 use super::{Account, AccountId, Felt, PartialAccount, ZERO, hash_account};
+use crate::errors::AccountError;
 use crate::transaction::memory::{
     ACCT_CODE_COMMITMENT_OFFSET,
     ACCT_DATA_MEM_SIZE,
@@ -13,7 +14,7 @@ use crate::transaction::memory::{
     MemoryOffset,
 };
 use crate::utils::serde::{Deserializable, Serializable};
-use crate::{AccountError, WORD_SIZE, Word, WordError};
+use crate::{WORD_SIZE, Word, WordError};
 
 // ACCOUNT HEADER
 // ================================================================================================

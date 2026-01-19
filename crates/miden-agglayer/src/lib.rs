@@ -8,7 +8,6 @@ use alloc::vec::Vec;
 use miden_assembly::Library;
 use miden_assembly::utils::Deserializable;
 use miden_core::{Felt, FieldElement, Program, Word};
-use miden_protocol::NoteError;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -21,10 +20,10 @@ use miden_protocol::account::{
 };
 use miden_protocol::asset::TokenSymbol;
 use miden_protocol::crypto::rand::FeltRng;
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -37,10 +36,10 @@ use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
 
 pub mod errors;
-pub mod eth_address_format;
+pub mod eth_address;
 pub mod utils;
 
-pub use eth_address_format::EthAddressFormat;
+pub use eth_address::EthAddressFormat;
 use utils::bytes32_to_felts;
 
 // AGGLAYER NOTE SCRIPTS
@@ -468,23 +467,15 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     let inputs = NoteInputs::new(claim_inputs)?;
 
-    // Use a default tag since we don't have agg_faucet_id anymore
-    let tag = NoteTag::for_local_use_case(0, 0)?;
+    let tag = NoteTag::with_account_target(params.agglayer_faucet_account_id);
 
     let claim_script = claim_script();
     let serial_num = params.rng.draw_word();
 
     let note_type = NoteType::Public;
-    let execution_hint = NoteExecutionHint::always();
 
     // Use a default sender since we don't have sender anymore - create from destination address
-    let metadata = NoteMetadata::new(
-        params.claim_note_creator_account_id,
-        note_type,
-        tag,
-        execution_hint,
-        Felt::ZERO,
-    )?;
+    let metadata = NoteMetadata::new(params.claim_note_creator_account_id, note_type, tag);
     let assets = NoteAssets::new(vec![])?;
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 

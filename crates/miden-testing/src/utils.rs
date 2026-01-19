@@ -1,7 +1,6 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use miden_processor::Felt;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::Asset;
@@ -20,7 +19,7 @@ use rand::rngs::SmallRng;
 macro_rules! assert_execution_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
-            Err(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg, err: _ }) => {
+            Err($crate::ExecError(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg, err: _ })) => {
                 if let Some(ref msg) = err_msg {
                   assert_eq!(msg.as_ref(), $expected_err.message(), "error messages did not match");
                 }
@@ -228,16 +227,27 @@ fn note_script_that_creates_notes<'note>(
         out.push_str(&format!(
             "
             push.{recipient}
-            push.{hint}
             push.{note_type}
-            push.{aux}
             push.{tag}
-            call.output_note::create\n",
+            exec.output_note::create\n",
             recipient = note.recipient().digest(),
-            hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
-            aux = note.metadata().aux(),
             tag = note.metadata().tag(),
+        ));
+
+        out.push_str(&format!(
+            "
+          push.{ATTACHMENT}
+          push.{attachment_scheme}
+          push.{attachment_kind}
+          dup.6
+          # => [note_idx, attachment_kind, attachment_scheme, ATTACHMENT, note_idx]
+          exec.output_note::set_attachment
+          # => [note_idx]
+        ",
+            ATTACHMENT = note.metadata().to_attachment_word(),
+            attachment_scheme = note.metadata().attachment().attachment_scheme().as_u32(),
+            attachment_kind = note.metadata().attachment().content().attachment_kind().as_u8(),
         ));
 
         let assets_str = prepare_assets(note.assets());

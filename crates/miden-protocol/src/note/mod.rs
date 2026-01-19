@@ -3,7 +3,8 @@ use miden_crypto::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use crate::account::AccountId;
-use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO};
+use crate::errors::NoteError;
+use crate::{Felt, Hasher, WORD_SIZE, ZERO};
 
 mod assets;
 pub use assets::NoteAssets;
@@ -20,14 +21,23 @@ pub use inputs::NoteInputs;
 mod metadata;
 pub use metadata::NoteMetadata;
 
+mod attachment;
+pub use attachment::{
+    NoteAttachment,
+    NoteAttachmentArray,
+    NoteAttachmentContent,
+    NoteAttachmentKind,
+    NoteAttachmentScheme,
+};
+
 mod execution_hint;
-pub use execution_hint::{AfterBlockNumber, NoteExecutionHint};
+pub use execution_hint::NoteExecutionHint;
 
 mod note_id;
 pub use note_id::NoteId;
 
 mod note_tag;
-pub use note_tag::{NoteExecutionMode, NoteTag};
+pub use note_tag::NoteTag;
 
 mod note_type;
 pub use note_type::NoteType;
@@ -149,17 +159,12 @@ impl Note {
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     ///
     /// This value is used primarily for authenticating notes consumed when the are consumed
     /// in a transaction.
     pub fn commitment(&self) -> Word {
         self.header.commitment()
-    }
-
-    /// Returns true if this note is intended to be executed by the network rather than a user.
-    pub fn is_network_note(&self) -> bool {
-        self.metadata().tag().execution_mode() == NoteExecutionMode::Network
     }
 }
 
@@ -174,12 +179,6 @@ impl AsRef<NoteRecipient> for Note {
 
 // CONVERSIONS FROM NOTE
 // ================================================================================================
-
-impl From<&Note> for NoteHeader {
-    fn from(note: &Note) -> Self {
-        note.header
-    }
-}
 
 impl From<Note> for NoteHeader {
     fn from(note: Note) -> Self {
@@ -202,17 +201,7 @@ impl From<Note> for NoteDetails {
 impl From<Note> for PartialNote {
     fn from(note: Note) -> Self {
         let (assets, recipient, ..) = note.details.into_parts();
-        PartialNote::new(*note.header.metadata(), recipient.digest(), assets)
-    }
-}
-
-impl From<&Note> for PartialNote {
-    fn from(note: &Note) -> Self {
-        PartialNote::new(
-            *note.header.metadata(),
-            note.details.recipient().digest(),
-            note.details.assets().clone(),
-        )
+        PartialNote::new(note.header.into_metadata(), recipient.digest(), assets)
     }
 }
 

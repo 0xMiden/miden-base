@@ -71,7 +71,7 @@ end
 #! Outputs: [prefix, suffix]
 #!
 #! Invocation: exec
-pub proc ethereum_address_format_to_account_id
+pub proc to_account_id
     # addr4 must be 0 (most-significant limb)
     movup.4
     eq.0 assert.err=ERR_ADDR4_NONZERO
