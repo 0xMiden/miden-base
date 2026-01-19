@@ -1,8 +1,9 @@
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::Asset;
 use miden_protocol::block::BlockNumber;
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{NoteRecipient, NoteStorage, NoteTag, NoteType};
-use miden_protocol::{Felt, NoteError, Word};
+use miden_protocol::{Felt, Word};
 
 use super::well_known_note::WellKnownNote;
 

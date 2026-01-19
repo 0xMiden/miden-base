@@ -131,8 +131,8 @@ pub proc build_recipient
     # => [STORAGE_COMMITMENT, storage_len_start_ptr, storage_len_end_ptr,
     #     STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
 
-    # compute the advice map key for storage_len by hashing the inputs commitment
-    hash
+    # compute the advice map key for storage_len by hashing the storage commitment
+    exec.rpo256::hash
     # => [hash(STORAGE_COMMITMENT), storage_len_start_ptr, storage_len_end_ptr,
     #     STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
 
@@ -158,13 +158,13 @@ pub proc build_recipient
     movdnw.2
     # => [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
-    padw adv.insert_hdword hmerge
+    padw adv.insert_hdword exec.rpo256::merge
     # => [SERIAL_HASH, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
-    swapw adv.insert_hdword hmerge
+    swapw adv.insert_hdword exec.rpo256::merge
     # => [SERIAL_SCRIPT_HASH, STORAGE_COMMITMENT]
 
-    swapw adv.insert_hdword hmerge
+    swapw adv.insert_hdword exec.rpo256::merge
     # => [RECIPIENT]
 end
 
@@ -181,13 +181,13 @@ end
 #!
 #! Invocation: exec
 pub proc build_recipient_hash
-    padw hmerge
+    padw exec.rpo256::merge
     # => [SERIAL_NUM_HASH, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
-    swapw hmerge
+    swapw exec.rpo256::merge
     # => [MERGE_SCRIPT, STORAGE_COMMITMENT]
 
-    swapw hmerge
+    swapw exec.rpo256::merge
     # [RECIPIENT]
 end
 

@@ -4,6 +4,7 @@ use miden_protocol::account::AccountId;
 use miden_protocol::asset::Asset;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::crypto::rand::FeltRng;
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
@@ -15,7 +16,7 @@ use miden_protocol::note::{
     NoteTag,
     NoteType,
 };
-use miden_protocol::{Felt, NoteError, Word};
+use miden_protocol::{Felt, Word};
 use utils::build_swap_tag;
 
 pub mod mint_storage;

@@ -6,7 +6,6 @@ use miden_processor::fast::ExecutionOutput;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountBuilder, AccountId};
 use miden_protocol::assembly::DefaultSourceManager;
-use miden_protocol::assembly::diagnostics::miette::{self, miette};
 use miden_protocol::asset::FungibleAsset;
 use miden_protocol::crypto::dsa::falcon512_rpo::SecretKey;
 use miden_protocol::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -87,27 +86,23 @@ async fn test_note_setup() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_note_script_and_note_args() -> miette::Result<()> {
+async fn test_note_script_and_note_args() -> anyhow::Result<()> {
     let mut tx_context = {
         let mut builder = MockChain::builder();
-        let account = builder.add_existing_wallet(Auth::BasicAuth).map_err(|err| miette!(err))?;
-        let p2id_note_1 = builder
-            .add_p2id_note(
-                ACCOUNT_ID_SENDER.try_into().unwrap(),
-                account.id(),
-                &[FungibleAsset::mock(150)],
-                NoteType::Public,
-            )
-            .map_err(|err| miette!(err))?;
-        let p2id_note_2 = builder
-            .add_p2id_note(
-                ACCOUNT_ID_SENDER.try_into().unwrap(),
-                account.id(),
-                &[FungibleAsset::mock(300)],
-                NoteType::Public,
-            )
-            .map_err(|err| miette!(err))?;
-        let mut mock_chain = builder.build().map_err(|err| miette!(err))?;
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note_1 = builder.add_p2id_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            account.id(),
+            &[FungibleAsset::mock(150)],
+            NoteType::Public,
+        )?;
+        let p2id_note_2 = builder.add_p2id_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            account.id(),
+            &[FungibleAsset::mock(300)],
+            NoteType::Public,
+        )?;
+        let mut mock_chain = builder.build()?;
         mock_chain.prove_next_block().unwrap();
 
         mock_chain
@@ -380,12 +375,12 @@ async fn test_compute_storage_commitment() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_build_metadata_header() -> miette::Result<()> {
+async fn test_build_metadata_header() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
     let receiver = AccountId::try_from(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE)
-        .map_err(|e| miette::miette!("Failed to convert account ID: {}", e))?;
+        .map_err(|e| anyhow::anyhow!("Failed to convert account ID: {}", e))?;
 
     let test_metadata1 =
         NoteMetadata::new(sender, NoteType::Private, NoteTag::with_account_target(receiver));
