@@ -1,7 +1,6 @@
 extern crate alloc;
 
-use miden_agglayer::utils::ethereum_address_string_to_felts;
-use miden_agglayer::{b2agg_script, bridge_out_component};
+use miden_agglayer::{EthAddressFormat, b2agg_script, bridge_out_component};
 use miden_protocol::account::{
     Account,
     AccountId,
@@ -15,7 +14,6 @@ use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -70,9 +68,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     let amount = Felt::new(100);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
-    let aux = Felt::new(0);
-    let note_execution_hint = NoteExecutionHint::always();
+    let tag = NoteTag::new(0);
     let note_type = NoteType::Public; // Use Public note type for network transaction
 
     // Get the B2AGG note script
@@ -83,8 +79,9 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     // destination_address: 20 bytes (Ethereum address) split into 5 u32 values
     let destination_network = Felt::new(1); // Example network ID
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let address_felts =
-        ethereum_address_string_to_felts(destination_address).expect("Valid Ethereum address");
+    let eth_address =
+        EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
+    let address_felts = eth_address.to_elements().to_vec();
 
     // Combine network ID and address felts into note inputs (6 felts total)
     let mut input_felts = vec![destination_network];
@@ -93,8 +90,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let inputs = NoteInputs::new(input_felts.clone())?;
 
     // Create the B2AGG note with assets from the faucet
-    let b2agg_note_metadata =
-        NoteMetadata::new(faucet.id(), note_type, tag, note_execution_hint, aux)?;
+    let b2agg_note_metadata = NoteMetadata::new(faucet.id(), note_type, tag);
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let b2agg_note_script = NoteScript::new(b2agg_script);
@@ -146,7 +142,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     assert_eq!(
         burn_note.metadata().tag(),
-        NoteTag::from_account_id(faucet.id()),
+        NoteTag::with_account_target(faucet.id()),
         "BURN note should have the correct tag"
     );
 
@@ -230,9 +226,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     let amount = Felt::new(50);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::for_local_use_case(0, 0).unwrap();
-    let aux = Felt::new(0);
-    let note_execution_hint = NoteExecutionHint::always();
+    let tag = NoteTag::new(0);
     let note_type = NoteType::Public;
 
     // Get the B2AGG note script
@@ -241,8 +235,9 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     // Create note inputs with destination network and address
     let destination_network = Felt::new(1);
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let address_felts =
-        ethereum_address_string_to_felts(destination_address).expect("Valid Ethereum address");
+    let eth_address =
+        EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
+    let address_felts = eth_address.to_elements().to_vec();
 
     // Combine network ID and address felts into note inputs (6 felts total)
     let mut input_felts = vec![destination_network];
@@ -252,8 +247,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     // Create the B2AGG note with the USER ACCOUNT as the sender
     // This is the key difference - the note sender will be the same as the consuming account
-    let b2agg_note_metadata =
-        NoteMetadata::new(user_account.id(), note_type, tag, note_execution_hint, aux)?;
+    let b2agg_note_metadata = NoteMetadata::new(user_account.id(), note_type, tag);
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let b2agg_note_script = NoteScript::new(b2agg_script);
