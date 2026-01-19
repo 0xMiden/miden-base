@@ -1,7 +1,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_core::{Felt, Word};
+use miden_core::{Felt, FieldElement, Word};
 use miden_protocol::NoteError;
 use miden_protocol::account::AccountId;
 use miden_protocol::crypto::SequentialCommit;
@@ -218,10 +218,15 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
     type Error = NoteError;
 
     fn try_from(inputs: ClaimNoteInputs) -> Result<Self, Self::Error> {
-        let mut claim_inputs = Vec::with_capacity(571); // 536 + 28 + 7 (proof_data + leaf_data + output_note_data)
+        // proof_data + leaf_data + empty_word + output_note_data
+        // 536 + 28 + 4 + 7
+        let mut claim_inputs = Vec::with_capacity(574);
+
+        let empty_word = Word::from([Felt::ZERO; 4]);
 
         claim_inputs.extend(inputs.proof_data.to_elements());
         claim_inputs.extend(inputs.leaf_data.to_elements());
+        claim_inputs.extend(empty_word);
         claim_inputs.extend(inputs.output_note_data.to_elements());
 
         NoteInputs::new(claim_inputs)
