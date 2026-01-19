@@ -142,9 +142,13 @@ fn keccak_digest_to_word_strings(digest: Keccak256Digest) -> (String, String) {
     (double_word[0..4].join(", "), double_word[4..8].join(", "))
 }
 
-fn leaf_assertion_code(leaf: Keccak256Digest, root: Keccak256Digest, num_leaves: u32) -> String {
+fn leaf_assertion_code(
+    leaf: Keccak256Digest, 
+    expected_root: Keccak256Digest, 
+    num_leaves: u32
+) -> String {
     let (leaf_hi, leaf_lo) = keccak_digest_to_word_strings(leaf);
-    let (root_hi, root_lo) = keccak_digest_to_word_strings(root);
+    let (root_hi, root_lo) = keccak_digest_to_word_strings(expected_root);
 
     format!(
         r#"
