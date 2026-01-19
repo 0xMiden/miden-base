@@ -8,9 +8,14 @@ use thiserror::Error;
 
 mod basic_fungible;
 mod network_fungible;
+mod regulated_network_fungible;
 
 pub use basic_fungible::{BasicFungibleFaucet, create_basic_fungible_faucet};
 pub use network_fungible::{NetworkFungibleFaucet, create_network_fungible_faucet};
+pub use regulated_network_fungible::{
+    RegulatedNetworkFungibleFaucet,
+    create_regulated_network_fungible_faucet,
+};
 
 static METADATA_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
     StorageSlotName::new("miden::standards::fungible_faucets::metadata")
