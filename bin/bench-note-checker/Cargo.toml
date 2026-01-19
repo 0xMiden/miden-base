@@ -20,7 +20,7 @@ miden-tx        = { workspace = true }
 # External dependencies
 anyhow = { workspace = true }
 serde  = { features = ["derive"], workspace = true }
-tokio  = { features = ["macros", "rt"], version = "1.0" }
+tokio  = { features = ["macros", "rt"], workspace = true }
 
 [dev-dependencies]
 criterion  = { features = ["async_tokio", "html_reports"], version = "0.6" }
