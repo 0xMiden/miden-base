@@ -1770,6 +1770,8 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rstest",
+ "serde",
+ "serde_json",
  "tokio",
  "winter-rand-utils",
  "winterfell",

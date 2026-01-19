@@ -45,5 +45,7 @@ miden-crypto      = { workspace = true }
 miden-protocol    = { features = ["std"], workspace = true }
 primitive-types   = { workspace = true }
 rstest            = { workspace = true }
+serde             = { version = "1.0", features = ["derive"] }
+serde_json        = { version = "1.0" }
 tokio             = { features = ["macros", "rt"], workspace = true }
 winter-rand-utils = { version = "0.13" }
