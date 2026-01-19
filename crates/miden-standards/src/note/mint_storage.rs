@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
-use miden_protocol::note::{NoteAttachment, NoteRecipient, NoteStorage};
 use miden_protocol::errors::NoteError;
+use miden_protocol::note::{NoteAttachment, NoteRecipient, NoteStorage};
 use miden_protocol::{Felt, MAX_NOTE_STORAGE_ITEMS, Word};
 
 /// Represents the different storage formats for MINT notes.
