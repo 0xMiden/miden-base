@@ -1,15 +1,13 @@
 [profile.default]
-src = "src"
-out = "out"
 libs = ["lib"]
+out  = "out"
 solc = "0.8.20"
+src  = "src"
 
-remappings = [
-    "@agglayer/=lib/agglayer-contracts/contracts/"
-]
+remappings = ["@agglayer/=lib/agglayer-contracts/contracts/"]
 
 # Emit extra output for test vector generation
-ffi = false
+ffi       = false
 verbosity = 2
 
 # Allow writing test vectors to file
