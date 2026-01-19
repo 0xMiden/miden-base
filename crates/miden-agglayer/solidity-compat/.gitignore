@@ -1,7 +1,6 @@
 # Foundry artifacts
 /out/
 /cache/
-/lib/
 
 # Foundry broadcast files
 /broadcast/

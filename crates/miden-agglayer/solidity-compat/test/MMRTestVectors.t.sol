@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/DepositContractBase.sol";
+import "@agglayer/v2/lib/DepositContractBase.sol";
 
 /**
  * @title MMRTestVectors

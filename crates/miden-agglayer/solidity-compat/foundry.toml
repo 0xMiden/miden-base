@@ -4,6 +4,10 @@ out = "out"
 libs = ["lib"]
 solc = "0.8.20"
 
+remappings = [
+    "@agglayer/=lib/agglayer-contracts/contracts/"
+]
+
 # Emit extra output for test vector generation
 ffi = false
 verbosity = 2

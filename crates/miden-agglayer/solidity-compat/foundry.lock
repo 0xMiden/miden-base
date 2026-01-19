@@ -1,4 +1,7 @@
 {
+  "lib/agglayer-contracts": {
+    "rev": "e468f9b0967334403069aa650d9f1164b1731ebb"
+  },
   "lib/forge-std": {
     "tag": {
       "name": "v1.14.0",

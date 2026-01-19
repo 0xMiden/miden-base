@@ -21,7 +21,13 @@ foundryup
 
 ## Running Tests
 
-From this directory:
+From the repository root, you can regenerate the test vectors with:
+
+```bash
+make generate-solidity-test-vectors
+```
+
+Or from this directory:
 
 ```bash
 # Install dependencies (first time only)
@@ -56,6 +62,5 @@ and outputs the root after each addition.
 
 ## Source Files
 
-- `src/DepositContractBase.sol` - Copy from agglayer-contracts @ e468f9b0967334403069aa650d9f1164b1731ebb
-- `src/Hashes.sol` - Keccak256 hashing utility (based on OpenZeppelin)
+- `lib/agglayer-contracts/` - Git submodule of [agglayer-contracts](https://github.com/agglayer/agglayer-contracts) @ e468f9b0967334403069aa650d9f1164b1731ebb
 - `test/MMRTestVectors.t.sol` - Test vector generation
