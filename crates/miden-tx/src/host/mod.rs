@@ -54,8 +54,8 @@ use miden_protocol::note::{NoteAttachment, NoteId, NoteMetadata, NoteRecipient};
 use miden_protocol::transaction::{
     InputNote,
     InputNotes,
-    RawOutputNote,
-    RawOutputNotes,
+    OutputNote,
+    OutputNotes,
     TransactionMeasurements,
     TransactionSummary,
 };
@@ -192,12 +192,12 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
 
     /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
     /// are tracked by this host.
-    pub fn build_output_notes(&self) -> Vec<RawOutputNote> {
+    pub fn build_output_notes(&self) -> Vec<OutputNote> {
         self.output_notes.values().cloned().map(|builder| builder.build()).collect()
     }
 
     /// Consumes `self` and returns the account delta, input and output notes.
-    pub fn into_parts(self) -> (AccountDelta, InputNotes<InputNote>, Vec<RawOutputNote>) {
+    pub fn into_parts(self) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
 
         (self.account_delta.into_delta(), self.input_notes, output_notes)
@@ -413,7 +413,7 @@ impl<'store, STORE> TransactionBaseHost<'store, STORE> {
         let account_delta = self.build_account_delta();
         let input_notes = self.input_notes();
         let output_notes_vec = self.build_output_notes();
-        let output_notes = RawOutputNotes::new(output_notes_vec).map_err(|err| {
+        let output_notes = OutputNotes::new(output_notes_vec).map_err(|err| {
             TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
         })?;
 

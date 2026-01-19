@@ -77,7 +77,7 @@ impl Serializable for PartialNote {
     }
 
     fn get_size_hint(&self) -> usize {
-        self.metadata.get_size_hint() + Word::SERIALIZED_SIZE + self.assets.get_size_hint()
+        self.metadata().get_size_hint() + Word::SERIALIZED_SIZE + self.assets.get_size_hint()
     }
 }
 

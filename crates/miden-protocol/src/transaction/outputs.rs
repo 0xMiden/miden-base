@@ -6,7 +6,8 @@ use core::fmt::Debug;
 use crate::account::AccountHeader;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
-use crate::errors::TransactionOutputError;
+use crate::constants::NOTE_MAX_SIZE;
+use crate::errors::{PublicOutputNoteError, TransactionOutputError};
 use crate::note::{
     Note,
     NoteAssets,
@@ -37,7 +38,7 @@ pub struct TransactionOutputs {
     /// The commitment to the delta computed by the transaction kernel.
     pub account_delta_commitment: Word,
     /// Set of output notes created by the transaction.
-    pub output_notes: RawOutputNotes,
+    pub output_notes: OutputNotes,
     /// The fee of the transaction.
     pub fee: FungibleAsset,
     /// Defines up to which block the transaction is considered valid.
@@ -75,7 +76,7 @@ impl Deserializable for TransactionOutputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let account = AccountHeader::read_from(source)?;
         let account_delta_commitment = Word::read_from(source)?;
-        let output_notes = RawOutputNotes::read_from(source)?;
+        let output_notes = OutputNotes::read_from(source)?;
         let fee = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
 
@@ -96,144 +97,29 @@ impl Deserializable for TransactionOutputs {
 /// not produce any notes.
 ///
 /// This struct is generic over the note type `N`, allowing it to be used with both
-/// [`RawOutputNote`] (in [`ExecutedTransaction`](super::ExecutedTransaction)) and
+/// [`OutputNote`] (in [`ExecutedTransaction`](super::ExecutedTransaction)) and
 /// [`ProvenOutputNote`] (in [`ProvenTransaction`](super::ProvenTransaction)).
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct OutputNotes<N> {
+pub struct RawOutputNotes<N> {
     notes: Vec<N>,
     commitment: Word,
 }
 
-impl OutputNotes {
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns new [OutputNotes] instantiated from the provide vector of notes.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - The total number of notes is greater than [`MAX_OUTPUT_NOTES_PER_TX`].
-    /// - The vector of notes contains duplicates.
-    pub fn new(notes: Vec<OutputNote>) -> Result<Self, TransactionOutputError> {
-        if notes.len() > MAX_OUTPUT_NOTES_PER_TX {
-            return Err(TransactionOutputError::TooManyOutputNotes(notes.len()));
-        }
-
-        let mut seen_notes = BTreeSet::new();
-        for note in notes.iter() {
-            if !seen_notes.insert(note.id()) {
-                return Err(TransactionOutputError::DuplicateOutputNote(note.id()));
-            }
-        }
-
-        let commitment = Self::compute_commitment(notes.iter().map(OutputNote::header));
-
-        Ok(Self { notes, commitment })
-    }
-
-impl<N> OutputNotes<N>
+impl<N> RawOutputNotes<N>
 where
     for<'a> NoteHeader: From<&'a N>,
     for<'a> NoteId: From<&'a N>,
 {
-    // PUBLIC ACCESSORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the commitment to the output notes.
-    ///
-    /// The commitment is computed as a sequential hash of (hash, metadata) tuples for the notes
-    /// created in a transaction.
-    pub fn commitment(&self) -> Word {
-        self.commitment
-    }
-
-    /// Returns total number of output notes.
-    pub fn num_notes(&self) -> usize {
-        self.notes.len()
-    }
-
-    /// Returns true if this [OutputNotes] does not contain any notes.
-    pub fn is_empty(&self) -> bool {
-        self.notes.is_empty()
-    }
-
-    /// Returns a reference to the note located at the specified index.
-    pub fn get_note(&self, idx: usize) -> &N {
-        &self.notes[idx]
-    }
-
-    // ITERATORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns an iterator over notes in this [OutputNotes].
-    pub fn iter(&self) -> impl Iterator<Item = &N> {
-        self.notes.iter()
-    }
-
-    // HELPERS
-    // --------------------------------------------------------------------------------------------
-
-    /// Computes a commitment to output notes.
-    ///
-    /// - For an empty list, [`Word::empty`] is returned.
-    /// - For a non-empty list of notes, this is a sequential hash of (note_id, metadata_commitment)
-    ///   tuples for the notes created in a transaction, where `metadata_commitment` is the return
-    ///   value of [`NoteMetadata::to_commitment`].
-    pub(crate) fn compute_commitment<'header>(
-        notes: impl ExactSizeIterator<Item = &'header NoteHeader>,
-    ) -> Word {
-        if notes.len() == 0 {
-            return Word::empty();
-        }
-
-        let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
-        for note_header in notes {
-            elements.extend_from_slice(note_header.id().as_elements());
-            elements.extend_from_slice(note_header.metadata().to_commitment().as_elements());
-        }
-
-        Hasher::hash_elements(&elements)
-    }
-}
-
-impl RawOutputNotes {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+
     /// Returns new [RawOutputNotes] instantiated from the provided vector of notes.
     ///
     /// # Errors
     /// Returns an error if:
     /// - The total number of notes is greater than [`MAX_OUTPUT_NOTES_PER_TX`].
     /// - The vector of notes contains duplicates.
-    pub fn new(notes: Vec<RawOutputNote>) -> Result<Self, TransactionOutputError> {
-        if notes.len() > MAX_OUTPUT_NOTES_PER_TX {
-            return Err(TransactionOutputError::TooManyOutputNotes(notes.len()));
-        }
-
-        let mut seen_notes = BTreeSet::new();
-        for note in notes.iter() {
-            let note_id = note.id();
-            if !seen_notes.insert(note_id) {
-                return Err(TransactionOutputError::DuplicateOutputNote(note_id));
-            }
-        }
-
-        let commitment = Self::compute_commitment(notes.iter().map(NoteHeader::from));
-
-        Ok(Self { notes, commitment })
-    }
-}
-
-impl ProvenOutputNotes {
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
-    /// Returns new [ProvenOutputNotes] instantiated from the provided vector of notes.
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - The total number of notes is greater than [`MAX_OUTPUT_NOTES_PER_TX`].
-    /// - The vector of notes contains duplicates.
-    pub fn new(notes: Vec<ProvenOutputNote>) -> Result<Self, TransactionOutputError> {
+    pub fn new(notes: Vec<N>) -> Result<Self, TransactionOutputError> {
         if notes.len() > MAX_OUTPUT_NOTES_PER_TX {
             return Err(TransactionOutputError::TooManyOutputNotes(notes.len()));
         }
@@ -250,12 +136,81 @@ impl ProvenOutputNotes {
 
         Ok(Self { notes, commitment })
     }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the commitment to the output notes.
+    ///
+    /// The commitment is computed as a sequential hash of (hash, metadata) tuples for the notes
+    /// created in a transaction.
+    pub fn commitment(&self) -> Word {
+        self.commitment
+    }
+
+    /// Returns total number of output notes.
+    pub fn num_notes(&self) -> usize {
+        self.notes.len()
+    }
+
+    /// Returns true if this [RawOutputNotes] does not contain any notes.
+    pub fn is_empty(&self) -> bool {
+        self.notes.is_empty()
+    }
+
+    /// Returns a reference to the note located at the specified index.
+    pub fn get_note(&self, idx: usize) -> &N {
+        &self.notes[idx]
+    }
+
+    // ITERATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns an iterator over notes in this [RawOutputNotes].
+    pub fn iter(&self) -> impl Iterator<Item = &N> {
+        self.notes.iter()
+    }
+
+    // HELPERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Computes a commitment to output notes.
+    ///
+    /// - For an empty list, [`Word::empty`] is returned.
+    /// - For a non-empty list of notes, this is a sequential hash of (note_id, metadata_commitment)
+    ///   tuples for the notes created in a transaction, where `metadata_commitment` is the return
+    ///   value of [`NoteMetadata::to_commitment`].
+    pub(crate) fn compute_commitment(notes: impl ExactSizeIterator<Item = NoteHeader>) -> Word {
+        if notes.len() == 0 {
+            return Word::empty();
+        }
+
+        let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
+        for note_header in notes {
+            elements.extend_from_slice(note_header.id().as_elements());
+            elements.extend_from_slice(note_header.metadata().to_commitment().as_elements());
+        }
+
+        Hasher::hash_elements(&elements)
+    }
 }
+
+/// Output notes produced during transaction execution (before proving).
+///
+/// Contains [`OutputNote`] instances which represent notes as they exist immediately after
+/// transaction execution.
+pub type OutputNotes = RawOutputNotes<OutputNote>;
+
+/// Output notes in a proven transaction.
+///
+/// Contains [`ProvenOutputNote`] instances which have been processed for inclusion in
+/// proven transactions, with size limits enforced on public notes.
+pub type ProvenOutputNotes = RawOutputNotes<ProvenOutputNote>;
 
 // SERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
-impl Serializable for RawOutputNotes {
+impl Serializable for OutputNotes {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         // assert is OK here because we enforce max number of notes in the constructor
         assert!(self.notes.len() <= u16::MAX.into());
@@ -264,10 +219,10 @@ impl Serializable for RawOutputNotes {
     }
 }
 
-impl Deserializable for RawOutputNotes {
+impl Deserializable for OutputNotes {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let num_notes = source.read_u16()?;
-        let notes = source.read_many::<RawOutputNote>(num_notes.into())?;
+        let notes = source.read_many::<OutputNote>(num_notes.into())?;
         Self::new(notes).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -289,12 +244,12 @@ impl Deserializable for ProvenOutputNotes {
     }
 }
 
-// RAW OUTPUT NOTE
+// OUTPUT NOTE
 // ================================================================================================
 
-const RAW_FULL: u8 = 0;
-const RAW_PARTIAL: u8 = 1;
-const RAW_HEADER: u8 = 2;
+const OUTPUT_FULL: u8 = 0;
+const OUTPUT_PARTIAL: u8 = 1;
+const OUTPUT_HEADER: u8 = 2;
 
 /// The types of note outputs produced during transaction execution (before proving).
 ///
@@ -304,23 +259,23 @@ const RAW_HEADER: u8 = 2;
 /// - Partial notes (notes created with only recipient digest, not full recipient details)
 /// - Note headers (minimal note information)
 ///
-/// During proving, these are converted to [`ProvenOutputNote`] via the [`shrink`](Self::shrink)
-/// method, which enforces size limits on public notes and converts private/partial notes
-/// to headers.
+/// During proving, these are converted to [`ProvenOutputNote`] via the
+/// [`to_proven_output_note`](Self::to_proven_output_note) method, which enforces size limits
+/// on public notes and converts private/partial notes to headers.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum RawOutputNote {
+pub enum OutputNote {
     Full(Note),
     Partial(PartialNote),
     Header(NoteHeader),
 }
 
-impl RawOutputNote {
+impl OutputNote {
     /// The assets contained in the note.
     pub fn assets(&self) -> Option<&NoteAssets> {
         match self {
-            RawOutputNote::Full(note) => Some(note.assets()),
-            RawOutputNote::Partial(note) => Some(note.assets()),
-            RawOutputNote::Header(_) => None,
+            OutputNote::Full(note) => Some(note.assets()),
+            OutputNote::Partial(note) => Some(note.assets()),
+            OutputNote::Header(_) => None,
         }
     }
 
@@ -329,43 +284,43 @@ impl RawOutputNote {
     /// This value is both an unique identifier and a commitment to the note.
     pub fn id(&self) -> NoteId {
         match self {
-            RawOutputNote::Full(note) => note.id(),
-            RawOutputNote::Partial(note) => note.id(),
-            RawOutputNote::Header(note) => note.id(),
+            OutputNote::Full(note) => note.id(),
+            OutputNote::Partial(note) => note.id(),
+            OutputNote::Header(note) => note.id(),
         }
     }
 
-    /// Returns the recipient of the processed [`Full`](RawOutputNote::Full) output note,
-    /// [`None`] if the note type is not [`Full`](RawOutputNote::Full).
+    /// Returns the recipient of the processed [`Full`](OutputNote::Full) output note,
+    /// [`None`] if the note type is not [`Full`](OutputNote::Full).
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient(&self) -> Option<&NoteRecipient> {
         match self {
-            RawOutputNote::Full(note) => Some(note.recipient()),
-            RawOutputNote::Partial(_) => None,
-            RawOutputNote::Header(_) => None,
+            OutputNote::Full(note) => Some(note.recipient()),
+            OutputNote::Partial(_) => None,
+            OutputNote::Header(_) => None,
         }
     }
 
-    /// Returns the recipient digest of the processed [`Full`](RawOutputNote::Full) or
-    /// [`Partial`](RawOutputNote::Partial) output note. Returns [`None`] if the note type is
-    /// [`Header`](RawOutputNote::Header).
+    /// Returns the recipient digest of the processed [`Full`](OutputNote::Full) or
+    /// [`Partial`](OutputNote::Partial) output note. Returns [`None`] if the note type is
+    /// [`Header`](OutputNote::Header).
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient_digest(&self) -> Option<Word> {
         match self {
-            RawOutputNote::Full(note) => Some(note.recipient().digest()),
-            RawOutputNote::Partial(note) => Some(note.recipient_digest()),
-            RawOutputNote::Header(_) => None,
+            OutputNote::Full(note) => Some(note.recipient().digest()),
+            OutputNote::Partial(note) => Some(note.recipient_digest()),
+            OutputNote::Header(_) => None,
         }
     }
 
     /// Note's metadata.
     pub fn metadata(&self) -> &NoteMetadata {
         match self {
-            RawOutputNote::Full(note) => note.metadata(),
-            RawOutputNote::Partial(note) => note.metadata(),
-            RawOutputNote::Header(note) => note.metadata(),
+            OutputNote::Full(note) => note.metadata(),
+            OutputNote::Partial(note) => note.metadata(),
+            OutputNote::Header(note) => note.metadata(),
         }
     }
 
@@ -381,10 +336,13 @@ impl RawOutputNote {
     pub fn to_proven_output_note(&self) -> Result<ProvenOutputNote, PublicOutputNoteError> {
         match self {
             OutputNote::Full(note) if note.metadata().is_private() => {
-                OutputNote::Header(note.header().clone())
+                Ok(ProvenOutputNote::Header(note.header().clone()))
             },
-            OutputNote::Partial(note) => OutputNote::Header(note.header().clone()),
-            _ => self.clone(),
+            OutputNote::Partial(note) => Ok(ProvenOutputNote::Header(note.header().clone())),
+            OutputNote::Full(note) => {
+                Ok(ProvenOutputNote::Public(PublicOutputNote::new(note.clone())?))
+            },
+            OutputNote::Header(header) => Ok(ProvenOutputNote::Header(header.clone())),
         }
     }
 
@@ -405,22 +363,37 @@ impl RawOutputNote {
     }
 }
 
-// SERIALIZATION
-// ------------------------------------------------------------------------------------------------
+// CONVERSIONS FROM OUTPUT NOTE
+// ================================================================================================
 
-impl Serializable for RawOutputNote {
+impl From<&OutputNote> for NoteId {
+    fn from(note: &OutputNote) -> Self {
+        note.id()
+    }
+}
+
+impl From<&OutputNote> for NoteHeader {
+    fn from(note: &OutputNote) -> Self {
+        note.header().clone()
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for OutputNote {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         match self {
-            RawOutputNote::Full(note) => {
-                target.write(RAW_FULL);
+            OutputNote::Full(note) => {
+                target.write(OUTPUT_FULL);
                 target.write(note);
             },
-            RawOutputNote::Partial(note) => {
-                target.write(RAW_PARTIAL);
+            OutputNote::Partial(note) => {
+                target.write(OUTPUT_PARTIAL);
                 target.write(note);
             },
-            RawOutputNote::Header(note) => {
-                target.write(RAW_HEADER);
+            OutputNote::Header(note) => {
+                target.write(OUTPUT_HEADER);
                 target.write(note);
             },
         }
@@ -431,22 +404,20 @@ impl Serializable for RawOutputNote {
         let tag_size = 0u8.get_size_hint();
 
         match self {
-            RawOutputNote::Full(note) => tag_size + note.get_size_hint(),
-            RawOutputNote::Partial(note) => tag_size + note.get_size_hint(),
-            RawOutputNote::Header(note) => tag_size + note.get_size_hint(),
+            OutputNote::Full(note) => tag_size + note.get_size_hint(),
+            OutputNote::Partial(note) => tag_size + note.get_size_hint(),
+            OutputNote::Header(note) => tag_size + note.get_size_hint(),
         }
     }
 }
 
-impl Deserializable for RawOutputNote {
+impl Deserializable for OutputNote {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match source.read_u8()? {
-            RAW_FULL => Ok(RawOutputNote::Full(Note::read_from(source)?)),
-            RAW_PARTIAL => Ok(RawOutputNote::Partial(PartialNote::read_from(source)?)),
-            RAW_HEADER => Ok(RawOutputNote::Header(NoteHeader::read_from(source)?)),
-            v => Err(DeserializationError::InvalidValue(format!(
-                "invalid raw output note type: {v}"
-            ))),
+            OUTPUT_FULL => Ok(OutputNote::Full(Note::read_from(source)?)),
+            OUTPUT_PARTIAL => Ok(OutputNote::Partial(PartialNote::read_from(source)?)),
+            OUTPUT_HEADER => Ok(OutputNote::Header(NoteHeader::read_from(source)?)),
+            v => Err(DeserializationError::InvalidValue(format!("invalid output note type: {v}"))),
         }
     }
 }
@@ -459,7 +430,7 @@ const PROVEN_HEADER: u8 = 1;
 
 /// Output note types that can appear in a proven transaction.
 ///
-/// This enum represents the final form of output notes after proving. Unlike [`RawOutputNote`],
+/// This enum represents the final form of output notes after proving. Unlike [`OutputNote`],
 /// this enum:
 /// - Does not include partial notes (they are converted to headers)
 /// - Wraps public notes in [`PublicOutputNote`] which enforces size limits
@@ -531,7 +502,7 @@ impl From<&ProvenOutputNote> for NoteHeader {
     fn from(value: &ProvenOutputNote) -> Self {
         match value {
             ProvenOutputNote::Public(note) => note.header(),
-            ProvenOutputNote::Header(header) => *header,
+            ProvenOutputNote::Header(header) => header.clone(),
         }
     }
 }
@@ -643,7 +614,7 @@ impl PublicOutputNote {
 
     /// Returns the note's header.
     pub fn header(&self) -> NoteHeader {
-        *self.note.header()
+        self.note.header().clone()
     }
 
     /// Returns a reference to the underlying note.
@@ -684,11 +655,29 @@ impl Deserializable for PublicOutputNote {
 mod output_notes_tests {
     use assert_matches::assert_matches;
 
-    use super::OutputNotes;
-    use crate::Word;
+    use super::{OutputNote, OutputNotes, PublicOutputNote, PublicOutputNoteError};
+    use crate::account::AccountId;
+    use crate::assembly::Assembler;
+    use crate::asset::FungibleAsset;
+    use crate::constants::NOTE_MAX_SIZE;
     use crate::errors::TransactionOutputError;
-    use crate::note::Note;
-    use crate::transaction::OutputNote;
+    use crate::note::{
+        Note,
+        NoteAssets,
+        NoteInputs,
+        NoteMetadata,
+        NoteRecipient,
+        NoteScript,
+        NoteTag,
+        NoteType,
+    };
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_SENDER,
+    };
+    use crate::utils::serde::Serializable;
+    use crate::{Felt, Word};
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {
@@ -696,11 +685,9 @@ mod output_notes_tests {
         let mock_note_id = mock_note.id();
         let mock_note_clone = mock_note.clone();
 
-        let error = RawOutputNotes::new(vec![
-            RawOutputNote::Full(mock_note),
-            RawOutputNote::Full(mock_note_clone),
-        ])
-        .expect_err("input notes creation should fail");
+        let error =
+            OutputNotes::new(vec![OutputNote::Full(mock_note), OutputNote::Full(mock_note_clone)])
+                .expect_err("input notes creation should fail");
 
         assert_matches!(error, TransactionOutputError::DuplicateOutputNote(note_id) if note_id == mock_note_id);
 
@@ -724,10 +711,8 @@ mod output_notes_tests {
         let metadata = NoteMetadata::new(
             sender_id,
             NoteType::Private,
-            NoteTag::from_account_id(sender_id),
-            NoteExecutionHint::Always,
-            ZERO,
-        )?;
+            NoteTag::with_account_target(sender_id),
+        );
 
         // Build inputs with at least two values.
         let inputs = NoteInputs::new(vec![Felt::new(1), Felt::new(2)])?;
@@ -737,7 +722,7 @@ mod output_notes_tests {
         let recipient = NoteRecipient::new(serial_num, script, inputs);
 
         let note = Note::new(assets, metadata, recipient);
-        let output_note = RawOutputNote::Full(note);
+        let output_note = OutputNote::Full(note);
 
         let bytes = output_note.to_bytes();
 
@@ -774,13 +759,8 @@ mod output_notes_tests {
         let asset = FungibleAsset::new(faucet_id, 100)?.into();
         let assets = NoteAssets::new(vec![asset])?;
 
-        let metadata = NoteMetadata::new(
-            sender_id,
-            NoteType::Public,
-            NoteTag::from_account_id(sender_id),
-            NoteExecutionHint::Always,
-            ZERO,
-        )?;
+        let metadata =
+            NoteMetadata::new(sender_id, NoteType::Public, NoteTag::with_account_target(sender_id));
 
         let recipient = NoteRecipient::new(serial_num, script, inputs);
         let oversized_note = Note::new(assets, metadata, recipient);
@@ -804,7 +784,7 @@ mod output_notes_tests {
 
     #[test]
     fn shrink_enforces_size_limit_on_public_notes() -> anyhow::Result<()> {
-        // Test that shrink() on a RawOutputNote with an oversized public note fails
+        // Test that shrink() on an OutputNote with an oversized public note fails
 
         let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
 
@@ -827,20 +807,15 @@ mod output_notes_tests {
         let assets = NoteAssets::new(vec![asset])?;
 
         // Create a PUBLIC note so it will go through size validation during shrink
-        let metadata = NoteMetadata::new(
-            sender_id,
-            NoteType::Public,
-            NoteTag::from_account_id(sender_id),
-            NoteExecutionHint::Always,
-            ZERO,
-        )?;
+        let metadata =
+            NoteMetadata::new(sender_id, NoteType::Public, NoteTag::with_account_target(sender_id));
 
         let recipient = NoteRecipient::new(serial_num, script, inputs);
         let oversized_note = Note::new(assets, metadata, recipient);
-        let raw_output_note = RawOutputNote::Full(oversized_note);
+        let output_note = OutputNote::Full(oversized_note);
 
         // Shrink should fail because the public note exceeds size limit
-        let result = raw_output_note.shrink();
+        let result = output_note.to_proven_output_note();
 
         assert_matches!(
             result,

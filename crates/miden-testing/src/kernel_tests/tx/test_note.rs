@@ -464,7 +464,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
         .dynamically_linked_libraries(CodeBuilder::mock_libraries())
         .build()?;
 
-    builder.add_output_note(RawOutputNote::Full(timelock_note.clone()));
+    builder.add_output_note(OutputNote::Full(timelock_note.clone()));
 
     let mut mock_chain = builder.build()?;
     mock_chain

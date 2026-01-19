@@ -25,7 +25,7 @@ use miden_protocol::note::{
     NoteType,
 };
 use miden_protocol::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
-use miden_protocol::transaction::{ExecutedTransaction, RawOutputNote};
+use miden_protocol::transaction::{ExecutedTransaction, OutputNote};
 use miden_protocol::{Felt, Word};
 use miden_standards::account::faucets::{
     BasicFungibleFaucet,
@@ -251,7 +251,7 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
 
     let note = get_note_with_fungible_asset_and_script(fungible_asset, burn_note_script_code);
 
-    builder.add_output_note(RawOutputNote::Full(note.clone()));
+    builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
     // Check that max_supply at the word's index 0 is 200. The remainder of the word is initialized
@@ -395,7 +395,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         .code(trigger_note_script_code)
         .build()?;
 
-    builder.add_output_note(RawOutputNote::Full(trigger_note.clone()));
+    builder.add_output_note(OutputNote::Full(trigger_note.clone()));
     let mock_chain = builder.build()?;
 
     // Execute the transaction - this should fetch the output note script from the data store.
@@ -413,10 +413,10 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     assert_eq!(executed_transaction.output_notes().num_notes(), 1);
     let output_note = executed_transaction.output_notes().get_note(0);
 
-    // Extract the full note from the RawOutputNote enum
+    // Extract the full note from the OutputNote enum
     let full_note = match output_note {
-        RawOutputNote::Full(note) => note,
-        _ => panic!("Expected RawOutputNote::Full variant"),
+        OutputNote::Full(note) => note,
+        _ => panic!("Expected OutputNote::Full variant"),
     };
 
     // Verify the output note is public
@@ -521,7 +521,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     )?;
 
     // Add the MINT note to the mock chain
-    builder.add_output_note(RawOutputNote::Full(mint_note.clone()));
+    builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
 
     // EXECUTE MINT NOTE AGAINST NETWORK FAUCET
@@ -1089,7 +1089,7 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
         &mut rng,
     )?;
 
-    builder.add_output_note(RawOutputNote::Full(note.clone()));
+    builder.add_output_note(OutputNote::Full(note.clone()));
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
@@ -1182,7 +1182,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         &mut rng,
     )?;
 
-    builder.add_output_note(RawOutputNote::Full(mint_note.clone()));
+    builder.add_output_note(OutputNote::Full(mint_note.clone()));
     let mut mock_chain = builder.build()?;
 
     let mut tx_context_builder =
@@ -1202,15 +1202,15 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     match note_type {
         NoteType::Private => {
             // For private notes, we can only compare basic properties since we get
-            // RawOutputNote::Partial
+            // OutputNote::Partial
             assert_eq!(output_note.id(), p2id_mint_output_note.id());
             assert_eq!(output_note.metadata(), p2id_mint_output_note.metadata());
         },
         NoteType::Public => {
-            // For public notes, we get RawOutputNote::Full and can compare key properties
+            // For public notes, we get OutputNote::Full and can compare key properties
             let created_note = match output_note {
-                RawOutputNote::Full(note) => note,
-                _ => panic!("Expected RawOutputNote::Full variant"),
+                OutputNote::Full(note) => note,
+                _ => panic!("Expected OutputNote::Full variant"),
             };
 
             assert_eq!(created_note, &p2id_mint_output_note);

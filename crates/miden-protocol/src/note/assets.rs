@@ -15,7 +15,7 @@ use crate::{Felt, Hasher, MAX_ASSETS_PER_NOTE, WORD_SIZE, Word, ZERO};
 // ================================================================================================
 /// An asset container for a note.
 ///
-/// A note can contain between 0 and 256 assets. No duplicates are allowed, but the order of assets
+/// A note can contain between 0 and 255 assets. No duplicates are allowed, but the order of assets
 /// is unspecified.
 ///
 /// All the assets in a note can be reduced to a single commitment which is computed by

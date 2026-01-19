@@ -8,7 +8,7 @@ use super::{
     InputNote,
     InputNotes,
     NoteId,
-    RawOutputNotes,
+    OutputNotes,
     TransactionArgs,
     TransactionId,
     TransactionOutputs,
@@ -111,7 +111,7 @@ impl ExecutedTransaction {
     }
 
     /// Returns the notes created in this transaction.
-    pub fn output_notes(&self) -> &RawOutputNotes {
+    pub fn output_notes(&self) -> &OutputNotes {
         &self.tx_outputs.output_notes
     }
 

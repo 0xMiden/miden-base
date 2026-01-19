@@ -30,7 +30,7 @@ use miden_protocol::note::{NoteInputs, NoteMetadata, NoteRecipient};
 use miden_protocol::transaction::{
     InputNote,
     InputNotes,
-    RawOutputNote,
+    OutputNote,
     TransactionAdviceInputs,
     TransactionSummary,
 };
@@ -426,7 +426,7 @@ where
     ) -> (
         AccountDelta,
         InputNotes<InputNote>,
-        Vec<RawOutputNote>,
+        Vec<OutputNote>,
         Vec<AccountCode>,
         BTreeMap<Word, Vec<Felt>>,
         TransactionProgress,

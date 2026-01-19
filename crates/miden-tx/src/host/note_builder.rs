@@ -8,7 +8,7 @@ use miden_protocol::note::{
     PartialNote,
 };
 
-use super::{RawOutputNote, Word};
+use super::{OutputNote, Word};
 use crate::errors::TransactionKernelError;
 
 // OUTPUT NOTE BUILDER
@@ -91,17 +91,17 @@ impl OutputNoteBuilder {
 
     /// Converts this builder to an [OutputNote].
     ///
-    /// Depending on the available information, this may result in [`RawOutputNote::Full`] or
-    /// [`RawOutputNote::Partial`] notes.
-    pub fn build(self) -> RawOutputNote {
+    /// Depending on the available information, this may result in [`OutputNote::Full`] or
+    /// [`OutputNote::Partial`] notes.
+    pub fn build(self) -> OutputNote {
         match self.recipient {
             Some(recipient) => {
                 let note = Note::new(self.assets, self.metadata, recipient);
-                RawOutputNote::Full(note)
+                OutputNote::Full(note)
             },
             None => {
                 let note = PartialNote::new(self.metadata, self.recipient_digest, self.assets);
-                RawOutputNote::Partial(note)
+                OutputNote::Partial(note)
             },
         }
     }

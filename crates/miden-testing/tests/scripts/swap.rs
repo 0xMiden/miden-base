@@ -57,7 +57,7 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[])
         .context("failed to build tx context")?
         .tx_script(tx_script)
-        .extend_expected_output_notes(vec![RawOutputNote::Full(swap_note.clone())])
+        .extend_expected_output_notes(vec![OutputNote::Full(swap_note.clone())])
         .build()?
         .execute()
         .await?;
@@ -187,7 +187,7 @@ async fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
     let consume_swap_note_tx = mock_chain
         .build_tx_context(target_account.id(), &[swap_note.id()], &[])
         .context("failed to build tx context")?
-        .extend_expected_output_notes(vec![RawOutputNote::Full(payback_p2id_note)])
+        .extend_expected_output_notes(vec![OutputNote::Full(payback_p2id_note)])
         .build()?
         .execute()
         .await?;
@@ -322,7 +322,7 @@ fn setup_swap_test(payback_note_type: NoteType) -> anyhow::Result<SwapTestSetup>
         .add_swap_note(sender_account.id(), offered_asset, requested_asset, payback_note_type)
         .unwrap();
 
-    builder.add_output_note(RawOutputNote::Full(swap_note.clone()));
+    builder.add_output_note(OutputNote::Full(swap_note.clone()));
     let mock_chain = builder.build()?;
 
     Ok(SwapTestSetup {

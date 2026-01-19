@@ -57,7 +57,7 @@ pub fn tx_create_single_p2id_note() -> Result<TransactionContext> {
     // construct the transaction context
     mock_chain
         .build_tx_context(account.id(), &[], &[])?
-        .extend_expected_output_notes(vec![RawOutputNote::Full(output_note)])
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
         .tx_script(tx_script)
         .build()
 }

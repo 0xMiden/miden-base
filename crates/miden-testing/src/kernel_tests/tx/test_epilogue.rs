@@ -26,7 +26,7 @@ use miden_protocol::transaction::memory::{
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_protocol::transaction::{RawOutputNote, RawOutputNotes, TransactionOutputs};
+use miden_protocol::transaction::{OutputNote, OutputNotes, TransactionOutputs};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::mock_account::MockAccountExt;
 use miden_standards::testing::note::NoteBuilder;
@@ -96,12 +96,12 @@ async fn test_transaction_epilogue() -> anyhow::Result<()> {
     let mut final_account = account.clone();
     final_account.increment_nonce(ONE)?;
 
-    let output_notes = RawOutputNotes::new(
+    let output_notes = OutputNotes::new(
         tx_context
             .expected_output_notes()
             .iter()
             .cloned()
-            .map(RawOutputNote::Full)
+            .map(OutputNote::Full)
             .collect(),
     )?;
 
@@ -247,7 +247,7 @@ async fn epilogue_fails_when_num_output_assets_exceed_num_input_assets() -> anyh
     let input_note = NoteBuilder::new(account.id(), *builder.rng_mut())
         .add_assets([Asset::from(input_asset)])
         .build()?;
-    builder.add_output_note(RawOutputNote::Full(input_note.clone()));
+    builder.add_output_note(OutputNote::Full(input_note.clone()));
     let mock_chain = builder.build()?;
 
     let code = format!(
@@ -300,7 +300,7 @@ async fn epilogue_fails_when_num_input_assets_exceed_num_output_assets() -> anyh
     let input_note = NoteBuilder::new(account.id(), *builder.rng_mut())
         .add_assets([Asset::from(output_asset)])
         .build()?;
-    builder.add_output_note(RawOutputNote::Full(input_note.clone()));
+    builder.add_output_note(OutputNote::Full(input_note.clone()));
     let mock_chain = builder.build()?;
 
     let code = format!(

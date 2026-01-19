@@ -177,7 +177,10 @@ impl Serializable for NoteMetadata {
     }
 
     fn get_size_hint(&self) -> usize {
-        Word::SERIALIZED_SIZE
+        self.note_type().get_size_hint()
+            + self.sender().get_size_hint()
+            + self.tag().get_size_hint()
+            + self.attachment().get_size_hint()
     }
 }
 

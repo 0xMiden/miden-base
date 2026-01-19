@@ -121,7 +121,7 @@ impl Serializable for NoteInputs {
         // Size of the serialized inputs length prefix.
         let u16_size = 0u16.get_size_hint();
 
-        let felt_size = ZERO.get_size_hint();
+        let felt_size = crate::ZERO.get_size_hint();
         let values_size = self.values.len() * felt_size;
 
         u16_size + values_size

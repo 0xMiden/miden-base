@@ -20,11 +20,11 @@ pub use inputs::{AccountInputs, InputNote, InputNotes, ToInputNoteCommitments, T
 pub use kernel::{TransactionAdviceInputs, TransactionEventId, TransactionKernel, memory};
 pub use ordered_transactions::OrderedTransactionHeaders;
 pub use outputs::{
+    OutputNote,
     OutputNotes,
     ProvenOutputNote,
     ProvenOutputNotes,
     PublicOutputNote,
-    RawOutputNote,
     RawOutputNotes,
     TransactionOutputs,
 };
