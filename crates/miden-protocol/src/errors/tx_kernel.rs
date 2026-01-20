@@ -208,8 +208,8 @@ pub const ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED: MasmError = MasmError::from_s
 pub const ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of input notes exceeds the kernel's maximum limit of 1024");
 /// Error Message: "number of note assets exceeds the maximum limit of 256"
 pub const ERR_PROLOGUE_NUMBER_OF_NOTE_ASSETS_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of note assets exceeds the maximum limit of 256");
-/// Error Message: "number of note storage exceeded the maximum limit of 1024"
-pub const ERR_PROLOGUE_NUMBER_OF_NOTE_STORAGE_ITEMS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note storage exceeded the maximum limit of 1024");
+/// Error Message: "number of note storage items exceeded the maximum limit of 1024"
+pub const ERR_PROLOGUE_NUMBER_OF_NOTE_STORAGE_ITEMS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note storage items exceeded the maximum limit of 1024");
 /// Error Message: "account data provided does not match the commitment recorded on-chain"
 pub const ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT: MasmError = MasmError::from_static_str("account data provided does not match the commitment recorded on-chain");
 /// Error Message: "provided info about assets of an input does not match its commitment"
