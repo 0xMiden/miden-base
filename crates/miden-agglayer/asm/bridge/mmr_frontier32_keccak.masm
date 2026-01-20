@@ -68,15 +68,16 @@ use ::miden::agglayer::canonical_zeros::load_zeros_to_memory
 # ERRORS
 # =================================================================================================
 
-const ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT = "number of leaves in the MMR of the MMR Frontier exceeded 4294967296 (2^32)"
+const ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT = "number of leaves in the MMR of the MMR Frontier would exceed 4294967295 (2^32 - 1)"
 
 # CONSTANTS
 # =================================================================================================
 
 # The maximum number of leaves which could be added to the MMR.
 #
-# If the height is 32, the leaves num will be equal to 4294967296 (2**32)
-const MAX_LEAVES_NUM = 4294967296
+# If the height is 32, the leaves num will be equal to 4294967295 (2**32 - 1)
+const MAX_LEAVES_NUM = 4294967295
+const MAX_LEAVES_MINUS_1 = 4294967294
 
 # The total height of the full MMR tree, whose root represents the commitment to the current
 # frontier.
@@ -127,6 +128,9 @@ const CANONICAL_ZEROES_LOCAL = 8
 #! - mmr_frontier_ptr is the pointer to the memory where the MMR Frontier structure is located.
 #! - [NEW_ROOT_LO, NEW_ROOT_HI] is the new root of the MMR, represented as Keccak256 hash.
 #! - new_leaf_count is the number of leaves in the MMR after the new leaf was added.
+#!
+#! Panics if:
+#! - The number of leaves in the MMR has reached the maximum limit of 2^32.
 @locals(264) # new_leaf/curr_hash + canonical_zeros
 pub proc append_and_update_frontier
     # set CUR_HASH = NEW_LEAF and store to local memory
@@ -139,11 +143,10 @@ pub proc append_and_update_frontier
     # => [num_leaves, mmr_frontier_ptr]
 
     # make sure that the MMR is not full yet and we still can store the new leaf
-    #
-    # MMR is full when the number of leaves is equal to the 2^TREE_HEIGHT, and in case of the
-    # current implementation this number equals to 2^32. This value doesn't fit into the u32
-    # anymore, so we can use only the `u32assert` instruction to assert that the MMR is not full.
-    u32assert.err=ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT
+    # the MMR is full when the number of leaves is equal to 2^TREE_HEIGHT - 1 (as per the
+    # Solidity implementation), so the last call to this procedure will be when the number of
+    # leaves would be equal to 2^32 - 2.
+    dup u32lte.MAX_LEAVES_MINUS_1 assert.err=ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT
     # => [num_leaves, mmr_frontier_ptr]
 
     # get the memory pointer where the canonical zeros will be stored

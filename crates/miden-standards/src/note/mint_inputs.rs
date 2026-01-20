@@ -1,7 +1,8 @@
 use alloc::vec::Vec;
 
+use miden_protocol::errors::NoteError;
 use miden_protocol::note::{NoteAttachment, NoteInputs, NoteRecipient};
-use miden_protocol::{Felt, MAX_INPUTS_PER_NOTE, NoteError, Word};
+use miden_protocol::{Felt, MAX_INPUTS_PER_NOTE, Word};
 
 /// Represents the different input formats for MINT notes.
 /// - Private: Creates a private output note using a precomputed recipient digest (12 MINT note

@@ -10,8 +10,9 @@ use super::{
     Serializable,
     Word,
 };
+use crate::Hasher;
+use crate::errors::NoteError;
 use crate::note::{NoteAttachment, NoteAttachmentKind, NoteAttachmentScheme};
-use crate::{Hasher, NoteError};
 
 // NOTE METADATA
 // ================================================================================================
