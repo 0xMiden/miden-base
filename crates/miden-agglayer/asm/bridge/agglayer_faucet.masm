@@ -36,6 +36,12 @@ const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 568
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
 
+const DESTINATION_ADDRESS_4 = 547
+const DESTINATION_ADDRESS_3 = 546
+const DESTINATION_ADDRESS_2 = 545
+const DESTINATION_ADDRESS_1 = 544
+const DESTINATION_ADDRESS_0 = 543
+
 # P2ID output note constants
 const P2ID_SCRIPT_ROOT = [13362761878458161062, 15090726097241769395, 444910447169617901, 3558201871398422326]
 const P2ID_NOTE_NUM_INPUTS = 2
@@ -130,7 +136,7 @@ proc batch_pipe_double_words
     exec.mem::pipe_double_words_preimage_to_memory drop
 end
 
-#! Extracts the destination account ID from the LEAF_DATA_KEY advice map entry.
+#! Extracts the destination account ID as address[5] from memory.
 #!
 #! This procedure reads the destination address from the leaf data and converts it from
 #! Ethereum address format to AccountId format (prefix, suffix).
@@ -140,28 +146,16 @@ end
 #!
 #! Invocation: exec
 proc get_destination_account_id_data
-    adv.push_mapval dropw
-    # => []
-
-    repeat.7
-        adv_push.1
-        drop
-    end
-    # => []
-
-    adv_push.5
-    # => [reversed_address[5]]
-
-    movdn.5
-    # => [reversed_address[4], zero]
-
-    exec.word::reverse
+    mem_load.DESTINATION_ADDRESS_4
+    mem_load.DESTINATION_ADDRESS_3
+    mem_load.DESTINATION_ADDRESS_2
+    mem_load.DESTINATION_ADDRESS_1
+    mem_load.DESTINATION_ADDRESS_0
     # => [address[5]]
 
     exec.eth_address::to_account_id
     # => [prefix, suffix]
 end
-
 
 #! Builds a P2ID output note for the claim recipient.
 #!
@@ -169,12 +163,11 @@ end
 #! It reads the destination account ID, amount, and other note parameters from memory to construct
 #! the output note.
 #!
-#! Inputs: [LEAF_DATA_KEY]
+#! Inputs: []
 #! Outputs: []
 #!
 #! Note: This procedure will be refactored in a follow-up to use leaf data to build the output note.
 proc build_p2id_output_note
-
     exec.get_destination_account_id_data
     # => [prefix, suffix]
 
@@ -271,9 +264,6 @@ pub proc claim
     # Errors on invalid proof
     exec.validate_claim
     # => []
-
-    mem_loadw_be.LEAF_DATA_KEY_MEM_ADDR 
-    # => [LEAF_DATA_KEY]
 
     # Create P2ID output note
     exec.build_p2id_output_note
