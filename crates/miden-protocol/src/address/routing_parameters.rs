@@ -70,6 +70,9 @@ pub struct RoutingParameters {
 impl RoutingParameters {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
+    
+    /// The maximum allowed note tag length.
+    pub const MAX_NOTE_TAG_LENGTH: u8 = 30;
 
     /// Creates new [`RoutingParameters`] from an [`AddressInterface`] and all other parameters
     /// initialized to `None`.
@@ -92,10 +95,9 @@ impl RoutingParameters {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The tag length exceeds the maximum of [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
-    ///   [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`].
+    /// - The tag length exceeds the maximum of [`MAX_NOTE_TAG_LENGTH`].
     pub fn with_note_tag_len(mut self, note_tag_len: u8) -> Result<Self, AddressError> {
-        if note_tag_len > NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH {
+        if note_tag_len > Self::MAX_NOTE_TAG_LENGTH {
             return Err(AddressError::TagLengthTooLarge(note_tag_len));
         }
 
@@ -109,8 +111,8 @@ impl RoutingParameters {
     /// Returns the note tag length preference.
     ///
     /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
-    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
-    /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
+    /// [`MAX_NOTE_TAG_LENGTH`] and
+    /// [`MAX_NOTE_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> Option<u8> {
         self.note_tag_len
     }
@@ -467,11 +469,11 @@ mod tests {
 
         // Test case 4: Explicit tag length set to max
         let params_tag_max = RoutingParameters::new(AddressInterface::BasicWallet)
-            .with_note_tag_len(NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH)?;
+            .with_note_tag_len(RoutingParameters::MAX_NOTE_TAG_LENGTH)?;
         let encoded = params_tag_max.encode_to_string();
         let decoded = RoutingParameters::decode(encoded)?;
         assert_eq!(params_tag_max, decoded);
-        assert_eq!(decoded.note_tag_len(), Some(NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH));
+        assert_eq!(decoded.note_tag_len(), Some(RoutingParameters::MAX_NOTE_TAG_LENGTH));
 
         Ok(())
     }
@@ -504,12 +506,11 @@ mod tests {
 
         // Test case 4: Explicit tag length set to max
         let params_tag_max = RoutingParameters::new(AddressInterface::BasicWallet)
-            .with_note_tag_len(NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH)?;
+            .with_note_tag_len(RoutingParameters::MAX_NOTE_TAG_LENGTH)?;
         let serialized = params_tag_max.to_bytes();
         let deserialized = RoutingParameters::read_from_bytes(&serialized)?;
         assert_eq!(params_tag_max, deserialized);
-        assert_eq!(deserialized.note_tag_len(), Some(NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH));
-
+        assert_eq!(deserialized.note_tag_len(), Some(RoutingParameters::MAX_NOTE_TAG_LENGTH));
         Ok(())
     }
 

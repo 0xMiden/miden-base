@@ -29,7 +29,7 @@ impl AddressId {
 
     /// Returns the default tag length of the ID.
     ///
-    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
     /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
     /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn default_note_tag_len(&self) -> u8 {

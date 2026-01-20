@@ -79,8 +79,10 @@ impl Address {
         Self { id: id.into(), routing_params: None }
     }
 
-    /// For local (both public and private) accounts, up to 30 bits can be encoded into the tag.
-    /// For network accounts, the tag length must be set to 30 bits.
+    /// For local (both public and private) accounts, the tag length may be customized to
+    /// balance privacy and discoverability.
+    /// For network accounts, a fixed tag length compatible with routing is required.
+
     ///
     /// # Errors
     ///
@@ -125,7 +127,7 @@ impl Address {
 
     /// Returns the preferred tag length.
     ///
-    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
     /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
     /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> u8 {
