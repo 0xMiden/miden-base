@@ -187,6 +187,8 @@ proc build_p2id_output_note
     push.OUTPUT_NOTE_INPUTS_MEM_ADDR
     # => [inputs_ptr = 0, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
 
+    debug.stack
+
     exec.note::build_recipient
     # => [RECIPIENT]
 
@@ -200,7 +202,7 @@ proc build_p2id_output_note
     # => [AMOUNT[1], AMOUNT[0], tag, note_type, RECIPIENT]
 
     # TODO: implement scale down logic; stubbed out for now
-    exec.asset_conversion::scale_u256_to_native_amount
+    exec.asset_conversion::scale_u256_to_native_amount_stubbed
     # => [amount, tag, note_type, RECIPIENT]
 
     exec.faucets::distribute
