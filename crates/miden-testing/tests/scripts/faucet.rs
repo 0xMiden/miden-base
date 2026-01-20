@@ -1170,7 +1170,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
             let recipient = NoteRecipient::new(serial_num, p2id_script, note_storage);
             MintNoteStorage::new_public(recipient, amount, output_note_tag.into())?
         },
-        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     };
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
@@ -1215,7 +1214,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
 
             assert_eq!(created_note, &p2id_mint_output_note);
         },
-        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     }
 
     mock_chain.add_pending_executed_transaction(&executed_transaction)?;
