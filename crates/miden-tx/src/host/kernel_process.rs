@@ -51,7 +51,7 @@ pub(super) trait TransactionKernelProcess {
 
     fn read_note_storage_from_adv_map(
         &self,
-        inputs_commitment: &Word,
+        storage_commitment: &Word,
     ) -> Result<NoteStorage, TransactionKernelError>;
 
     fn has_advice_map_entry(&self, key: Word) -> bool;
