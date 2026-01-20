@@ -734,7 +734,7 @@ pub enum TransactionInputsExtractionError {
     MissingMapRoot,
     #[error("failed to construct SMT proof")]
     SmtProofError(#[from] SmtProofError),
-    #[error("failed to construct asset witness")]
+    #[error("failed to construct an asset")]
     AssetError(#[from] AssetError),
     #[error("failed to handle storage map data")]
     StorageMapError(#[from] StorageMapError),
