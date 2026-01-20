@@ -60,7 +60,7 @@ end
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - RECIPIENT is the commitment to the active note's script, inputs, the serial number.
+#! - RECIPIENT is the commitment to the active note's script, storage, the serial number.
 #!
 #! Panics if:
 #! - no note is currently active.

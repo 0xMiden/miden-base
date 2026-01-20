@@ -1760,7 +1760,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+#! - RECIPIENT is the commitment to the note's script, storage and the serial number.
 pub proc get_input_note_recipient
     padw
     movup.4 add.INPUT_NOTE_RECIPIENT_OFFSET
@@ -1774,7 +1774,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+#! - RECIPIENT is the commitment to the note's script, storage and the serial number.
 pub proc set_input_note_recipient
     add.INPUT_NOTE_RECIPIENT_OFFSET
     mem_storew_be
@@ -1842,7 +1842,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+#! - RECIPIENT is the commitment to the note's script, storage and the serial number.
 pub proc get_output_note_recipient
     padw
     movup.4 add.OUTPUT_NOTE_RECIPIENT_OFFSET
@@ -1856,7 +1856,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+#! - RECIPIENT is the commitment to the note's script, storage and the serial number.
 pub proc set_output_note_recipient
     add.OUTPUT_NOTE_RECIPIENT_OFFSET
     mem_storew_be

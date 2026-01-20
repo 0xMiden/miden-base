@@ -88,7 +88,7 @@ end
 #!
 #! Where:
 #! - note_index is the index of the input note whose recipient should be returned.
-#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#! - RECIPIENT is the commitment to the input note's script, storage, the serial number.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.

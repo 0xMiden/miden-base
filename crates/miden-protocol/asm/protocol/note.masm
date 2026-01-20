@@ -100,7 +100,7 @@ end
 #! - storage_len is the number of input values.
 #! - SCRIPT_ROOT is the script root of the note.
 #! - SERIAL_NUM is the serial number of the note.
-#! - RECIPIENT is the commitment to the input note's script, inputs, and the serial number.
+#! - RECIPIENT is the commitment to the input note's script, storage, and the serial number.
 #!
 #! Locals:
 #! - 0: inputs_ptr
