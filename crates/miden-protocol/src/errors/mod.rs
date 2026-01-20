@@ -570,10 +570,10 @@ pub enum NoteError {
     NoteExecutionHintAfterBlockCannotBeU32Max,
     #[error("invalid note execution hint payload {1} for tag {0}")]
     InvalidNoteExecutionHintPayload(u8, u32),
-    #[error("note type {0} does not match any of the valid note types {public}, {private} or {encrypted}",
-      public = NoteType::Public,
-      private = NoteType::Private,
-      encrypted = NoteType::Encrypted,
+    #[error(
+    "note type {0} does not match any of the valid note types {public} or {private}",
+    public = NoteType::Public,
+    private = NoteType::Private,
     )]
     UnknownNoteType(Box<str>),
     #[error("note location index {node_index_in_block} is out of bounds 0..={highest_index}")]
