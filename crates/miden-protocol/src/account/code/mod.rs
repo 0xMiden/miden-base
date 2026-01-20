@@ -410,9 +410,9 @@ mod tests {
     use miden_assembly::Assembler;
 
     use super::{AccountCode, Deserializable, Serializable};
-    use crate::AccountError;
     use crate::account::code::build_procedure_commitment;
     use crate::account::{AccountComponent, AccountType};
+    use crate::errors::AccountError;
     use crate::testing::account_code::CODE;
     use crate::testing::noop_auth_component::NoopAuthComponent;
 

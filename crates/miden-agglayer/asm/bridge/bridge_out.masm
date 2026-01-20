@@ -2,6 +2,7 @@ use miden::protocol::active_note
 use miden::protocol::note
 use miden::protocol::output_note
 use miden::core::crypto::hashes::keccak256
+use miden::core::crypto::hashes::rpo256
 use miden::core::word
 use miden::agglayer::local_exit_tree
 
@@ -31,7 +32,7 @@ proc compute_burn_note_serial_num
     exec.active_note::get_serial_number
     # => [B2AGG_SERIAL_NUM, ASSET]
 
-    hmerge
+    exec.rpo256::merge
     # => [SERIAL_NUM]
 end
 

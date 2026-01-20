@@ -1,6 +1,7 @@
 use assert_matches::assert_matches;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_protocol::errors::AssetVaultError;
 use miden_protocol::errors::tx_kernel::{
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
     ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED,
@@ -15,7 +16,7 @@ use miden_protocol::testing::account_id::{
 };
 use miden_protocol::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use miden_protocol::transaction::memory;
-use miden_protocol::{AssetVaultError, Felt, ONE, Word, ZERO};
+use miden_protocol::{Felt, ONE, Word, ZERO};
 
 use crate::kernel_tests::tx::ExecutionOutputExt;
 use crate::{TransactionContextBuilder, assert_execution_error};

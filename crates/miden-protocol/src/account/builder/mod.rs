@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use miden_core::FieldElement;
 
+use crate::account::component::StorageSchema;
 use crate::account::{
     Account,
     AccountCode,
@@ -15,7 +16,8 @@ use crate::account::{
     AccountType,
 };
 use crate::asset::AssetVault;
-use crate::{AccountError, Felt, Word};
+use crate::errors::AccountError;
+use crate::{Felt, Word};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by
 /// combining multiple [`AccountComponent`]s.
@@ -124,6 +126,16 @@ impl AccountBuilder {
     pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
         self.auth_component = Some(account_component.into());
         self
+    }
+
+    /// Returns an iterator of storage schemas attached to the builder's components, if any.
+    ///
+    /// Components constructed without metadata will not contribute a schema.
+    pub fn storage_schemas(&self) -> impl Iterator<Item = &StorageSchema> + '_ {
+        self.auth_component
+            .iter()
+            .chain(self.components.iter())
+            .filter_map(|component| component.storage_schema())
     }
 
     /// Builds the common parts of testing and non-testing code.

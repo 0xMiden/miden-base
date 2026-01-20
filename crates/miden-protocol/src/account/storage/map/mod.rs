@@ -4,11 +4,11 @@ use miden_core::EMPTY_WORD;
 use miden_crypto::merkle::EmptySubtreeRoots;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
+use crate::Hasher;
 use crate::account::StorageMapDelta;
 use crate::crypto::merkle::InnerNodeInfo;
 use crate::crypto::merkle::smt::{LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
-use crate::errors::StorageMapError;
-use crate::{AccountError, Hasher};
+use crate::errors::{AccountError, StorageMapError};
 
 mod partial;
 pub use partial::PartialStorageMap;
