@@ -16,9 +16,9 @@ use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -112,7 +112,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // Create P2ID note for the user account (similar to network faucet test)
     let p2id_script = WellKnownNote::P2ID.script();
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
-    let note_inputs = NoteInputs::new(p2id_inputs)?;
+    let note_inputs = NoteStorage::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
 
     let claim_note = create_claim_note(claim_params)?;
