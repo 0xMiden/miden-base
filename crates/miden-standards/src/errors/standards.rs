@@ -12,8 +12,16 @@ use miden_protocol::errors::MasmError;
 /// Error Message: "burn requires exactly 1 note asset"
 pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
 
+/// Error Message: "asset amount to burn exceeds the existing token supply"
+pub const ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY: MasmError = MasmError::from_static_str("asset amount to burn exceeds the existing token supply");
+/// Error Message: "amount passed to distribute exceeds the maximum supply"
+pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("amount passed to distribute exceeds the maximum supply");
 /// Error Message: "distribute would cause the maximum supply to be exceeded"
 pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: MasmError = MasmError::from_static_str("distribute would cause the maximum supply to be exceeded");
+/// Error Message: "max supply exceeds maximum representable supply"
+pub const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY: MasmError = MasmError::from_static_str("max supply exceeds maximum representable supply");
+/// Error Message: "token supply exceeds max supply"
+pub const ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("token supply exceeds max supply");
 
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");

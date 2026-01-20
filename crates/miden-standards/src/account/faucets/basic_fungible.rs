@@ -58,13 +58,17 @@ procedure_digest!(
 ///
 /// ## Storage Layout
 ///
-/// - [`Self::metadata_slot`]: Fungible faucet metadata
+/// - [`Self::metadata_slot`]: `[token_supply, max_supply, decimals, token_symbol]`, where:
+///   - `max_supply` is the maximum supply of the token.
+///   - `token_supply` is the current supply of the token.
+///   - `decimals` are the decimals of the token.
+///   - `token_symbol` is the [`TokenSymbol`] encoded to a [`Felt`].
 ///
 /// [builder]: crate::code_builder::CodeBuilder
 pub struct BasicFungibleFaucet {
-    symbol: TokenSymbol,
-    decimals: u8,
     max_supply: Felt,
+    decimals: u8,
+    symbol: TokenSymbol,
 }
 
 impl BasicFungibleFaucet {

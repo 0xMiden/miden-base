@@ -1,6 +1,7 @@
 use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::protocol::faucet
+use miden::protocol::native_account
 use miden::protocol::output_note
 
 # CONSTANTS
@@ -10,12 +11,20 @@ const PRIVATE_NOTE=2
 
 # ERRORS
 # =================================================================================================
-const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
+
+const ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY="token supply exceeds max supply"
+
+const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY="max supply exceeds maximum representable supply"
+
+const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY="amount passed to distribute exceeds the maximum supply"
 
 const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
 
 # CONSTANTS
 # =================================================================================================
+
+# The local memory address at which the metadata slot content is stored.
+const METADATA_SLOT_LOCAL=0
 
 # The standard slot where fungible faucet metadata like token symbol or decimals are stored.
 const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
@@ -34,26 +43,82 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 #! - note_idx is the index of the created note.
 #!
 #! Panics if:
+#! - TODO: Double check.
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
-#! - the total issuance after minting is greater than the maximum allowed supply.
+#! - the token supply after minting is greater than the maximum allowed supply.
 #!
 #! Invocation: exec
+@locals(4)
 pub proc distribute
-    # get max supply of this faucet. We assume it is stored at pos 3 of slot 0
-    push.METADATA_SLOT[0..2] exec.active_account::get_item drop drop drop
-    # => [max_supply, amount, tag, note_type, RECIPIENT]
+    # Get the configured max supply and the token supply (= current supply).
+    # ---------------------------------------------------------------------------------------------
 
-    # get total issuance of this faucet so far and add amount to be minted
-    exec.faucet::get_total_issuance
-    # => [total_issuance, max_supply, amount, tag, note_type, RECIPIENT]
+    push.METADATA_SLOT[0..2] exec.active_account::get_item
+    # => [token_symbol, decimals, max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
-    # compute maximum amount that can be minted, max_mint_amount = max_supply - total_issuance
+    # store a copy of the current slot content for the token_supply update later
+    loc_storew_be.METADATA_SLOT_LOCAL
+    drop drop
+    # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
+
+    # Assert that minting does not violate any supply constraints.
+    # ---------------------------------------------------------------------------------------------
+
+    dup.1 dup.1
+    # => [max_supply, token_supply, max_supply, token_supply, amount, tag, note_type, RECIPIENT]
+
+    # assert that token_supply <= max_supply
+    # if token_supply > max_supply, then computing max_supply - token_supply would wrap around,
+    # because `sub` has wrapping semantics, and this would allow minting larger amounts than
+    # intended
+    # this primarily protects against misconfigurations, since token_supply cannot exceed
+    # max_supply by the remaining logic here
+    lte assert.err=ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY
+    # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
+
+    # get the maximum possible amount representable in the protocol
+    dup exec.asset::get_fungible_asset_max_amount
+    # => [max_allowed_supply, max_supply, max_supply, token_supply, amount, tag, note_type, RECIPIENT]
+
+    # assert max_supply <= max_allowed_supply
+    # ensures the max supply never exceeds what can be represented and because of the previous
+    # assertion, this also implies token_supply <= max_supply <= max_allowed_supply
+    # this means adding the amount to the token_supply will not exceed the max representable
+    # amount either
+    lte assert.err=ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY
+    # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
+
+    dup.2 swap dup.2
+    # => [token_supply, max_supply, amount, token_supply, amount, tag, note_type, RECIPIENT]
+
+    # compute maximum amount that can be minted, max_mint_amount = max_supply - token_supply
     sub
-    # => [max_supply - total_issuance, amount, tag, note_type, RECIPIENT]
+    # => [max_mint_amount, amount, token_supply, amount, tag, note_type, RECIPIENT]
 
-    # check that amount =< max_supply - total_issuance, fails if otherwise
-    dup.1 gte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
+    # assert that amount <= max_mint_amount
+    # this ensures that max_supply is not exceeded and that token_supply at most ends up equal
+    # to max_supply
+    lte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY
+    # => [token_supply, amount, tag, note_type, RECIPIENT]
+
+    # Compute the new token_supply and update in storage.
+    # ---------------------------------------------------------------------------------------------
+
+    dup.1 add
+    # => [new_token_supply, amount, tag, note_type, RECIPIENT]
+
+    padw loc_loadw_be.METADATA_SLOT_LOCAL
+    # => [[token_symbol, decimals, max_supply, token_supply], new_token_supply, amount, tag, note_type, RECIPIENT]
+
+    movup.4 swap.4 drop
+    # => [[token_symbol, decimals, max_supply, new_token_supply], amount, tag, note_type, RECIPIENT]
+
+    # update the metadata slot with the new supply
+    push.METADATA_SLOT[0..2] exec.native_account::set_item dropw
     # => [amount, tag, note_type, RECIPIENT]
+
+    # Mint the asset.
+    # ---------------------------------------------------------------------------------------------
 
     # creating the asset
     exec.faucet::create_fungible_asset
@@ -65,6 +130,9 @@ pub proc distribute
 
     movdn.9 movdn.9 movdn.9 movdn.9
     # => [tag, note_type, RECIPIENT, ASSET]
+
+    # Create a new note with the asset.
+    # ---------------------------------------------------------------------------------------------
 
     # create a note
     exec.output_note::create
