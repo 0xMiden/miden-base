@@ -661,7 +661,7 @@ end
 #! Where:
 #! - note_ptr is the memory location for the input note.
 #! - storage_len is the note's storage length.
-proc process_note_storage_length
+proc process_note_num_storage_items
     # move the inputs length from the advice stack to the operand stack
     adv_push.1
     # => [storage_len, note_ptr]
@@ -922,7 +922,7 @@ proc process_input_note
     # note storage len
     # ---------------------------------------------------------------------------------------------
 
-    exec.process_note_storage_length
+    exec.process_note_num_storage_items
     # => [note_ptr, NOTE_METADATA_COMMITMENT, NULLIFIER, HASHER_CAPACITY]
 
     # note assets

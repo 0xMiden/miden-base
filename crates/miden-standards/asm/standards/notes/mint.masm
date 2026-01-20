@@ -6,8 +6,8 @@ use miden::standards::faucets::network_fungible->network_faucet
 # CONSTANTS
 # =================================================================================================
 
-const MINT_NOTE_STORAGE_LENGTH_PRIVATE=12
-const MINT_NOTE_MIN_STORAGE_LENGTH_PUBLIC=16
+const MINT_NOTE_NUM_STORAGE_ITEMS_PRIVATE=12
+const MINT_NOTE_MIN_NUM_STORAGE_ITEMS_PUBLIC=16
 
 const OUTPUT_NOTE_TYPE_PUBLIC=1
 const OUTPUT_NOTE_TYPE_PRIVATE=2
@@ -22,7 +22,7 @@ const OUTPUT_PUBLIC_NOTE_STORAGE_ADDR=16
 # ERRORS
 # =================================================================================================
 
-const ERR_MINT_UNEXPECTED_STORAGE_LENGTH="MINT script expects exactly 12 storage items for private or 16+ storage items for public output notes"
+const ERR_MINT_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="MINT script expects exactly 12 storage items for private or 16+ storage items for public output notes"
 
 #! Network Faucet MINT script: mints assets by calling the network faucet's distribute function.
 #! This note is intended to be executed against a network fungible faucet account.
@@ -68,8 +68,8 @@ pub proc main
     dup
     # => [storage_len, storage_len, storage_ptr, pad(16)]
 
-    u32assert2.err=ERR_MINT_UNEXPECTED_STORAGE_LENGTH
-    u32gte.MINT_NOTE_MIN_STORAGE_LENGTH_PUBLIC
+    u32assert2.err=ERR_MINT_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
+    u32gte.MINT_NOTE_MIN_NUM_STORAGE_ITEMS_PUBLIC
     # => [is_public_output_note, storage_len, storage_ptr, pad(16)]
 
     if.true
@@ -86,7 +86,7 @@ pub proc main
         # => [SERIAL_NUM, SCRIPT_ROOT, storage_len, pad(8)]
 
         # compute variable length note storage for the output note
-        movup.8 sub.MINT_NOTE_MIN_STORAGE_LENGTH_PUBLIC
+        movup.8 sub.MINT_NOTE_MIN_NUM_STORAGE_ITEMS_PUBLIC
         # => [num_output_note_storage, SERIAL_NUM, SCRIPT_ROOT, pad(8)]
 
         push.OUTPUT_PUBLIC_NOTE_STORAGE_ADDR
@@ -102,7 +102,7 @@ pub proc main
     else
         # private output note creation
 
-        eq.MINT_NOTE_STORAGE_LENGTH_PRIVATE assert.err=ERR_MINT_UNEXPECTED_STORAGE_LENGTH drop
+        eq.MINT_NOTE_NUM_STORAGE_ITEMS_PRIVATE assert.err=ERR_MINT_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS drop
         # => [storage_ptr, pad(16)]
 
         drop

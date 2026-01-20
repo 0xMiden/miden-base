@@ -7,7 +7,7 @@ use miden::standards::wallets::basic->basic_wallet
 # ERRORS
 # =================================================================================================
 
-const ERR_P2IDE_UNEXPECTED_STORAGE_LENGTH="P2IDE note expects exactly 4 note storage items"
+const ERR_P2IDE_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="P2IDE note expects exactly 4 note storage items"
 
 const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="failed to reclaim P2IDE note because the reclaiming account is not the sender"
 
@@ -106,7 +106,7 @@ pub proc main
     # => [storage_len, storage_ptr]
 
     # make sure the storage length is 4
-    eq.4 assert.err=ERR_P2IDE_UNEXPECTED_STORAGE_LENGTH
+    eq.4 assert.err=ERR_P2IDE_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => [storage_ptr]
 
     # read the reclaim block height, timelock_block_height, and target account ID from the note storage

@@ -119,19 +119,19 @@ impl WellKnownNote {
     // --------------------------------------------------------------------------------------------
 
     /// Expected storage length of the P2ID note.
-    const P2ID_STORAGE_LENGTH: usize = 2;
+    const P2ID_NUM_STORAGE_ITEMS: usize = 2;
 
     /// Expected storage length of the P2IDE note.
-    const P2IDE_STORAGE_LENGTH: usize = 4;
+    const P2IDE_NUM_STORAGE_ITEMS: usize = 4;
 
     /// Expected storage length of the SWAP note.
-    const SWAP_STORAGE_LENGTH: usize = 16;
+    const SWAP_NUM_STORAGE_ITEMS: usize = 16;
 
     /// Expected storage length of the MINT note (private mode).
-    const MINT_STORAGE_LENGTH_PRIVATE: usize = 8;
+    const MINT_NUM_STORAGE_ITEMS_PRIVATE: usize = 8;
 
     /// Expected storage length of the BURN note.
-    const BURN_STORAGE_LENGTH: usize = 0;
+    const BURN_NUM_STORAGE_ITEMS: usize = 0;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -164,13 +164,13 @@ impl WellKnownNote {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the expected storage length of the active note.
-    pub fn expected_storage_length(&self) -> usize {
+    pub fn expected_num_storage_items(&self) -> usize {
         match self {
-            Self::P2ID => Self::P2ID_STORAGE_LENGTH,
-            Self::P2IDE => Self::P2IDE_STORAGE_LENGTH,
-            Self::SWAP => Self::SWAP_STORAGE_LENGTH,
-            Self::MINT => Self::MINT_STORAGE_LENGTH_PRIVATE,
-            Self::BURN => Self::BURN_STORAGE_LENGTH,
+            Self::P2ID => Self::P2ID_NUM_STORAGE_ITEMS,
+            Self::P2IDE => Self::P2IDE_NUM_STORAGE_ITEMS,
+            Self::SWAP => Self::SWAP_NUM_STORAGE_ITEMS,
+            Self::MINT => Self::MINT_NUM_STORAGE_ITEMS_PRIVATE,
+            Self::BURN => Self::BURN_NUM_STORAGE_ITEMS,
         }
     }
 
@@ -345,10 +345,10 @@ impl WellKnownNote {
 ///   the P2ID note.
 /// - first two elements of the note storage array does not form the valid account ID.
 fn parse_p2id_storage(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
-    if note_storage.len() != WellKnownNote::P2ID.expected_storage_length() {
+    if note_storage.len() != WellKnownNote::P2ID.expected_num_storage_items() {
         return Err(StaticAnalysisError::new(format!(
             "P2ID note should have {} storage items, but {} was provided",
-            WellKnownNote::P2ID.expected_storage_length(),
+            WellKnownNote::P2ID.expected_num_storage_items(),
             note_storage.len()
         )));
     }
@@ -370,10 +370,10 @@ fn parse_p2id_storage(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysis
 fn parse_p2ide_storage(
     note_storage: &[Felt],
 ) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
-    if note_storage.len() != WellKnownNote::P2IDE.expected_storage_length() {
+    if note_storage.len() != WellKnownNote::P2IDE.expected_num_storage_items() {
         return Err(StaticAnalysisError::new(format!(
             "P2IDE note should have {} storage items, but {} was provided",
-            WellKnownNote::P2IDE.expected_storage_length(),
+            WellKnownNote::P2IDE.expected_num_storage_items(),
             note_storage.len()
         )));
     }
