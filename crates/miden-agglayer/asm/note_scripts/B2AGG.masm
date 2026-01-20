@@ -73,7 +73,7 @@ begin
         push.1 assert_eq.err=ERR_B2AGG_WRONG_NUMBER_OF_ASSETS drop
         # => [pad(16)]
 
-        # load the 6 B2AGG note input felts as two words
+        # load the 6 B2AGG felts from note storage as two words
         mem_loadw_be.12 swapw.2 mem_loadw_be.8 swapw
         # => [EMPTY_WORD, dest_network, dest_address(5), pad(6)]
 
