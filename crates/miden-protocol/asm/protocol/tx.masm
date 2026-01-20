@@ -212,7 +212,7 @@ end
 #! - foreign_account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the
 #!   foreign account to execute the procedure on.
 #! - pad(n) is the exact number of pads needed to set the number of procedure inputs to 16 at the
-#!   moment of the foreign procedure execution (n = 16 - mem_addr_size - foreign_storage_len).
+#!   moment of the foreign procedure execution (n = 16 - mem_addr_size - foreign_inputs_len).
 #!
 #! Invocation: exec
 @locals(4)
