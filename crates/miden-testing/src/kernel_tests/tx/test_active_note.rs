@@ -321,17 +321,17 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             .build()?
     };
 
-    fn construct_inputs_assertions(note: &Note) -> String {
+    fn construct_storage_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for inputs_chunk in note.storage().items().chunks(WORD_SIZE) {
-            let mut inputs_word = EMPTY_WORD;
-            inputs_word.as_mut_slice()[..inputs_chunk.len()].copy_from_slice(inputs_chunk);
+        for storage_chunk in note.storage().items().chunks(WORD_SIZE) {
+            let mut storage_word = EMPTY_WORD;
+            storage_word.as_mut_slice()[..storage_chunk.len()].copy_from_slice(storage_chunk);
 
             code += &format!(
                 r#"
-                # assert the inputs are correct
+                # assert the storage items are correct
                 # => [dest_ptr]
-                dup padw movup.4 mem_loadw_be push.{inputs_word} assert_eqw.err="inputs are incorrect"
+                dup padw movup.4 mem_loadw_be push.{storage_word} assert_eqw.err="storage items are incorrect"
                 # => [dest_ptr]
 
                 push.4 add
@@ -371,8 +371,8 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             dup eq.{NOTE_0_PTR} assert.err="unexpected dest ptr"
             # => [dest_ptr]
 
-            # apply note 1 inputs assertions
-            {inputs_assertions}
+            # apply note 1 storage assertions
+            {storage_assertions}
             # => [dest_ptr]
 
             # clear the stack
@@ -381,7 +381,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
         end
         "#,
         num_storage_items = note0.storage().len(),
-        inputs_assertions = construct_inputs_assertions(note0),
+        storage_assertions = construct_storage_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
 

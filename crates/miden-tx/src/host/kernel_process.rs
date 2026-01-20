@@ -276,20 +276,20 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
             None => Ok(NoteStorage::default()),
             Some(storage_items) => {
                 let storage_commitment_hash = Hasher::hash_elements(storage_commitment.as_elements());
-                let num_inputs = self
+                let num_storage_items = self
                     .advice_provider()
                     .get_mapped_values(&storage_commitment_hash)
                     .ok_or_else(|| {
                         TransactionKernelError::other(
-                            "expected num_inputs to be present in advice provider",
+                            "expected num_storage_items to be present in advice provider",
                         )
                     })?;
-                if num_inputs.len() != 1 {
+                if num_storage_items.len() != 1 {
                     return Err(TransactionKernelError::other(
-                        "expected num_inputs advice entry to contain exactly one element",
+                        "expected num_storage_items advice entry to contain exactly one element",
                     ));
                 }
-                let num_storage_items = num_inputs[0].as_int() as usize;
+                let num_storage_items = num_storage_items[0].as_int() as usize;
 
                 let note_storage = NoteStorage::new(storage_items[0..num_storage_items].to_vec())
                     .map_err(TransactionKernelError::MalformedNoteStorage)?;
