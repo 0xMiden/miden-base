@@ -17,6 +17,7 @@ use miden_protocol::errors::{
     NoteError,
     ProvenTransactionError,
     TransactionInputError,
+    TransactionInputsExtractionError,
     TransactionOutputError,
 };
 use miden_protocol::note::{NoteId, NoteMetadata};
@@ -72,6 +73,8 @@ impl From<TransactionCheckerError> for TransactionExecutorError {
 
 #[derive(Debug, Error)]
 pub enum TransactionExecutorError {
+    #[error("failed to read fee asset from transaction inputs")]
+    FeeAssetRetrievalFailed(#[source] TransactionInputsExtractionError),
     #[error("failed to fetch transaction inputs from the data store")]
     FetchTransactionInputsFailed(#[source] DataStoreError),
     #[error("failed to fetch asset witnesses from the data store")]
