@@ -82,7 +82,7 @@ Example use cases for attachments are:
 - Communicate the note details of a private note in encrypted form. This means the encrypted note is attached publicly to the otherwise private note.
 - For [network transactions](./transaction.md#network-transaction), encode the ID of the network account that should
   consume the note. This is a standardized attachment scheme in miden-standards called `NetworkAccountTarget`.
-- Communicate the details of a _private_ note to the receiver so they can derive the note. For example, the payback note of a partially fillable swap note can be private and the receiver already knows a few details: It is a P2ID note, the serial number is derived from the SWAP note's serial number and the note inputs are the account ID of the receiver. The receiver only needs to now the exact amount that was filled to derive the full note for consumption. This amount can be encoded in the public attachment of the payback note, which allows this use case to work with private notes and still not require a side-channel.
+- Communicate the details of a _private_ note to the receiver so they can derive the note. For example, the payback note of a partially fillable swap note can be private and the receiver already knows a few details: It is a P2ID note, the serial number is derived from the SWAP note's serial number and the note storage is the account ID of the receiver. The receiver only needs to now the exact amount that was filled to derive the full note for consumption. This amount can be encoded in the public attachment of the payback note, which allows this use case to work with private notes and still not require a side-channel.
 
 ## Note Lifecycle
 
@@ -191,7 +191,7 @@ The P2ID note script implements a simple pay-to-account-ID pattern. It adds all 
 **Key characteristics:**
 
 - **Purpose:** Direct asset transfer to a specific account ID
-- **Inputs:** Requires exactly 2 note inputs containing the target account ID
+- **Inputs:** Requires exactly 2 note storage containing the target account ID
 - **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
 - **Requirements:** Target account must expose the `miden::standards::wallets::basic::receive_asset` procedure
 
@@ -204,7 +204,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 **Key characteristics:**
 
 - **Purpose:** Advanced asset transfer with time-lock and reclaim capabilities
-- **Inputs:** Requires exactly 4 note inputs:
+- **Inputs:** Requires exactly 4 note storage:
   - Target account ID
   - Reclaim block height (when sender can reclaim)
   - Time-lock block height (when target can consume)
@@ -226,7 +226,7 @@ The SWAP note script implements atomic asset swapping functionality.
 **Key characteristics:**
 
 - **Purpose:** Atomic asset exchange between two parties
-- **Inputs:** Requires exactly 16 note inputs specifying:
+- **Inputs:** Requires exactly 16 note storage specifying:
   - Requested asset details
   - Payback note recipient information
   - Note creation parameters (type, tag, attachment)

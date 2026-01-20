@@ -292,10 +292,10 @@ async fn test_get_assets() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Check that the number of the inputs and their commitment of a note with one asset
-/// obtained from the `input_note::get_inputs_info` procedure is correct.
+/// Check that the number of the storage items and their commitment of a note with one asset
+/// obtained from the `input_note::get_storage_info` procedure is correct.
 #[tokio::test]
-async fn test_get_inputs_info() -> anyhow::Result<()> {
+async fn test_get_storage_info() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -309,25 +309,25 @@ async fn test_get_inputs_info() -> anyhow::Result<()> {
         use miden::protocol::input_note
 
         begin
-            # get the inputs commitment and length from the input note with index 0 (the only one
+            # get the storage commitment and length from the input note with index 0 (the only one
             # we have)
             push.0
-            exec.input_note::get_inputs_info
-            # => [NOTE_INPUTS_COMMITMENT, inputs_num]
+            exec.input_note::get_storage_info
+            # => [NOTE_STORAGE_COMMITMENT, storage_len]
 
-            # assert the correctness of the inputs commitment
-            push.{INPUTS_COMMITMENT}
-            assert_eqw.err="note 0 has incorrect inputs commitment"
-            # => [inputs_num]
+            # assert the correctness of the storage commitment
+            push.{STORAGE_COMMITMENT}
+            assert_eqw.err="note 0 has incorrect storage commitment"
+            # => [storage_len]
 
-            # assert the inputs have correct length
-            push.{inputs_num}
-            assert_eq.err="note 0 has incorrect inputs length"
+            # assert the storage has correct length
+            push.{storage_len}
+            assert_eq.err="note 0 has incorrect storage length"
             # => []
         end
     "#,
-        INPUTS_COMMITMENT = p2id_note_1_asset.inputs().commitment(),
-        inputs_num = p2id_note_1_asset.inputs().num_values(),
+        STORAGE_COMMITMENT = p2id_note_1_asset.storage().commitment(),
+        storage_len = p2id_note_1_asset.storage().len(),
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(code)?;
