@@ -151,16 +151,12 @@ struct CanonicalZerosFile {
 }
 
 /// Deserialized MMR frontier vectors from Solidity DepositContractBase.sol
+/// Uses parallel arrays for leaves, roots, and counts instead of array of objects
 #[derive(Debug, Deserialize)]
 struct MmrFrontierVectorsFile {
-    vectors: Vec<MmrFrontierTestVector>,
-}
-
-#[derive(Debug, Deserialize)]
-struct MmrFrontierTestVector {
-    leaf: String,
-    root: String,
-    count: u32,
+    leaves: Vec<String>,
+    roots: Vec<String>,
+    counts: Vec<u32>,
 }
 
 /// Lazily parsed canonical zeros from the JSON file.
@@ -171,7 +167,7 @@ static SOLIDITY_CANONICAL_ZEROS: LazyLock<CanonicalZerosFile> = LazyLock::new(||
 /// Lazily parsed MMR frontier vectors from the JSON file.
 static SOLIDITY_MMR_FRONTIER_VECTORS: LazyLock<MmrFrontierVectorsFile> = LazyLock::new(|| {
     serde_json::from_str(MMR_FRONTIER_VECTORS_JSON)
-        .expect("Failed to parse MMR frontier vectors JSON")
+        .expect("failed to parse MMR frontier vectors JSON")
 });
 
 /// Verifies that the Rust KeccakMmrFrontier32 produces the same canonical zeros as Solidity.
@@ -183,7 +179,7 @@ fn test_solidity_canonical_zeros_compatibility() {
 
         assert_eq!(
             actual, expected,
-            "Canonical zero mismatch at height {}: expected {}, got {:?}",
+            "canonical zero mismatch at height {}: expected {}, got {:?}",
             height, expected_hex, actual
         );
     }
@@ -193,25 +189,31 @@ fn test_solidity_canonical_zeros_compatibility() {
 /// DepositContractBase after adding each leaf.
 #[test]
 fn test_solidity_mmr_frontier_compatibility() {
+    let v = &*SOLIDITY_MMR_FRONTIER_VECTORS;
+
+    // Validate parallel arrays have same length
+    assert_eq!(v.leaves.len(), v.roots.len());
+    assert_eq!(v.leaves.len(), v.counts.len());
+
     let mut mmr_frontier = KeccakMmrFrontier32::<32>::new();
 
-    for vector in &SOLIDITY_MMR_FRONTIER_VECTORS.vectors {
-        let leaf = Keccak256Digest::try_from(vector.leaf.as_str()).unwrap();
-        let expected_root = Keccak256Digest::try_from(vector.root.as_str()).unwrap();
+    for i in 0..v.leaves.len() {
+        let leaf = Keccak256Digest::try_from(v.leaves[i].as_str()).unwrap();
+        let expected_root = Keccak256Digest::try_from(v.roots[i].as_str()).unwrap();
 
         let actual_root = mmr_frontier.append_and_update_frontier(leaf);
         let actual_count = mmr_frontier.num_leaves;
 
         assert_eq!(
-            actual_count, vector.count,
-            "Leaf count mismatch after adding leaf {}: expected {}, got {}",
-            vector.leaf, vector.count, actual_count
+            actual_count, v.counts[i],
+            "leaf count mismatch after adding leaf {}: expected {}, got {}",
+            v.leaves[i], v.counts[i], actual_count
         );
 
         assert_eq!(
             actual_root, expected_root,
-            "Root mismatch after adding leaf {} (count={}): expected {}, got {:?}",
-            vector.leaf, vector.count, vector.root, actual_root
+            "root mismatch after adding leaf {} (count={}): expected {}, got {:?}",
+            v.leaves[i], v.counts[i], v.roots[i], actual_root
         );
     }
 }
