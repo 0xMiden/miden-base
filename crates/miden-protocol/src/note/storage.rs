@@ -54,8 +54,8 @@ impl NoteStorage {
 
     /// Returns the number of storage items.
     ///
-    /// The returned value is guaranteed to be smaller than or equal to 1024.
-    pub fn len(&self) -> u16 {
+    /// The returned value is guaranteed to be smaller than or equal to [`MAX_NOTE_STORAGE_ITEMS`].
+    pub fn num_items(&self) -> u16 {
         const _: () = assert!(MAX_NOTE_STORAGE_ITEMS <= u16::MAX as usize);
         debug_assert!(
             self.items.len() <= MAX_NOTE_STORAGE_ITEMS,

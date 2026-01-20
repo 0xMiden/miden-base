@@ -275,7 +275,8 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         match inputs_data {
             None => Ok(NoteStorage::default()),
             Some(storage_items) => {
-                let storage_commitment_hash = Hasher::hash_elements(storage_commitment.as_elements());
+                let storage_commitment_hash =
+                    Hasher::hash_elements(storage_commitment.as_elements());
                 let num_storage_items = self
                     .advice_provider()
                     .get_mapped_values(&storage_commitment_hash)

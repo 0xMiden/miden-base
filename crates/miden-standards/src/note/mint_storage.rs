@@ -45,7 +45,8 @@ impl MintNoteStorage {
         // 16 fixed items (tag, amount, attachment_kind, attachment_scheme, ATTACHMENT,
         // SCRIPT_ROOT, SERIAL_NUM) + variable recipient number of storage items
         const FIXED_PUBLIC_STORAGE_ITEMS: usize = 16;
-        let total_storage_items = FIXED_PUBLIC_STORAGE_ITEMS + recipient.storage().len() as usize;
+        let total_storage_items =
+            FIXED_PUBLIC_STORAGE_ITEMS + recipient.storage().num_items() as usize;
 
         if total_storage_items > MAX_NOTE_STORAGE_ITEMS {
             return Err(NoteError::TooManyStorageItems(total_storage_items));

@@ -327,7 +327,7 @@ async fn test_get_storage_info() -> anyhow::Result<()> {
         end
     "#,
         STORAGE_COMMITMENT = p2id_note_1_asset.storage().commitment(),
-        num_storage_items = p2id_note_1_asset.storage().len(),
+        num_storage_items = p2id_note_1_asset.storage().num_items(),
     );
 
     let tx_script = CodeBuilder::default().compile_tx_script(code)?;

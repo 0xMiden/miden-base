@@ -380,7 +380,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         "#,
-        num_storage_items = note0.storage().len(),
+        num_storage_items = note0.storage().num_items(),
         storage_assertions = construct_storage_assertions(note0),
         NOTE_0_PTR = 100000000,
     );

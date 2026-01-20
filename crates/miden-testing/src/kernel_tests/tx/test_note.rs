@@ -271,7 +271,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
             Hasher::hash_elements(note_storage.0.commitment().as_elements());
         assert_eq!(
             exec_output.advice.get_mapped_values(&num_storage_items_advice_map_key).unwrap(),
-            &[Felt::from(note_storage.0.len())],
+            &[Felt::from(note_storage.0.num_items())],
             "advice entry with note number of storage items should contain the original number of values"
         );
     }

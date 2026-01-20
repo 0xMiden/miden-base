@@ -437,8 +437,8 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         "Output note storage commitment should match expected storage commitment"
     );
     assert_eq!(
-        full_note.recipient().storage().len(),
-        note_storage.len(),
+        full_note.recipient().storage().num_items(),
+        note_storage.num_items(),
         "Output note number of storage items should match expected number of storage items"
     );
 
