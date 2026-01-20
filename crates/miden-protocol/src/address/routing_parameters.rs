@@ -85,7 +85,7 @@ impl RoutingParameters {
 
     /// Sets the note tag length routing parameter.
     ///
-    /// The tag length determines how many bits of the address ID are encoded into [`NoteTag`]s of
+    /// The tag length determines how many bits of the address ID are encoded into NoteTags of
     /// notes targeted to this address. This lets the receiver choose their level of privacy. A
     /// higher tag length makes the address ID more uniquely identifiable and reduces privacy,
     /// while a shorter length increases privacy at the cost of matching more notes published
@@ -94,7 +94,7 @@ impl RoutingParameters {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The tag length exceeds the maximum of [`MAX_NOTE_TAG_LENGTH`].
+    /// - The tag length exceeds the maximum of MAX_NOTE_TAG_LENGTH.
     pub fn with_note_tag_len(mut self, note_tag_len: u8) -> Result<Self, AddressError> {
         if note_tag_len > Self::MAX_NOTE_TAG_LENGTH {
             return Err(AddressError::TagLengthTooLarge(note_tag_len));
@@ -110,8 +110,7 @@ impl RoutingParameters {
     /// Returns the note tag length preference.
     ///
     /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
-    /// [`MAX_NOTE_TAG_LENGTH`] and
-    /// [`MAX_NOTE_TAG_LENGTH`]).
+    /// MAX_NOTE_TAG_LENGTH).
     pub fn note_tag_len(&self) -> Option<u8> {
         self.note_tag_len
     }
