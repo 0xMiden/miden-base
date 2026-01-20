@@ -60,6 +60,11 @@ impl NoteRecipient {
     pub fn digest(&self) -> Word {
         self.digest
     }
+
+    /// Consumes self and returns the underlying parts of the [`NoteRecipient`].
+    pub fn into_parts(self) -> (Word, NoteScript, NoteInputs) {
+        (self.serial_num, self.script, self.inputs)
+    }
 }
 
 fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteInputs) -> Word {

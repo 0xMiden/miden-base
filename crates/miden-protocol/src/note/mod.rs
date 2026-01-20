@@ -165,6 +165,13 @@ impl Note {
     pub fn commitment(&self) -> Word {
         self.header.commitment()
     }
+
+    /// Consumes self and returns the underlying parts of the [`Note`].
+    pub fn into_parts(self) -> (NoteAssets, NoteMetadata, NoteRecipient) {
+        let (assets, recipient) = self.details.into_parts();
+        let metadata = self.header.into_metadata();
+        (assets, metadata, recipient)
+    }
 }
 
 // AS REF

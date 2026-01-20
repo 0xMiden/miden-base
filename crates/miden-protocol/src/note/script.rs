@@ -76,6 +76,15 @@ impl NoteScript {
     pub fn entrypoint(&self) -> MastNodeId {
         self.entrypoint
     }
+
+    /// Removes all decorators from this MAST forest.
+    ///
+    /// See [`MastForest::strip_decorators`] for more details.
+    pub fn strip_decorators(&mut self) {
+        let mut mast = self.mast.clone();
+        Arc::make_mut(&mut mast).strip_decorators();
+        self.mast = mast;
+    }
 }
 
 // CONVERSIONS INTO NOTE SCRIPT
@@ -211,6 +220,8 @@ impl Display for NoteScript {
 
 #[cfg(test)]
 mod tests {
+    use miden_core::utils::Serializable;
+
     use super::{Felt, NoteScript, Vec};
     use crate::assembly::Assembler;
     use crate::testing::note::DEFAULT_NOTE_CODE;
@@ -218,13 +229,37 @@ mod tests {
     #[test]
     fn test_note_script_to_from_felt() {
         let assembler = Assembler::default();
-        let tx_script_src = DEFAULT_NOTE_CODE;
-        let program = assembler.assemble_program(tx_script_src).unwrap();
+        let script_src = DEFAULT_NOTE_CODE;
+        let program = assembler.assemble_program(script_src).unwrap();
         let note_script = NoteScript::new(program);
 
         let encoded: Vec<Felt> = (&note_script).into();
         let decoded: NoteScript = encoded.try_into().unwrap();
 
         assert_eq!(note_script, decoded);
+    }
+
+    #[test]
+    fn test_note_script_strip_decorators() {
+        let assembler = Assembler::default();
+        let script_src = "
+        begin
+          push.4 push.2 add
+          debug.stack.4
+          mul.8
+          dropw
+        end
+        ";
+        let program = assembler.assemble_program(script_src).unwrap();
+        let mut note_script = NoteScript::new(program);
+
+        let size_before = note_script.get_size_hint();
+        note_script.strip_decorators();
+        let size_after = note_script.get_size_hint();
+
+        assert!(
+            size_after < size_before,
+            "debug decorator should have been stripped and serialized size should be smaller"
+        );
     }
 }

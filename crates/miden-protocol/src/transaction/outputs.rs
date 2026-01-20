@@ -585,6 +585,16 @@ impl PublicOutputNote {
             });
         }
 
+        // Strip decorators from the note script.
+        let previous_note_id = note.id();
+        let (assets, metadata, recipient) = note.into_parts();
+        let (serial_num, mut script, inputs) = recipient.into_parts();
+
+        script.strip_decorators();
+        let recipient = NoteRecipient::new(serial_num, script, inputs);
+        let note = Note::new(assets, metadata, recipient);
+        debug_assert_eq!(previous_note_id, note.id());
+
         Ok(Self { note })
     }
 
