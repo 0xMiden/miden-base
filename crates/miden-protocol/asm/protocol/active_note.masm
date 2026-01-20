@@ -9,7 +9,7 @@ use miden::protocol::note
 
 const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
 
-const ERR_NOTE_INVALID_NUMBER_OF_STORAGE_ITEMS="the specified number of note storage does not match the actual number"
+const ERR_NOTE_INVALID_NUMBER_OF_STORAGE_ITEMS="the specified number of note storage items does not match the actual number"
 
 # ACTIVE NOTE PROCEDURES
 # =================================================================================================

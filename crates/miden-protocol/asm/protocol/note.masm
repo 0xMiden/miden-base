@@ -16,10 +16,10 @@ const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT="number of note storage excee
 
 #! Computes the commitment to the note storage starting at the specified memory address.
 #!
-#! This procedure checks that the provided number of note storage is within limits and then computes
+#! This procedure checks that the provided number of note storage items is within limits and then computes
 #! the commitment.
 #!
-#! If the number of note storage is 0, procedure returns the empty word: [0, 0, 0, 0].
+#! If the number of note storage items is 0, procedure returns the empty word: [0, 0, 0, 0].
 #!
 #! Inputs:  [inputs_ptr, storage_len]
 #! Outputs: [STORAGE_COMMITMENT]
@@ -39,7 +39,7 @@ pub proc compute_storage_commitment
     u32lte assert.err=ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT
     # => [inputs_ptr, storage_len]
 
-    # compute the inputs commitment (over the unpadded values)
+    # compute the storage commitment (over the unpadded values)
     exec.rpo256::hash_elements
     # => [STORAGE_COMMITMENT]
 end

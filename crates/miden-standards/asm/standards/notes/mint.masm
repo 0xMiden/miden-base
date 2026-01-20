@@ -53,7 +53,7 @@ const ERR_MINT_UNEXPECTED_STORAGE_LENGTH="MINT script expects exactly 12 storage
 #! - SCRIPT_ROOT: Script root of the output note (4 elements)
 #! - SERIAL_NUM: Serial number of the output note (4 elements)
 #! - [STORAGE]: Variable-length storage for the output note (Vec<Felt>)
-#!              The number of output note storage items = num_mint_note_storage - 16
+#!              The number of output note storage items = num_mint_note_storage_items - 16
 #!
 #! Panics if:
 #! - account does not expose distribute procedure.

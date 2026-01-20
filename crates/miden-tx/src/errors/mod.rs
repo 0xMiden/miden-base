@@ -207,7 +207,7 @@ pub enum TransactionKernelError {
     AccountDeltaRemoveAssetFailed(#[source] AccountDeltaError),
     #[error("failed to add asset to note")]
     FailedToAddAssetToNote(#[source] NoteError),
-    #[error("note input data has hash {actual} but expected hash {expected}")]
+    #[error("note storage has commitment {actual} but expected commitment {expected}")]
     InvalidNoteStorage { expected: Word, actual: Word },
     #[error(
         "failed to respond to signature requested since no authenticator is assigned to the host"
@@ -250,7 +250,7 @@ pub enum TransactionKernelError {
     )]
     NoteAttachmentArrayMismatch { actual: Word, provided: Word },
     #[error(
-        "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
+        "note storage in advice provider contains fewer items ({actual}) than specified ({specified}) by its storage length"
     )]
     TooFewElementsForNoteStorage { specified: u64, actual: u64 },
     #[error("account procedure with procedure root {0} is not in the account procedure index map")]
