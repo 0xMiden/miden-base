@@ -38,7 +38,7 @@ pub use claim_note::{
     SmtNode,
     create_claim_note,
 };
-pub use eth_types::{EthAddressFormat, EthAmount};
+pub use eth_types::{EthAddressFormat, EthAmount, EthAmountError};
 
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================

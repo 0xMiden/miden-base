@@ -4,6 +4,27 @@ use miden_core::FieldElement;
 use miden_protocol::Felt;
 
 // ================================================================================================
+// ETHEREUM AMOUNT ERROR
+// ================================================================================================
+
+/// Error type for Ethereum amount conversions.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EthAmountError {
+    /// The amount doesn't fit in the target type.
+    Overflow,
+}
+
+impl fmt::Display for EthAmountError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            EthAmountError::Overflow => {
+                write!(f, "amount overflow: value doesn't fit in target type")
+            },
+        }
+    }
+}
+
+// ================================================================================================
 // ETHEREUM AMOUNT
 // ================================================================================================
 
@@ -58,25 +79,27 @@ impl EthAmount {
 
     /// Attempts to convert the amount to a u64.
     ///
-    /// Returns `None` if the amount doesn't fit in a u64 (i.e., if any of the
-    /// upper 6 u32 values are non-zero).
-    pub fn to_u64(&self) -> Option<u64> {
+    /// # Errors
+    /// Returns [`EthAmountError::Overflow`] if the amount doesn't fit in a u64
+    /// (i.e., if any of the upper 6 u32 values are non-zero).
+    pub fn to_u64(&self) -> Result<u64, EthAmountError> {
         if self.0[2..].iter().any(|&x| x != 0) {
-            None
+            Err(EthAmountError::Overflow)
         } else {
-            Some((self.0[1] as u64) << 32 | self.0[0] as u64)
+            Ok((self.0[1] as u64) << 32 | self.0[0] as u64)
         }
     }
 
     /// Attempts to convert the amount to a u32.
     ///
-    /// Returns `None` if the amount doesn't fit in a u32 (i.e., if any of the
-    /// upper 7 u32 values are non-zero).
-    pub fn to_u32(&self) -> Option<u32> {
+    /// # Errors
+    /// Returns [`EthAmountError::Overflow`] if the amount doesn't fit in a u32
+    /// (i.e., if any of the upper 7 u32 values are non-zero).
+    pub fn to_u32(&self) -> Result<u32, EthAmountError> {
         if self.0[1..].iter().any(|&x| x != 0) {
-            None
+            Err(EthAmountError::Overflow)
         } else {
-            Some(self.0[0])
+            Ok(self.0[0])
         }
     }
 
