@@ -10,9 +10,8 @@ use crate::transaction::{
     ExecutedTransaction,
     InputNoteCommitment,
     InputNotes,
-    OutputNote,
+    OutputNotes,
     ProvenTransaction,
-    RawOutputNotes,
     TransactionId,
 };
 use crate::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
@@ -57,8 +56,7 @@ impl TransactionHeader {
         fee: FungibleAsset,
     ) -> Self {
         let input_notes_commitment = input_notes.commitment();
-        let output_notes_commitment =
-            RawOutputNotes::<OutputNote>::compute_commitment(output_notes.iter().cloned());
+        let output_notes_commitment = OutputNotes::compute_commitment(output_notes.iter());
 
         let id = TransactionId::new(
             initial_state_commitment,
@@ -168,7 +166,7 @@ impl From<&ProvenTransaction> for TransactionHeader {
             tx.account_update().initial_state_commitment(),
             tx.account_update().final_state_commitment(),
             tx.input_notes().clone(),
-            tx.output_notes().iter().map(NoteHeader::from).collect(),
+            tx.output_notes().iter().map(<&NoteHeader>::from).cloned().collect(),
             tx.fee(),
         )
     }

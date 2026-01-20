@@ -107,7 +107,7 @@ pub struct RawOutputNotes<N> {
 
 impl<N> RawOutputNotes<N>
 where
-    for<'a> NoteHeader: From<&'a N>,
+    for<'a> &'a NoteHeader: From<&'a N>,
     for<'a> NoteId: From<&'a N>,
 {
     // CONSTRUCTOR
@@ -132,7 +132,7 @@ where
             }
         }
 
-        let commitment = Self::compute_commitment(notes.iter().map(NoteHeader::from));
+        let commitment = Self::compute_commitment(notes.iter().map(<&NoteHeader>::from));
 
         Ok(Self { notes, commitment })
     }
@@ -180,7 +180,9 @@ where
     /// - For a non-empty list of notes, this is a sequential hash of (note_id, metadata_commitment)
     ///   tuples for the notes created in a transaction, where `metadata_commitment` is the return
     ///   value of [`NoteMetadata::to_commitment`].
-    pub(crate) fn compute_commitment(notes: impl ExactSizeIterator<Item = NoteHeader>) -> Word {
+    pub(crate) fn compute_commitment<'header>(
+        notes: impl ExactSizeIterator<Item = &'header NoteHeader>,
+    ) -> Word {
         if notes.len() == 0 {
             return Word::empty();
         }
@@ -372,9 +374,9 @@ impl From<&OutputNote> for NoteId {
     }
 }
 
-impl From<&OutputNote> for NoteHeader {
-    fn from(note: &OutputNote) -> Self {
-        note.header().clone()
+impl<'note> From<&'note OutputNote> for &'note NoteHeader {
+    fn from(note: &'note OutputNote) -> Self {
+        note.header()
     }
 }
 
@@ -492,17 +494,11 @@ impl ProvenOutputNote {
 // CONVERSIONS
 // ------------------------------------------------------------------------------------------------
 
-impl From<ProvenOutputNote> for NoteHeader {
-    fn from(value: ProvenOutputNote) -> Self {
-        (&value).into()
-    }
-}
-
-impl From<&ProvenOutputNote> for NoteHeader {
-    fn from(value: &ProvenOutputNote) -> Self {
+impl<'note> From<&'note ProvenOutputNote> for &'note NoteHeader {
+    fn from(value: &'note ProvenOutputNote) -> Self {
         match value {
             ProvenOutputNote::Public(note) => note.header(),
-            ProvenOutputNote::Header(header) => header.clone(),
+            ProvenOutputNote::Header(header) => header,
         }
     }
 }
@@ -613,8 +609,8 @@ impl PublicOutputNote {
     }
 
     /// Returns the note's header.
-    pub fn header(&self) -> NoteHeader {
-        self.note.header().clone()
+    pub fn header(&self) -> &NoteHeader {
+        self.note.header()
     }
 
     /// Returns a reference to the underlying note.
