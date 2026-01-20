@@ -82,7 +82,6 @@ impl Address {
     /// For local (both public and private) accounts, the tag length may be customized to
     /// balance privacy and discoverability.
     /// For network accounts, a fixed tag length compatible with routing is required.
-
     ///
     /// # Errors
     ///

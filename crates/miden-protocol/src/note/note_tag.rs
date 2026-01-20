@@ -108,9 +108,10 @@ impl NoteTag {
     /// Constructs a note tag that targets the given `account_id` with a custom `tag_len`.
     ///
     /// The tag is constructed by:
-    /// - Setting the two most significant bits to zero.
-    /// - The next `tag_len` bits are set to the most significant bits of the account ID prefix.
-    /// - The remaining bits are set to zero.
+    /// - Extracting the 30 most significant bits of the account ID prefix.
+    /// - Setting the two most significant bits of the tag to zero.
+    /// - Copying the top `tag_len` bits of the extracted prefix into the tag.
+    /// - Setting the remaining bits to zero.
     ///
     /// # Errors
     ///
@@ -125,19 +126,19 @@ impl NoteTag {
 
         let prefix_id: u64 = account_id.prefix().into();
 
-        // Shift the high bits of the account ID such that they are laid out as:
-        // [34 zero bits | remaining high bits (30 bits)].
-        let high_bits = prefix_id >> 34;
+        // Extract the 30 most significant bits of the account ID prefix.
+        // Layout: [ 00 | 30 bits ]
+        let high_bits = (prefix_id >> 34) as u32;
 
-        // This is equivalent to the following layout, interpreted as a u32:
-        // [2 zero bits | remaining high bits (30 bits)].
-        let high_bits = high_bits as u32;
+        // Mask within the 30-bit prefix space.
+        let masked = if tag_len == 0 {
+            0
+        } else {
+            let shift = Self::MAX_ACCOUNT_TARGET_TAG_LENGTH - tag_len;
+            high_bits & (!0u32 << shift)
+        };
 
-        // Select the top `tag_len` bits of the account ID, i.e.:
-        // [2 zero bits | remaining high bits (tag_len bits) | (30 - tag_len) zero bits].
-        let high_bits = high_bits & (u32::MAX << (32 - 2 - tag_len));
-
-        Ok(Self(high_bits))
+        Ok(Self(masked))
     }
 
     /// Constructs a network account note tag from the specified `account_id`.

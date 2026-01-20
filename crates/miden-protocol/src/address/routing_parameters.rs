@@ -9,7 +9,6 @@ use crate::address::AddressInterface;
 use crate::crypto::dsa::{ecdsa_k256_keccak, eddsa_25519_sha512};
 use crate::crypto::ies::SealingKey;
 use crate::errors::{AddressError, Bech32Error};
-use crate::note::NoteTag;
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -70,7 +69,7 @@ pub struct RoutingParameters {
 impl RoutingParameters {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-    
+
     /// The maximum allowed note tag length.
     pub const MAX_NOTE_TAG_LENGTH: u8 = 30;
 
