@@ -141,7 +141,7 @@ end
 #! This procedure reads the destination address from the leaf data and converts it from
 #! Ethereum address format to AccountId format (prefix, suffix).
 #!
-#! Inputs:  [LEAF_DATA_KEY]
+#! Inputs:  []
 #! Outputs: [prefix, suffix]
 #!
 #! Invocation: exec
