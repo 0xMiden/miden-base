@@ -42,15 +42,16 @@ use miden_protocol::transaction::memory::{
     INPUT_NOTE_ARGS_OFFSET,
     INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
     INPUT_NOTE_ASSETS_OFFSET,
+    INPUT_NOTE_ATTACHMENT_OFFSET,
     INPUT_NOTE_ID_OFFSET,
-    INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
-    INPUT_NOTE_METADATA_OFFSET,
+    INPUT_NOTE_METADATA_HEADER_OFFSET,
     INPUT_NOTE_NULLIFIER_SECTION_PTR,
     INPUT_NOTE_NUM_ASSETS_OFFSET,
     INPUT_NOTE_RECIPIENT_OFFSET,
     INPUT_NOTE_SCRIPT_ROOT_OFFSET,
     INPUT_NOTE_SECTION_PTR,
     INPUT_NOTE_SERIAL_NUM_OFFSET,
+    INPUT_NOTE_STORAGE_COMMITMENT_OFFSET,
     INPUT_NOTES_COMMITMENT_PTR,
     KERNEL_PROCEDURES_PTR,
     NATIVE_ACCT_CODE_COMMITMENT_PTR,
@@ -483,8 +484,8 @@ fn input_notes_memory_assertions(
         );
 
         assert_eq!(
-            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET),
-            note.inputs().commitment(),
+            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_STORAGE_COMMITMENT_OFFSET),
+            note.storage().commitment(),
             "note input commitment should be stored at the correct offset"
         );
 
@@ -501,9 +502,15 @@ fn input_notes_memory_assertions(
         );
 
         assert_eq!(
-            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_METADATA_OFFSET),
-            Word::from(note.metadata()),
-            "note metadata should be stored at the correct offset"
+            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_METADATA_HEADER_OFFSET),
+            note.metadata().to_header_word(),
+            "note metadata header should be stored at the correct offset"
+        );
+
+        assert_eq!(
+            exec_output.get_note_mem_word(note_idx, INPUT_NOTE_ATTACHMENT_OFFSET),
+            note.metadata().to_attachment_word(),
+            "note attachment should be stored at the correct offset"
         );
 
         assert_eq!(

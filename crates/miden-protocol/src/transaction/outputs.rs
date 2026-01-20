@@ -6,6 +6,7 @@ use core::fmt::Debug;
 use crate::account::AccountHeader;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
+use crate::errors::TransactionOutputError;
 use crate::note::{
     Note,
     NoteAssets,
@@ -23,7 +24,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word};
+use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, Word};
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -102,6 +103,7 @@ pub struct OutputNotes {
 impl OutputNotes {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+
     /// Returns new [OutputNotes] instantiated from the provide vector of notes.
     ///
     /// # Errors
@@ -120,7 +122,7 @@ impl OutputNotes {
             }
         }
 
-        let commitment = Self::compute_commitment(notes.iter().map(NoteHeader::from));
+        let commitment = Self::compute_commitment(notes.iter().map(OutputNote::header));
 
         Ok(Self { notes, commitment })
     }
@@ -163,9 +165,13 @@ impl OutputNotes {
 
     /// Computes a commitment to output notes.
     ///
-    /// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for
-    /// the notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
-    pub(crate) fn compute_commitment(notes: impl ExactSizeIterator<Item = NoteHeader>) -> Word {
+    /// - For an empty list, [`Word::empty`] is returned.
+    /// - For a non-empty list of notes, this is a sequential hash of (note_id, metadata_commitment)
+    ///   tuples for the notes created in a transaction, where `metadata_commitment` is the return
+    ///   value of [`NoteMetadata::to_commitment`].
+    pub(crate) fn compute_commitment<'header>(
+        notes: impl ExactSizeIterator<Item = &'header NoteHeader>,
+    ) -> Word {
         if notes.len() == 0 {
             return Word::empty();
         }
@@ -173,7 +179,7 @@ impl OutputNotes {
         let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
         for note_header in notes {
             elements.extend_from_slice(note_header.id().as_elements());
-            elements.extend_from_slice(Word::from(note_header.metadata()).as_elements());
+            elements.extend_from_slice(note_header.metadata().to_commitment().as_elements());
         }
 
         Hasher::hash_elements(&elements)
@@ -278,37 +284,27 @@ impl OutputNote {
     pub fn shrink(&self) -> Self {
         match self {
             OutputNote::Full(note) if note.metadata().is_private() => {
-                OutputNote::Header(*note.header())
+                OutputNote::Header(note.header().clone())
             },
-            OutputNote::Partial(note) => OutputNote::Header(note.into()),
+            OutputNote::Partial(note) => OutputNote::Header(note.header().clone()),
             _ => self.clone(),
+        }
+    }
+
+    /// Returns a reference to the [`NoteHeader`] of this note.
+    pub fn header(&self) -> &NoteHeader {
+        match self {
+            OutputNote::Full(note) => note.header(),
+            OutputNote::Partial(note) => note.header(),
+            OutputNote::Header(header) => header,
         }
     }
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     pub fn commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
-    }
-}
-
-// CONVERSIONS
-// ------------------------------------------------------------------------------------------------
-
-impl From<OutputNote> for NoteHeader {
-    fn from(value: OutputNote) -> Self {
-        (&value).into()
-    }
-}
-
-impl From<&OutputNote> for NoteHeader {
-    fn from(value: &OutputNote) -> Self {
-        match value {
-            OutputNote::Full(note) => note.into(),
-            OutputNote::Partial(note) => note.into(),
-            OutputNote::Header(note) => *note,
-        }
     }
 }
 
@@ -353,9 +349,10 @@ mod output_notes_tests {
     use assert_matches::assert_matches;
 
     use super::OutputNotes;
+    use crate::Word;
+    use crate::errors::TransactionOutputError;
     use crate::note::Note;
     use crate::transaction::OutputNote;
-    use crate::{TransactionOutputError, Word};
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {

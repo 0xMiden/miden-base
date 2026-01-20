@@ -26,7 +26,7 @@ use miden_protocol::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_protocol::asset::{AssetVaultKey, AssetWitness, FungibleAsset};
 use miden_protocol::block::BlockNumber;
 use miden_protocol::crypto::merkle::smt::SmtProof;
-use miden_protocol::note::{NoteInputs, NoteMetadata, NoteRecipient};
+use miden_protocol::note::{NoteMetadata, NoteRecipient, NoteStorage};
 use miden_protocol::transaction::{
     InputNote,
     InputNotes,
@@ -375,7 +375,7 @@ where
         recipient_digest: Word,
         script_root: Word,
         metadata: NoteMetadata,
-        note_inputs: NoteInputs,
+        note_storage: NoteStorage,
         serial_num: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let note_script_result = self.base_host.store().get_note_script(script_root).await;
@@ -383,7 +383,7 @@ where
         match note_script_result {
             Ok(Some(note_script)) => {
                 let script_felts: Vec<Felt> = (&note_script).into();
-                let recipient = NoteRecipient::new(serial_num, note_script, note_inputs);
+                let recipient = NoteRecipient::new(serial_num, note_script, note_storage);
 
                 if recipient.digest() != recipient_digest {
                     return Err(TransactionKernelError::other(format!(
@@ -565,7 +565,7 @@ where
                     self.base_host.on_account_push_procedure_index(code_commitment, procedure_root)
                 },
 
-                TransactionEvent::NoteAfterCreated { note_idx, metadata, recipient_data } => {
+                TransactionEvent::NoteBeforeCreated { note_idx, metadata, recipient_data } => {
                     match recipient_data {
                         RecipientData::Digest(recipient_digest) => {
                             self.base_host.output_note_from_recipient_digest(
@@ -581,14 +581,14 @@ where
                             recipient_digest,
                             serial_num,
                             script_root,
-                            note_inputs,
+                            note_storage,
                         } => {
                             self.on_note_script_requested(
                                 note_idx,
                                 recipient_digest,
                                 script_root,
                                 metadata,
-                                note_inputs,
+                                note_storage,
                                 serial_num,
                             )
                             .await
@@ -599,6 +599,11 @@ where
                 TransactionEvent::NoteBeforeAddAsset { note_idx, asset } => {
                     self.base_host.on_note_before_add_asset(note_idx, asset)
                 },
+
+                TransactionEvent::NoteBeforeSetAttachment { note_idx, attachment } => self
+                    .base_host
+                    .on_note_before_set_attachment(note_idx, attachment)
+                    .map(|_| Vec::new()),
 
                 TransactionEvent::AuthRequest { pub_key_hash, tx_summary, signature } => {
                     if let Some(signature) = signature {

@@ -3,7 +3,8 @@ use miden_crypto::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
 use crate::account::AccountId;
-use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO};
+use crate::errors::NoteError;
+use crate::{Felt, Hasher, WORD_SIZE, ZERO};
 
 mod assets;
 pub use assets::NoteAssets;
@@ -14,20 +15,29 @@ pub use details::NoteDetails;
 mod header;
 pub use header::{NoteHeader, compute_note_commitment};
 
-mod inputs;
-pub use inputs::NoteInputs;
+mod storage;
+pub use storage::NoteStorage;
 
 mod metadata;
 pub use metadata::NoteMetadata;
 
+mod attachment;
+pub use attachment::{
+    NoteAttachment,
+    NoteAttachmentArray,
+    NoteAttachmentContent,
+    NoteAttachmentKind,
+    NoteAttachmentScheme,
+};
+
 mod execution_hint;
-pub use execution_hint::{AfterBlockNumber, NoteExecutionHint};
+pub use execution_hint::NoteExecutionHint;
 
 mod note_id;
 pub use note_id::NoteId;
 
 mod note_tag;
-pub use note_tag::{NoteExecutionMode, NoteTag};
+pub use note_tag::NoteTag;
 
 mod note_type;
 pub use note_type::NoteType;
@@ -58,7 +68,7 @@ pub use file::NoteFile;
 ///
 /// Notes consist of note metadata and details. Note metadata is always public, but details may be
 /// either public, encrypted, or private, depending on the note type. Note details consist of note
-/// assets, script, inputs, and a serial number, the three latter grouped into a recipient object.
+/// assets, script, storage, and a serial number, the three latter grouped into a recipient object.
 ///
 /// Note details can be reduced to two unique identifiers: [NoteId] and [Nullifier]. The former is
 /// publicly associated with a note, while the latter is known only to entities which have access
@@ -68,10 +78,10 @@ pub use file::NoteFile;
 /// note's script determines the conditions required for the note consumption, i.e. the target
 /// account of a P2ID or conditions of a SWAP, and the effects of the note. The serial number has
 /// a double duty of preventing double spend, and providing unlikability to the consumer of a note.
-/// The note's inputs allow for customization of its script.
+/// The note's storage allows for customization of its script.
 ///
 /// To create a note, the kernel does not require all the information above, a user can create a
-/// note only with the commitment to the script, inputs, the serial number (i.e., the recipient),
+/// note only with the commitment to the script, storage, the serial number (i.e., the recipient),
 /// and the kernel only verifies the source account has the assets necessary for the note creation.
 /// See [NoteRecipient] for more details.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -130,9 +140,9 @@ impl Note {
         self.details.script()
     }
 
-    /// Returns the note's recipient inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteInputs {
-        self.details.inputs()
+    /// Returns the note's recipient storage which customizes the script's behavior.
+    pub fn storage(&self) -> &NoteStorage {
+        self.details.storage()
     }
 
     /// Returns the note's recipient.
@@ -149,17 +159,12 @@ impl Note {
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
     ///
     /// This value is used primarily for authenticating notes consumed when the are consumed
     /// in a transaction.
     pub fn commitment(&self) -> Word {
         self.header.commitment()
-    }
-
-    /// Returns true if this note is intended to be executed by the network rather than a user.
-    pub fn is_network_note(&self) -> bool {
-        self.metadata().tag().execution_mode() == NoteExecutionMode::Network
     }
 }
 
@@ -174,12 +179,6 @@ impl AsRef<NoteRecipient> for Note {
 
 // CONVERSIONS FROM NOTE
 // ================================================================================================
-
-impl From<&Note> for NoteHeader {
-    fn from(note: &Note) -> Self {
-        note.header
-    }
-}
 
 impl From<Note> for NoteHeader {
     fn from(note: Note) -> Self {
@@ -202,17 +201,7 @@ impl From<Note> for NoteDetails {
 impl From<Note> for PartialNote {
     fn from(note: Note) -> Self {
         let (assets, recipient, ..) = note.details.into_parts();
-        PartialNote::new(*note.header.metadata(), recipient.digest(), assets)
-    }
-}
-
-impl From<&Note> for PartialNote {
-    fn from(note: &Note) -> Self {
-        PartialNote::new(
-            *note.header.metadata(),
-            note.details.recipient().digest(),
-            note.details.assets().clone(),
-        )
+        PartialNote::new(note.header.into_metadata(), recipient.digest(), assets)
     }
 }
 

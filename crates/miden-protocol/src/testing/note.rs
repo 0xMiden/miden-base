@@ -1,20 +1,19 @@
 use alloc::vec::Vec;
 
+use crate::Word;
 use crate::assembly::Assembler;
 use crate::asset::FungibleAsset;
 use crate::note::{
     Note,
     NoteAssets,
-    NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
     NoteScript,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
 use crate::testing::account_id::ACCOUNT_ID_SENDER;
-use crate::{Word, ZERO};
 
 pub const DEFAULT_NOTE_CODE: &str = "begin nop end";
 
@@ -28,12 +27,9 @@ impl Note {
         let metadata = NoteMetadata::new(
             sender_id,
             NoteType::Private,
-            NoteTag::from_account_id(sender_id),
-            NoteExecutionHint::Always,
-            ZERO,
-        )
-        .unwrap();
-        let inputs = NoteInputs::new(Vec::new()).unwrap();
+            NoteTag::with_account_target(sender_id),
+        );
+        let inputs = NoteStorage::new(Vec::new()).unwrap();
         let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
         Note::new(assets, metadata, recipient)

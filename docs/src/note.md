@@ -61,10 +61,28 @@ The serial number has two main purposes. Firstly by adding some randomness to th
 ### Metadata
 
 :::note
-Additional `Note` information.
+Additional public `Note` information.
 :::
 
-Notes include metadata such as the sender’s account ID and a [tag](#note-discovery) that aids in discovery. Regardless of [storage mode](#note-storage-mode), these metadata fields remain public.
+Every note includes metadata:
+- the account ID of the sender, i.e. the creator of the note.
+- its note type, i.e. private or public.
+- the [note tag](#note-discovery) that aids in discovery of the note.
+- an optional [note attachment](#attachment).
+
+Regardless of [storage mode](#note-storage-mode), these metadata fields are always public.
+
+### Attachment
+
+An attachment is a variable-size part of a note's metadata:
+- It can either be absent (`None`), store a single `Word` or an `Array` of field elements. These are the three _kinds_ of attachments.
+- The _scheme_ of an attachment is an optional, 32-bit user-defined value that can be used to detect the presence of certain standardized attachments.
+
+Example use cases for attachments are:
+- Communicate the note details of a private note in encrypted form. This means the encrypted note is attached publicly to the otherwise private note.
+- For [network transactions](./transaction.md#network-transaction), encode the ID of the network account that should
+  consume the note. This is a standardized attachment scheme in miden-standards called `NetworkAccountTarget`.
+- Communicate the details of a _private_ note to the receiver so they can derive the note. For example, the payback note of a partially fillable swap note can be private and the receiver already knows a few details: It is a P2ID note, the serial number is derived from the SWAP note's serial number and the note storage is the account ID of the receiver. The receiver only needs to now the exact amount that was filled to derive the full note for consumption. This amount can be encoded in the public attachment of the payback note, which allows this use case to work with private notes and still not require a side-channel.
 
 ## Note Lifecycle
 
@@ -98,7 +116,26 @@ After validation notes become "live" and eligible for consumption. If creation a
 
 Clients often need to find specific notes of interest. Miden allows clients to query the `Note` database using `Note` tags. These lightweight, 32-bit data fields serve as best-effort filters, enabling quick lookups for notes related to particular use cases, scripts, or account prefixes.
 
-Using `Note` tags strikes a balance between privacy and efficiency. Without tags, querying a specific `Note` ID reveals a user’s interest to the operator. Conversely, downloading and filtering all registered notes locally is highly inefficient. Tags allow users to adjust their level of privacy by choosing how broadly or narrowly they define their search criteria, letting them find the right balance between revealing too much information and incurring excessive computational overhead.
+While note tags can be arbitrarily constructed from 32 bits of data, there are two categories of tags that many notes fit into.
+
+#### Account Targets
+
+A note targeted at an account is a note that is intended or even enforced to be consumed by a specific account. One example is a P2ID note that can only be consumed by a specific account ID. The tag for such a note should make it easy for the receiver to find the note. Therefore, the tag encodes a certain number of bits of the receiver account's ID, by convention. Notably, it may not encode the full 32 bits of the target account's ID to preserve the receiver's privacy. See also the section on privacy below.
+
+#### Use Case Tags
+
+Use case notes are notes that are not intended to be consumed by a specific account, but by anyone willing to fulfill the note's contract. One example is a SWAP note that trades one asset against another. Such a use case note can define the structure of their note tags. A sensible structure for a SWAP note could be:
+- encoding the 2 bits of the note's type.
+- encoding the note script root, i.e. making it identifiable as a SWAP note, for example by
+  using 16 bits of the SWAP script root.
+- encoding the SWAP pair, for example by using 8 bits of the offered asset faucet ID and 8 bits
+  of the requested asset faucet ID.
+
+This allows clients to search for a public SWAP note that trades USDC against ETH only through the note tag. Since tags are not validated in any way and only act as best-effort filters, further local filtering is almost always necessary. For example, there could easily be a collision on the 8 bits used in SWAP tag's faucet IDs.
+
+#### Privacy vs Efficiency
+
+Using `Note` tags strikes a balance between privacy and efficiency. Without tags, querying a specific `Note` ID reveals a user's interest to the operator. Conversely, downloading and filtering all registered notes locally is highly inefficient. Tags allow users to adjust their level of privacy by choosing how broadly or narrowly they define their search criteria, letting them find the right balance between revealing too much information and incurring excessive computational overhead.
 
 ### Note consumption
 
@@ -154,7 +191,7 @@ The P2ID note script implements a simple pay-to-account-ID pattern. It adds all 
 **Key characteristics:**
 
 - **Purpose:** Direct asset transfer to a specific account ID
-- **Inputs:** Requires exactly 2 note inputs containing the target account ID
+- **Inputs:** Requires exactly 2 note storage containing the target account ID
 - **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
 - **Requirements:** Target account must expose the `miden::standards::wallets::basic::receive_asset` procedure
 
@@ -167,7 +204,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 **Key characteristics:**
 
 - **Purpose:** Advanced asset transfer with time-lock and reclaim capabilities
-- **Inputs:** Requires exactly 4 note inputs:
+- **Inputs:** Requires exactly 4 note storage:
   - Target account ID
   - Reclaim block height (when sender can reclaim)
   - Time-lock block height (when target can consume)
@@ -189,10 +226,10 @@ The SWAP note script implements atomic asset swapping functionality.
 **Key characteristics:**
 
 - **Purpose:** Atomic asset exchange between two parties
-- **Inputs:** Requires exactly 12 note inputs specifying:
+- **Inputs:** Requires exactly 16 note storage specifying:
   - Requested asset details
   - Payback note recipient information
-  - Note creation parameters (execution hint, type, aux data, tag)
+  - Note creation parameters (type, tag, attachment)
 - **Assets:** Must contain exactly 1 asset to be swapped
 - **Mechanism:**
   1. Creates a payback note containing the requested asset for the original note issuer

@@ -137,7 +137,6 @@ impl Deserializable for NoteFile {
 mod tests {
     use alloc::vec::Vec;
 
-    use miden_core::Felt;
     use miden_core::utils::{Deserializable, Serializable};
 
     use crate::Word;
@@ -149,10 +148,10 @@ mod tests {
         NoteAssets,
         NoteFile,
         NoteInclusionProof,
-        NoteInputs,
         NoteMetadata,
         NoteRecipient,
         NoteScript,
+        NoteStorage,
         NoteTag,
         NoteType,
     };
@@ -168,18 +167,11 @@ mod tests {
 
         let serial_num = Word::from([0, 1, 2, 3u32]);
         let script = NoteScript::mock();
-        let note_inputs = NoteInputs::new(vec![target.prefix().into()]).unwrap();
-        let recipient = NoteRecipient::new(serial_num, script, note_inputs);
+        let note_storage = NoteStorage::new(vec![target.prefix().into()]).unwrap();
+        let recipient = NoteRecipient::new(serial_num, script, note_storage);
 
         let asset = Asset::Fungible(FungibleAsset::new(faucet, 100).unwrap());
-        let metadata = NoteMetadata::new(
-            faucet,
-            NoteType::Public,
-            NoteTag::from(123),
-            crate::note::NoteExecutionHint::None,
-            Felt::new(0),
-        )
-        .unwrap();
+        let metadata = NoteMetadata::new(faucet, NoteType::Public, NoteTag::from(123));
 
         Note::new(NoteAssets::new(vec![asset]).unwrap(), metadata, recipient)
     }

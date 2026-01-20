@@ -18,12 +18,12 @@ use crate::Word;
 ///
 /// Partial note consists of [NoteMetadata], [NoteAssets], and a recipient digest (see
 /// [super::NoteRecipient]). However, it does not contain detailed recipient info, including
-/// note script, note inputs, and note's serial number. This means that a partial note is
+/// note script, note storage, and note's serial number. This means that a partial note is
 /// sufficient to compute note ID and note header, but not sufficient to compute note nullifier,
 /// and generally does not have enough info to execute the note.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartialNote {
-    metadata: NoteMetadata,
+    header: NoteHeader,
     recipient_digest: Word,
     assets: NoteAssets,
 }
@@ -31,7 +31,9 @@ pub struct PartialNote {
 impl PartialNote {
     /// Returns a new [PartialNote] instantiated from the provided parameters.
     pub fn new(metadata: NoteMetadata, recipient_digest: Word, assets: NoteAssets) -> Self {
-        Self { metadata, recipient_digest, assets }
+        let note_id = NoteId::new(recipient_digest, assets.commitment());
+        let header = NoteHeader::new(note_id, metadata);
+        Self { header, recipient_digest, assets }
     }
 
     /// Returns the ID corresponding to this note.
@@ -41,7 +43,7 @@ impl PartialNote {
 
     /// Returns the metadata associated with this note.
     pub fn metadata(&self) -> &NoteMetadata {
-        &self.metadata
+        self.header.metadata()
     }
 
     /// Returns the digest of the recipient associated with this note.
@@ -55,17 +57,10 @@ impl PartialNote {
     pub fn assets(&self) -> &NoteAssets {
         &self.assets
     }
-}
 
-impl From<&PartialNote> for NoteHeader {
-    fn from(note: &PartialNote) -> Self {
-        NoteHeader::new(note.id(), note.metadata)
-    }
-}
-
-impl From<PartialNote> for NoteHeader {
-    fn from(note: PartialNote) -> Self {
-        NoteHeader::new(note.id(), note.metadata)
+    /// Returns the [`NoteHeader`] of this note.
+    pub fn header(&self) -> &NoteHeader {
+        &self.header
     }
 }
 
@@ -74,7 +69,9 @@ impl From<PartialNote> for NoteHeader {
 
 impl Serializable for PartialNote {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.metadata.write_into(target);
+        // Serialize only metadata since the note ID in the header can be recomputed from the
+        // remaining data.
+        self.header().metadata().write_into(target);
         self.recipient_digest.write_into(target);
         self.assets.write_into(target)
     }

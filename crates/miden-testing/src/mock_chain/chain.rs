@@ -713,9 +713,8 @@ impl MockChain {
 
     /// Gets foreign account inputs to execute FPI transactions.
     ///
-    /// Only used internally and so does not need to be public.
-    #[cfg(test)]
-    pub(crate) fn get_foreign_account_inputs(
+    /// Used in tests to get foreign account inputs for FPI calls.
+    pub fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,
     ) -> anyhow::Result<(Account, AccountWitness)> {
@@ -908,7 +907,7 @@ impl MockChain {
                     created_note.id(),
                     MockChainNote::Private(
                         created_note.id(),
-                        *created_note.metadata(),
+                        created_note.metadata().clone(),
                         note_inclusion_proof,
                     ),
                 );
@@ -1095,7 +1094,12 @@ impl Serializable for AccountAuthenticator {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.authenticator
             .as_ref()
-            .map(|auth| auth.keys().values().collect::<Vec<_>>())
+            .map(|auth| {
+                auth.keys()
+                    .values()
+                    .map(|(secret_key, public_key)| (secret_key, public_key.as_ref().clone()))
+                    .collect::<Vec<_>>()
+            })
             .write_into(target);
     }
 }
