@@ -2,7 +2,7 @@ extern crate alloc;
 
 use core::slice;
 
-use miden_agglayer::claim_note::{GlobalExitRoot, SmtNode};
+use miden_agglayer::claim_note::{ExitRoot, SmtNode};
 use miden_agglayer::{
     ClaimNoteInputs,
     EthAddressFormat,
@@ -119,8 +119,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         smt_proof_local_exit_root: local_proof_array,
         smt_proof_rollup_exit_root: rollup_proof_array,
         global_index,
-        mainnet_exit_root: GlobalExitRoot::from(mainnet_exit_root),
-        rollup_exit_root: GlobalExitRoot::from(rollup_exit_root),
+        mainnet_exit_root: ExitRoot::from(mainnet_exit_root),
+        rollup_exit_root: ExitRoot::from(rollup_exit_root),
     };
 
     let leaf_data = LeafData {

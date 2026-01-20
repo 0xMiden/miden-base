@@ -29,7 +29,15 @@ pub mod errors;
 pub mod eth_types;
 pub mod utils;
 
-pub use claim_note::{ClaimNoteInputs, LeafData, OutputNoteData, ProofData, create_claim_note};
+pub use claim_note::{
+    ClaimNoteInputs,
+    ExitRoot,
+    LeafData,
+    OutputNoteData,
+    ProofData,
+    SmtNode,
+    create_claim_note,
+};
 pub use eth_types::{EthAddressFormat, EthAmount};
 
 // AGGLAYER NOTE SCRIPTS

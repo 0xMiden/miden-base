@@ -49,12 +49,12 @@ impl From<[u8; 32]> for SmtNode {
     }
 }
 
-/// Global exit root representation (32-byte hash)
+/// Exit root representation (32-byte hash)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct GlobalExitRoot([u8; 32]);
+pub struct ExitRoot([u8; 32]);
 
-impl GlobalExitRoot {
-    /// Creates a new global exit root from a 32-byte array
+impl ExitRoot {
+    /// Creates a new exit root from a 32-byte array
     pub fn new(bytes: [u8; 32]) -> Self {
         Self(bytes)
     }
@@ -64,13 +64,13 @@ impl GlobalExitRoot {
         &self.0
     }
 
-    /// Converts the global exit root to 8 Felt elements
+    /// Converts the exit root to 8 Felt elements
     pub fn to_elements(&self) -> [Felt; 8] {
         bytes32_to_felts(&self.0)
     }
 }
 
-impl From<[u8; 32]> for GlobalExitRoot {
+impl From<[u8; 32]> for ExitRoot {
     fn from(bytes: [u8; 32]) -> Self {
         Self::new(bytes)
     }
@@ -86,14 +86,15 @@ pub struct ProofData {
     /// Global index (uint256 as 8 u32 values)
     pub global_index: [u32; 8],
     /// Mainnet exit root hash
-    pub mainnet_exit_root: GlobalExitRoot,
+    pub mainnet_exit_root: ExitRoot,
     /// Rollup exit root hash
-    pub rollup_exit_root: GlobalExitRoot,
+    pub rollup_exit_root: ExitRoot,
 }
 
-impl ProofData {
-    /// Converts the proof data to a vector of field elements for note inputs
-    pub fn to_elements(&self) -> Vec<Felt> {
+impl SequentialCommit for ProofData {
+    type Commitment = Word;
+
+    fn to_elements(&self) -> Vec<Felt> {
         const PROOF_DATA_ELEMENT_COUNT: usize = 536; // 32*8 + 32*8 + 8 + 8 + 8 (proofs + global_index + 2 exit roots)
         let mut elements = Vec::with_capacity(PROOF_DATA_ELEMENT_COUNT);
 
