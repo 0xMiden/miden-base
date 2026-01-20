@@ -322,7 +322,7 @@ async fn test_get_storage_info() -> anyhow::Result<()> {
 
             # assert the storage has correct length
             push.{num_storage_items}
-            assert_eq.err="note 0 has incorrect storage length"
+            assert_eq.err="note 0 has incorrect number of storage items"
             # => []
         end
     "#,

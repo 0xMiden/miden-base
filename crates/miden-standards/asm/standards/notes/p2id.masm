@@ -33,7 +33,7 @@ pub proc main
     padw push.0 exec.active_note::get_storage
     # => [num_storage_items, storage_ptr, EMPTY_WORD]
 
-    # make sure the storage length is 2
+    # make sure the number of storage items is 2
     eq.2 assert.err=ERR_P2ID_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => [storage_ptr, EMPTY_WORD]
 

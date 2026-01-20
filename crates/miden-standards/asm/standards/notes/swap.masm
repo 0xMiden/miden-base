@@ -60,7 +60,7 @@ pub proc main
     push.0 exec.active_note::get_storage
     # => [num_storage_items, storage_ptr]
 
-    # check storage length
+    # check number of storage items
     eq.SWAP_NOTE_NUM_STORAGE_ITEMS assert.err=ERR_SWAP_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     drop
     # => []

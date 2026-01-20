@@ -105,7 +105,7 @@ pub proc main
     push.0 exec.active_note::get_storage
     # => [num_storage_items, storage_ptr]
 
-    # make sure the storage length is 4
+    # make sure the number of storage items is 4
     eq.4 assert.err=ERR_P2IDE_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => [storage_ptr]
 

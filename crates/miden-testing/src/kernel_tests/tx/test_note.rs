@@ -272,7 +272,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
         assert_eq!(
             exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
             &[Felt::from(note_storage.0.len())],
-            "advice entry with note storage length should contain the original number of values"
+            "advice entry with note number of storage items should contain the original number of values"
         );
     }
 
@@ -434,8 +434,8 @@ pub async fn test_timelock() -> anyhow::Result<()> {
           push.0 exec.active_note::get_storage
           # => [num_storage_items, storage_ptr]
 
-          # make sure the storage length is 1
-          eq.1 assert.err="note storage length is not 1"
+          # make sure the number of storage items is 1
+          eq.1 assert.err="note number of storage items is not 1"
           # => [storage_ptr]
 
           # read the timestamp at which the note can be consumed

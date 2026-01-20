@@ -250,7 +250,7 @@ pub enum TransactionKernelError {
     )]
     NoteAttachmentArrayMismatch { actual: Word, provided: Word },
     #[error(
-        "note storage in advice provider contains fewer items ({actual}) than specified ({specified}) by its storage length"
+        "note storage in advice provider contains fewer items ({actual}) than specified ({specified}) by its number of storage items"
     )]
     TooFewElementsForNoteStorage { specified: u64, actual: u64 },
     #[error("account procedure with procedure root {0} is not in the account procedure index map")]

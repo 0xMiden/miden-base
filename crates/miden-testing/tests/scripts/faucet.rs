@@ -439,7 +439,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     assert_eq!(
         full_note.recipient().storage().len(),
         note_storage.len(),
-        "Output note storage length should match expected storage length"
+        "Output note number of storage items should match expected number of storage items"
     );
 
     // Verify the output note ID matches the expected note ID

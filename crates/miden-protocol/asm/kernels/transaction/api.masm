@@ -1086,7 +1086,7 @@ pub proc input_note_get_storage_info
     dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_STORAGE_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
-    # get the note storage length
+    # get the note's number of storage items
     dup exec.memory::get_input_note_num_storage_items swap
     # => [input_note_ptr, num_storage_items, pad(16)]
 

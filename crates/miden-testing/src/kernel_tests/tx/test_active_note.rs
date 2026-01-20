@@ -445,11 +445,11 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_storage` procedure to trigger note storage length assertion
+                # execute the `get_storage` procedure to trigger note number of storage items assertion
                 push.0 exec.active_note::get_storage
                 # => [num_storage_items, 0]
 
-                # assert that the storage length is 8
+                # assert that the number of storage items is 8
                 push.8 assert_eq.err=\"number of storage values should be equal to 8\"
 
                 # clean the stack
