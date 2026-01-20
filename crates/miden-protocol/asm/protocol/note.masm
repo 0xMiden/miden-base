@@ -9,7 +9,7 @@ pub use ::miden::protocol::util::note::MAX_NOTE_STORAGE_ITEMS
 # ERRORS
 # =================================================================================================
 
-const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT="number of note storage exceeded the maximum limit of 1024"
+const ERR_PROLOGUE_NOTE_NUM_STORAGE_ITEMS_EXCEEDED_LIMIT="number of note storage exceeded the maximum limit of 1024"
 
 # NOTE UTILITY PROCEDURES
 # =================================================================================================
@@ -21,7 +21,7 @@ const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT="number of note storage excee
 #!
 #! If the number of note storage items is 0, procedure returns the empty word: [0, 0, 0, 0].
 #!
-#! Inputs:  [inputs_ptr, storage_len]
+#! Inputs:  [storage_ptr, num_storage_items]
 #! Outputs: [STORAGE_COMMITMENT]
 #!
 #! Cycles:
@@ -29,15 +29,15 @@ const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT="number of note storage excee
 #! - Else: 189 cycles + 3 * words
 #!
 #! Panics if:
-#! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
-#! - storage_len is greater than 1024.
+#! - storage_ptr is not word-aligned (i.e., is not a multiple of 4).
+#! - num_storage_items is greater than 1024.
 #!
 #! Invocation: exec
 pub proc compute_storage_commitment
     # check that number of storage items is less than or equal to MAX_NOTE_STORAGE_ITEMS
-    dup.1 push.MAX_NOTE_STORAGE_ITEMS u32assert2.err=ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT
-    u32lte assert.err=ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT
-    # => [inputs_ptr, storage_len]
+    dup.1 push.MAX_NOTE_STORAGE_ITEMS u32assert2.err=ERR_PROLOGUE_NOTE_NUM_STORAGE_ITEMS_EXCEEDED_LIMIT
+    u32lte assert.err=ERR_PROLOGUE_NOTE_NUM_STORAGE_ITEMS_EXCEEDED_LIMIT
+    # => [storage_ptr, num_storage_items]
 
     # compute the storage commitment (over the unpadded values)
     exec.rpo256::hash_elements
@@ -82,7 +82,7 @@ end
 #! recipient by hashing this commitment, the provided script root, and the serial number.
 #!
 #! Inputs:
-#!   Operand stack: [inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+#!   Operand stack: [storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 #!   Advice map: {
 #!      STORAGE_COMMITMENT: [INPUTS],
 #!   }
@@ -96,61 +96,61 @@ end
 #!   }
 #!
 #! Where:
-#! - inputs_ptr is the memory address where the note storage are stored.
-#! - storage_len is the number of input values.
+#! - storage_ptr is the memory address where the note storage are stored.
+#! - num_storage_items is the number of input values.
 #! - SCRIPT_ROOT is the script root of the note.
 #! - SERIAL_NUM is the serial number of the note.
 #! - RECIPIENT is the commitment to the input note's script, storage, and the serial number.
 #!
 #! Locals:
-#! - 0: inputs_ptr
-#! - 1: storage_len
+#! - 0: storage_ptr
+#! - 1: num_storage_items
 #!
 #! Panics if:
-#! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
-#! - storage_len is greater than 1024.
+#! - storage_ptr is not word-aligned (i.e., is not a multiple of 4).
+#! - num_storage_items is greater than 1024.
 #!
 #! Invocation: exec
 @locals(1)
 pub proc build_recipient
     dup.1 dup.1
-    # => [inputs_ptr, storage_len, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [storage_ptr, num_storage_items, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
     exec.compute_storage_commitment
-    # => [STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [STORAGE_COMMITMENT, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
-    # store storage_len into local memory
+    # store num_storage_items into local memory
     dup.5 loc_store.0
-    # => [STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [STORAGE_COMMITMENT, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
     locaddr.0 add.1
     locaddr.0
-    # => [storage_len_start_ptr, storage_len_end_ptr, STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [num_storage_items_start_ptr, num_storage_items_end_ptr, STORAGE_COMMITMENT, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
     dup.5 dup.5 dup.5 dup.5
-    # => [STORAGE_COMMITMENT, storage_len_start_ptr, storage_len_end_ptr,
-    #     STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [STORAGE_COMMITMENT, num_storage_items_start_ptr, num_storage_items_end_ptr,
+    #     STORAGE_COMMITMENT, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
-    # compute the advice map key for storage_len by hashing the storage commitment
+    # compute the advice map key for num_storage_items by hashing the storage commitment
     exec.rpo256::hash
-    # => [hash(STORAGE_COMMITMENT), storage_len_start_ptr, storage_len_end_ptr,
-    #     STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [hash(STORAGE_COMMITMENT), num_storage_items_start_ptr, num_storage_items_end_ptr,
+    #     STORAGE_COMMITMENT, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
     adv.insert_mem
     dropw drop drop
-    # => [STORAGE_COMMITMENT, inputs_ptr, storage_len, SERIAL_NUM, SCRIPT_ROOT]
+    # => [STORAGE_COMMITMENT, storage_ptr, num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
     movup.5 movup.5 dup movdn.2
-    # => [inputs_ptr, storage_len, inputs_ptr, STORAGE_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+    # => [storage_ptr, num_storage_items, storage_ptr, STORAGE_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     add swap
-    # => [inputs_ptr, end_ptr, STORAGE_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
+    # => [storage_ptr, end_ptr, STORAGE_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
 
     movdn.5 movdn.5
-    # => [STORAGE_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
+    # => [STORAGE_COMMITMENT, storage_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
 
     adv.insert_mem
-    # => [STORAGE_COMMITMENT, inputs_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
+    # => [STORAGE_COMMITMENT, storage_ptr, end_ptr, SERIAL_NUM, SCRIPT_ROOT]
 
     movup.4 drop movup.4 drop
     # => [STORAGE_COMMITMENT, SERIAL_NUM, SCRIPT_ROOT]
