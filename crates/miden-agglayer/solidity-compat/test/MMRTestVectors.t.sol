@@ -20,68 +20,55 @@ contract MMRTestVectors is Test, DepositContractBase {
      * @notice Generates the canonical zeros and saves to JSON file.
      *         ZERO_0 = 0x0...0 (32 zero bytes)
      *         ZERO_n = keccak256(ZERO_{n-1} || ZERO_{n-1})
-     *         
+     *
      *         Output file: test-vectors/canonical_zeros.json
      */
     function test_generateCanonicalZeros() public {
-        string memory json = "{\n";
-        json = string.concat(json, '  "canonical_zeros": [\n');
+        bytes32[] memory zeros = new bytes32[](32);
         
-        bytes32 zero = bytes32(0);
-        for (uint256 height = 0; height < 32; height++) {
-            if (height < 31) {
-                json = string.concat(json, '    "', vm.toString(zero), '",\n');
-            } else {
-                json = string.concat(json, '    "', vm.toString(zero), '"\n');
-            }
-            zero = keccak256(abi.encodePacked(zero, zero));
+        bytes32 z = bytes32(0);
+        for (uint256 i = 0; i < 32; i++) {
+            zeros[i] = z;
+            z = keccak256(abi.encodePacked(z, z));
         }
-        json = string.concat(json, "  ]\n}");
-        
-        // Print to console
-        console.log(json);
+
+        // Foundry serializes bytes32[] to a JSON array automatically
+        string memory json = vm.serializeBytes32("root", "canonical_zeros", zeros);
         
         // Save to file
         string memory outputPath = "test-vectors/canonical_zeros.json";
-        vm.writeFile(outputPath, json);
-        console.log("\nSaved to:", outputPath);
+        vm.writeJson(json, outputPath);
+        console.log("Saved canonical zeros to:", outputPath);
     }
     
     /**
      * @notice Generates MMR frontier vectors (leaf-root pairs) and saves to JSON file.
+     *         Uses parallel arrays instead of array of objects for cleaner serialization.
      *         Output file: test-vectors/mmr_frontier_vectors.json
      */
     function test_generateVectors() public {
-        string memory json = "{\n";
-        json = string.concat(json, '  "vectors": [\n');
-        
+        bytes32[] memory leaves = new bytes32[](32);
+        bytes32[] memory roots = new bytes32[](32);
+        uint256[] memory counts = new uint256[](32);
+
         for (uint256 i = 0; i < 32; i++) {
             bytes32 leaf = bytes32(i);
             _addLeaf(leaf);
-            bytes32 root = getRoot();
-            
-            // Build JSON object for this vector
-            string memory vectorJson = string.concat(
-                '    {"leaf": "', vm.toString(leaf), 
-                '", "root": "', vm.toString(root),
-                '", "count": ', vm.toString(depositCount), "}"
-            );
-            
-            if (i < 31) {
-                json = string.concat(json, vectorJson, ",\n");
-            } else {
-                json = string.concat(json, vectorJson, "\n");
-            }
+
+            leaves[i] = leaf;
+            roots[i] = getRoot();
+            counts[i] = depositCount;
         }
-        
-        json = string.concat(json, "  ]\n}");
-        
-        // Print to console
-        console.log(json);
-        
+
+        // Serialize parallel arrays to JSON
+        string memory obj = "root";
+        vm.serializeBytes32(obj, "leaves", leaves);
+        vm.serializeBytes32(obj, "roots", roots);
+        string memory json = vm.serializeUint(obj, "counts", counts);
+
         // Save to file
         string memory outputPath = "test-vectors/mmr_frontier_vectors.json";
-        vm.writeFile(outputPath, json);
-        console.log("\nSaved to:", outputPath);
+        vm.writeJson(json, outputPath);
+        console.log("Saved MMR frontier vectors to:", outputPath);
     }
 }
