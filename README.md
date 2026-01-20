@@ -40,7 +40,7 @@ Miden is currently on release v0.13. This is an early version of the protocol an
 
 ### Planned features
 
-- **Encrypted notes**. With encrypted notes users will be able to put all note details on-chain, but the data contained within the notes would be encrypted with the recipient's ke (Encrypted notes are replaced with NoteAttachment).
+- **Encrypted notes**. With encrypted notes users will be able to put all note details on-chain, but the data contained within the notes would be encrypted with the recipient's key.
 
 ## Project structure
 
