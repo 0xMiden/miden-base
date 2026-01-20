@@ -1691,25 +1691,25 @@ end
 #! Returns the number of inputs of the note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [storage_len]
+#! Outputs: [num_storage_items]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - storage_len is the number of storage items of the input note.
-pub proc get_input_note_storage_len
+#! - num_storage_items is the number of storage items of the input note.
+pub proc get_input_note_num_storage_items
     add.INPUT_NOTE_NUM_STORAGE_ITEMS_OFFSET
     mem_load
 end
 
 #! Sets the number of inputs for an input note located at the specified memory address.
 #!
-#! Inputs:  [note_ptr, storage_len]
+#! Inputs:  [note_ptr, num_storage_items]
 #! Outputs: []
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - storage_len is the number of storage items of the input note.
-pub proc set_input_note_storage_len
+#! - num_storage_items is the number of storage items of the input note.
+pub proc set_input_note_num_storage_items
     add.INPUT_NOTE_NUM_STORAGE_ITEMS_OFFSET
     mem_store
 end

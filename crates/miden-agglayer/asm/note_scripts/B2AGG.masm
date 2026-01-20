@@ -7,7 +7,7 @@ use miden::standards::wallets::basic->basic_wallet
 # CONSTANTS
 # =================================================================================================
 
-const B2AGG_NOTE_STORAGE_LEN=6
+const B2AGG_NOTE_NUM_STORAGE_ITEMS=6
 
 # ERRORS
 # =================================================================================================
@@ -62,7 +62,7 @@ begin
         push.8 exec.active_note::get_storage
         # => [num_storage_items, dest_ptr, pad(16)]
 
-        push.B2AGG_NOTE_STORAGE_LEN assert_eq.err=ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS drop
+        push.B2AGG_NOTE_NUM_STORAGE_ITEMS assert_eq.err=ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS drop
         # => [pad(16)]
 
         # Store note assets -> mem[0..4]
