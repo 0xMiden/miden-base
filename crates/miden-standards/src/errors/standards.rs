@@ -15,6 +15,9 @@ pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError:
 /// Error Message: "distribute would cause the maximum supply to be exceeded"
 pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: MasmError = MasmError::from_static_str("distribute would cause the maximum supply to be exceeded");
 
+/// Error Message: "contract is paused"
+pub const ERR_IS_PAUSED: MasmError = MasmError::from_static_str("contract is paused");
+
 /// Error Message: "number of approvers must be equal to or greater than threshold"
 pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str("number of approvers must be equal to or greater than threshold");
 

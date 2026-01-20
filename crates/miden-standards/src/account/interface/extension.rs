@@ -21,6 +21,7 @@ use crate::account::components::{
     falcon_512_rpo_multisig_library,
     network_fungible_faucet_library,
     no_auth_library,
+    regulated_network_fungible_faucet_library,
 };
 use crate::account::interface::{
     AccountComponentInterface,
@@ -101,6 +102,13 @@ impl AccountInterfaceExt for AccountInterface {
                 AccountComponentInterface::NetworkFungibleFaucet => {
                     component_proc_digests.extend(
                         network_fungible_faucet_library().mast_forest().procedure_digests(),
+                    );
+                },
+                AccountComponentInterface::RegulatedNetworkFungibleFaucet => {
+                    component_proc_digests.extend(
+                        regulated_network_fungible_faucet_library()
+                            .mast_forest()
+                            .procedure_digests(),
                     );
                 },
                 AccountComponentInterface::AuthEcdsaK256Keccak => {
