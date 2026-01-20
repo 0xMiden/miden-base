@@ -255,12 +255,12 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
         &self,
         recipient_digest: Word,
     ) -> Result<(NoteStorage, Word, Word), TransactionKernelError> {
-        let (sn_script_hash, inputs_commitment) =
+        let (sn_script_hash, storage_commitment) =
             read_double_word_from_adv_map(self, recipient_digest)?;
         let (sn_hash, script_root) = read_double_word_from_adv_map(self, sn_script_hash)?;
         let (serial_num, _) = read_double_word_from_adv_map(self, sn_hash)?;
 
-        let inputs = self.read_note_storage_from_adv_map(&inputs_commitment)?;
+        let inputs = self.read_note_storage_from_adv_map(&storage_commitment)?;
 
         Ok((inputs, script_root, serial_num))
     }
@@ -268,17 +268,17 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
     /// Extracts and validates note storage from the advice provider.
     fn read_note_storage_from_adv_map(
         &self,
-        inputs_commitment: &Word,
+        storage_commitment: &Word,
     ) -> Result<NoteStorage, TransactionKernelError> {
-        let inputs_data = self.advice_provider().get_mapped_values(inputs_commitment);
+        let inputs_data = self.advice_provider().get_mapped_values(storage_commitment);
 
         match inputs_data {
             None => Ok(NoteStorage::default()),
-            Some(inputs) => {
-                let inputs_commitment_hash = Hasher::hash_elements(inputs_commitment.as_elements());
+            Some(storage_items) => {
+                let storage_commitment_hash = Hasher::hash_elements(storage_commitment.as_elements());
                 let num_inputs = self
                     .advice_provider()
-                    .get_mapped_values(&inputs_commitment_hash)
+                    .get_mapped_values(&storage_commitment_hash)
                     .ok_or_else(|| {
                         TransactionKernelError::other(
                             "expected num_inputs to be present in advice provider",
@@ -289,16 +289,16 @@ impl<'a> TransactionKernelProcess for ProcessState<'a> {
                         "expected num_inputs advice entry to contain exactly one element",
                     ));
                 }
-                let num_inputs = num_inputs[0].as_int() as usize;
+                let num_storage_items = num_inputs[0].as_int() as usize;
 
-                let note_storage = NoteStorage::new(inputs[0..num_inputs].to_vec())
+                let note_storage = NoteStorage::new(storage_items[0..num_storage_items].to_vec())
                     .map_err(TransactionKernelError::MalformedNoteStorage)?;
 
-                if &note_storage.commitment() == inputs_commitment {
+                if &note_storage.commitment() == storage_commitment {
                     Ok(note_storage)
                 } else {
                     Err(TransactionKernelError::InvalidNoteStorage {
-                        expected: *inputs_commitment,
+                        expected: *storage_commitment,
                         actual: note_storage.commitment(),
                     })
                 }

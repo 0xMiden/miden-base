@@ -662,16 +662,16 @@ end
 #! - note_ptr is the memory location for the input note.
 #! - num_storage_items is the note's number of storage items.
 proc process_note_num_storage_items
-    # move the inputs length from the advice stack to the operand stack
+    # move the number of storage items from the advice stack to the operand stack
     adv_push.1
     # => [num_storage_items, note_ptr]
 
-    # validate the input length
+    # validate the number of storage items
     dup push.MAX_NOTE_STORAGE_ITEMS lte
     assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_STORAGE_ITEMS_EXCEEDED_LIMIT
     # => [num_storage_items, note_ptr]
 
-    # store the inputs length into the memory
+    # store the number of storage items into the memory
     dup.1 exec.memory::set_input_note_num_storage_items
     # => [note_ptr]
 end

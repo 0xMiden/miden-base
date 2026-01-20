@@ -363,9 +363,9 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
 
             push.{NOTE_0_PTR} exec.active_note::get_storage
-            # => [num_inputs, dest_ptr]
+            # => [num_storage_items, dest_ptr]
 
-            eq.{num_inputs} assert.err="unexpected num inputs"
+            eq.{num_storage_items} assert.err="unexpected num_storage_items"
             # => [dest_ptr]
 
             dup eq.{NOTE_0_PTR} assert.err="unexpected dest ptr"
@@ -380,7 +380,7 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         "#,
-        num_inputs = note0.storage().len(),
+        num_storage_items = note0.storage().len(),
         inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
