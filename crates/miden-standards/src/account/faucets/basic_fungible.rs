@@ -67,6 +67,7 @@ procedure_digest!(
 /// [builder]: crate::code_builder::CodeBuilder
 pub struct BasicFungibleFaucet {
     max_supply: Felt,
+    token_supply: Felt,
     decimals: u8,
     symbol: TokenSymbol,
 }
@@ -84,9 +85,11 @@ impl BasicFungibleFaucet {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`BasicFungibleFaucet`] component from the given pieces of metadata.
+    /// Creates a new [`BasicFungibleFaucet`] component from the given pieces of metadata and with
+    /// an initial token supply of zero.
     ///
-    /// # Errors:
+    /// # Errors
+    ///
     /// Returns an error if:
     /// - the decimals parameter exceeds maximum value of [`Self::MAX_DECIMALS`].
     /// - the max supply parameter exceeds maximum possible amount for a fungible asset
@@ -109,13 +112,38 @@ impl BasicFungibleFaucet {
             });
         }
 
-        Ok(Self { symbol, decimals, max_supply })
+        Ok(Self {
+            max_supply,
+            token_supply: Felt::ZERO,
+            decimals,
+            symbol,
+        })
+    }
+
+    /// Sets the token_supply of the basic fungible faucet.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the token supply exceeds the max supply.
+    pub fn with_token_supply(mut self, token_supply: Felt) -> Result<Self, FungibleFaucetError> {
+        if token_supply.as_int() > self.max_supply.as_int() {
+            return Err(FungibleFaucetError::TokenSupplyExceedsMaxSupply {
+                token_supply: token_supply.as_int(),
+                max_supply: self.max_supply.as_int(),
+            });
+        }
+
+        self.token_supply = token_supply;
+
+        Ok(self)
     }
 
     /// Attempts to create a new [`BasicFungibleFaucet`] component from the associated account
     /// interface and storage.
     ///
-    /// # Errors:
+    /// # Errors
+    ///
     /// Returns an error if:
     /// - the provided [`AccountInterface`] does not contain a
     ///   [`AccountComponentInterface::BasicFungibleFaucet`] component.
@@ -136,9 +164,9 @@ impl BasicFungibleFaucet {
                         slot_name: BasicFungibleFaucet::metadata_slot().clone(),
                         source: err,
                     })?;
-                let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
+                let [token_supply, max_supply, decimals, token_symbol] = *faucet_metadata;
 
-                // verify metadata values
+                // Convert token symbol and decimals to expected types.
                 let token_symbol = TokenSymbol::try_from(token_symbol)
                     .map_err(FungibleFaucetError::InvalidTokenSymbol)?;
                 let decimals = decimals.as_int().try_into().map_err(|_| {
@@ -148,7 +176,8 @@ impl BasicFungibleFaucet {
                     }
                 })?;
 
-                return BasicFungibleFaucet::new(token_symbol, decimals, max_supply);
+                return BasicFungibleFaucet::new(token_symbol, decimals, max_supply)
+                    .and_then(|fungible_faucet| fungible_faucet.with_token_supply(token_supply));
             }
         }
 
@@ -178,6 +207,11 @@ impl BasicFungibleFaucet {
         self.max_supply
     }
 
+    /// Returns the token supply of the faucet.
+    pub fn token_supply(&self) -> Felt {
+        self.token_supply
+    }
+
     /// Returns the digest of the `distribute` account procedure.
     pub fn distribute_digest() -> Word {
         *BASIC_FUNGIBLE_FAUCET_DISTRIBUTE
@@ -194,10 +228,10 @@ impl From<BasicFungibleFaucet> for AccountComponent {
         // Note: data is stored as [a0, a1, a2, a3] but loaded onto the stack as
         // [a3, a2, a1, a0, ...]
         let metadata = Word::new([
+            faucet.token_supply,
             faucet.max_supply,
             Felt::from(faucet.decimals),
-            faucet.symbol.into(),
-            Felt::ZERO,
+            Felt::from(faucet.symbol),
         ]);
         let storage_slot =
             StorageSlot::with_value(BasicFungibleFaucet::metadata_slot().clone(), metadata);

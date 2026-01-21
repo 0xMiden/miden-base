@@ -61,6 +61,8 @@ pub enum FungibleFaucetError {
     TooManyDecimals { actual: u64, max: u8 },
     #[error("faucet metadata max supply is {actual} which exceeds max value of {max}")]
     MaxSupplyTooLarge { actual: u64, max: u64 },
+    #[error("token supply {token_supply} exceeds max_supply {max_supply}")]
+    TokenSupplyExceedsMaxSupply { token_supply: u64, max_supply: u64 },
     #[error(
         "account interface provided for faucet creation does not have basic fungible faucet component"
     )]
