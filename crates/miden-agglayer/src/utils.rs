@@ -32,7 +32,7 @@ pub fn felts_to_u256_bytes(limbs: [Felt; 8]) -> [u8; 32] {
     bytes
 }
 
-/// Convert a Vec<Felt> to a U256
+/// Convert a `Vec<Felt>` to a U256
 pub fn felts_to_u256(felts: Vec<Felt>) -> U256 {
     assert_eq!(felts.len(), 8, "expected exactly 8 felts");
     let array: [Felt; 8] =
