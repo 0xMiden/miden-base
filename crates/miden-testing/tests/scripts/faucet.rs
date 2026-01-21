@@ -354,7 +354,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{input6} mem_store.6
 
                 push.7 push.0
-                # => [storage_ptr, storage_length = 7, SERIAL_NUM, SCRIPT_ROOT]
+                # => [storage_ptr, num_storage_items = 7, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
                 # => [RECIPIENT]
@@ -437,9 +437,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
         "Output note storage commitment should match expected storage commitment"
     );
     assert_eq!(
-        full_note.recipient().storage().len(),
-        note_storage.len(),
-        "Output note storage length should match expected storage length"
+        full_note.recipient().storage().num_items(),
+        note_storage.num_items(),
+        "Output note number of storage items should match expected number of storage items"
     );
 
     // Verify the output note ID matches the expected note ID

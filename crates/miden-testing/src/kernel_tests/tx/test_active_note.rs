@@ -321,17 +321,17 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             .build()?
     };
 
-    fn construct_inputs_assertions(note: &Note) -> String {
+    fn construct_storage_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for inputs_chunk in note.storage().items().chunks(WORD_SIZE) {
-            let mut inputs_word = EMPTY_WORD;
-            inputs_word.as_mut_slice()[..inputs_chunk.len()].copy_from_slice(inputs_chunk);
+        for storage_chunk in note.storage().items().chunks(WORD_SIZE) {
+            let mut storage_word = EMPTY_WORD;
+            storage_word.as_mut_slice()[..storage_chunk.len()].copy_from_slice(storage_chunk);
 
             code += &format!(
                 r#"
-                # assert the inputs are correct
+                # assert the storage items are correct
                 # => [dest_ptr]
-                dup padw movup.4 mem_loadw_be push.{inputs_word} assert_eqw.err="inputs are incorrect"
+                dup padw movup.4 mem_loadw_be push.{storage_word} assert_eqw.err="storage items are incorrect"
                 # => [dest_ptr]
 
                 push.4 add
@@ -363,16 +363,16 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
 
             push.{NOTE_0_PTR} exec.active_note::get_storage
-            # => [num_inputs, dest_ptr]
+            # => [num_storage_items, dest_ptr]
 
-            eq.{num_inputs} assert.err="unexpected num inputs"
+            eq.{num_storage_items} assert.err="unexpected num_storage_items"
             # => [dest_ptr]
 
             dup eq.{NOTE_0_PTR} assert.err="unexpected dest ptr"
             # => [dest_ptr]
 
-            # apply note 1 inputs assertions
-            {inputs_assertions}
+            # apply note 1 storage assertions
+            {storage_assertions}
             # => [dest_ptr]
 
             # clear the stack
@@ -380,8 +380,8 @@ async fn test_active_note_get_inputs() -> anyhow::Result<()> {
             # => []
         end
         "#,
-        num_inputs = note0.storage().len(),
-        inputs_assertions = construct_inputs_assertions(note0),
+        num_storage_items = note0.storage().num_items(),
+        storage_assertions = construct_storage_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
 
@@ -445,11 +445,11 @@ async fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_storage` procedure to trigger note storage length assertion
+                # execute the `get_storage` procedure to trigger note number of storage items assertion
                 push.0 exec.active_note::get_storage
-                # => [storage_length, 0]
+                # => [num_storage_items, 0]
 
-                # assert that the storage length is 8
+                # assert that the number of storage items is 8
                 push.8 assert_eq.err=\"number of storage values should be equal to 8\"
 
                 # clean the stack

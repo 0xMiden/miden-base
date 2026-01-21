@@ -151,7 +151,7 @@ Upon successful verification of the transaction:
 Consumption of a `Note` can be restricted to certain accounts or entities. For instance, the P2ID and P2IDE `Note` scripts target a specific account ID. Alternatively, Miden defines a RECIPIENT (represented as 32 bytes) computed as:
 
 ```arduino
-hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)
+hash(hash(hash(serial_num, [0; 4]), script_root), storage_commitment)
 ```
 
 Only those who know the RECIPIENT’s pre-image can consume the `Note`. For private notes, this ensures an additional layer of control and privacy, as only parties with the correct data can claim the `Note`.
@@ -165,14 +165,14 @@ For a practical example, refer to the [SWAP note script](https://github.com/0xMi
 The `Note` nullifier, computed as:
 
 ```arduino
-hash(serial_num, script_root, input_commitment, vault_hash)
+hash(serial_num, script_root, storage_commitment, vault_hash)
 ```
 
 This achieves the following properties:
 
 - Every `Note` can be reduced to a single unique nullifier.
 - One cannot derive a note's hash from its nullifier.
-- To compute the nullifier, one must know all components of the `Note`: serial_num, script_root, input_commitment, and vault_hash.
+- To compute the nullifier, one must know all components of the `Note`: serial_num, script_root, storage_commitment, and vault_hash.
 
 That means if a `Note` is private and the operator stores only the note's hash, only those with the `Note` details know if this `Note` has been consumed already. Zcash first [introduced](https://zcash.github.io/orchard/design/nullifiers.html#nullifiers) this approach.
 

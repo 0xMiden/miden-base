@@ -6,7 +6,7 @@ use miden::standards::wallets::basic->basic_wallet
 # ERRORS
 # =================================================================================================
 
-const ERR_P2ID_UNEXPECTED_STORAGE_LENGTH="P2ID note expects exactly 2 note storage items"
+const ERR_P2ID_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="P2ID note expects exactly 2 note storage items"
 
 const ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 
@@ -31,10 +31,10 @@ const ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transacti
 pub proc main
     # store the note storage to memory starting at address 0
     padw push.0 exec.active_note::get_storage
-    # => [storage_len, storage_ptr, EMPTY_WORD]
+    # => [num_storage_items, storage_ptr, EMPTY_WORD]
 
-    # make sure the storage length is 2
-    eq.2 assert.err=ERR_P2ID_UNEXPECTED_STORAGE_LENGTH
+    # make sure the number of storage items is 2
+    eq.2 assert.err=ERR_P2ID_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => [storage_ptr, EMPTY_WORD]
 
     # read the target account ID from the note storage

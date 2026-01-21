@@ -206,21 +206,21 @@ async fn test_build_recipient() -> anyhow::Result<()> {
             # Test with 4 values (needs padding to 8)
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.4.4000         # num_inputs, inputs_ptr
+            push.4.4000         # num_storage_items, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_4]
 
             # Test with 5 values (needs padding to 8)
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.5.4000         # num_inputs, inputs_ptr
+            push.5.4000         # num_storage_items, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_5, RECIPIENT_4]
 
             # Test with 8 values (no padding needed - exactly one rate block)
             push.{script_root}  # SCRIPT_ROOT
             push.{serial_num}   # SERIAL_NUM
-            push.8.4000         # num_inputs, inputs_ptr
+            push.8.4000         # num_storage_items, storage_ptr
             exec.note::build_recipient
             # => [RECIPIENT_8, RECIPIENT_5, RECIPIENT_4]
 
@@ -267,12 +267,12 @@ async fn test_build_recipient() -> anyhow::Result<()> {
             "advice entry with note storage should contain the unpadded values"
         );
 
-        let num_inputs_advice_map_key =
+        let num_storage_items_advice_map_key =
             Hasher::hash_elements(note_storage.0.commitment().as_elements());
         assert_eq!(
-            exec_output.advice.get_mapped_values(&num_inputs_advice_map_key).unwrap(),
-            &[Felt::from(note_storage.0.len())],
-            "advice entry with note storage length should contain the original number of values"
+            exec_output.advice.get_mapped_values(&num_storage_items_advice_map_key).unwrap(),
+            &[Felt::from(note_storage.0.num_items())],
+            "advice entry with note number of storage items should contain the original number of values"
         );
     }
 
@@ -432,10 +432,10 @@ pub async fn test_timelock() -> anyhow::Result<()> {
       begin
           # store the note storage to memory starting at address 0
           push.0 exec.active_note::get_storage
-          # => [storage_length, storage_ptr]
+          # => [num_storage_items, storage_ptr]
 
-          # make sure the storage length is 1
-          eq.1 assert.err="note storage length is not 1"
+          # make sure the number of storage items is 1
+          eq.1 assert.err="note number of storage items is not 1"
           # => [storage_ptr]
 
           # read the timestamp at which the note can be consumed

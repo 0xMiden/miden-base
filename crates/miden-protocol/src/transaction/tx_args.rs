@@ -177,7 +177,7 @@ impl TransactionArgs {
             (storage.commitment(), storage.to_elements()),
             (
                 Hasher::hash_elements(storage.commitment().as_elements()),
-                vec![Felt::from(storage.len())],
+                vec![Felt::from(storage.num_items())],
             ),
             (script.root(), script_encoded),
         ];
