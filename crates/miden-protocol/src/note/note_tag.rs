@@ -104,13 +104,13 @@ impl NoteTag {
             },
         }
     }
-
     /// Constructs a note tag that targets the given `account_id` with a custom `tag_len`.
     ///
     /// The tag is constructed by:
-    /// - Extracting the 30 most significant bits of the account ID prefix.
-    /// - Setting the two most significant bits of the tag to zero.
-    /// - Copying the top `tag_len` bits of the extracted prefix into the tag.
+    /// - Extracting the upper 32 bits of the account ID prefix.
+    /// - Interpreting them as a 32-bit value with the layout: `[ 2 zero bits | 30 bits of account
+    ///   prefix ]`.
+    /// - Copying the top `tag_len` bits into the tag.
     /// - Setting the remaining bits to zero.
     ///
     /// # Errors
@@ -126,9 +126,9 @@ impl NoteTag {
 
         let prefix_id: u64 = account_id.prefix().into();
 
-        // Extract the 30 most significant bits of the account ID prefix.
-        // Layout: [ 00 | 30 bits ]
-        let high_bits = (prefix_id >> 34) as u32;
+        // Extract the upper 32 bits of the account ID prefix.
+        // Layout: [ 2 zero bits | 30 bits of account prefix ].
+        let high_bits = (prefix_id >> 32) as u32;
 
         // Mask within the 30-bit prefix space.
         let masked = if tag_len == 0 {
