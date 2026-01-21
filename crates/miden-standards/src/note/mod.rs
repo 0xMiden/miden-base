@@ -23,7 +23,7 @@ pub mod mint_storage;
 pub mod utils;
 
 mod network_account_target;
-pub use network_account_target::NetworkAccountTarget;
+pub use network_account_target::{NetworkAccountTarget, NetworkAccountTargetError};
 
 mod well_known_note_attachment;
 pub use well_known_note_attachment::WellKnownNoteAttachment;

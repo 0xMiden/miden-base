@@ -4,7 +4,7 @@
 
 ### Features
 
-Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](https://github.com/0xMiden/miden-base/pull/2275)).
+- Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](https://github.com/0xMiden/miden-base/pull/2275)).
 
 ### Changes
 
@@ -12,6 +12,10 @@ Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](http
 - [BREAKING] refactored `TransactionAuthenticator::get_public_key()` method to return `Arc<PublicKey> `instead of `&PublicKey` ([#2304](https://github.com/0xMiden/miden-base/pull/2304)).
 - [BREAKING] Renamed `NoteInputs` to `NoteStorage` to better reflect that values are stored data associated with a note rather than inputs ([#1662](https://github.com/0xMiden/miden-base/issues/1662), [#2316](https://github.com/0xMiden/miden-base/issues/2316)).
 - Removed `NoteType::Encrypted` ([#2315](https://github.com/0xMiden/miden-base/pull/2315)).
+
+## 0.13.1 (2026-01-20)
+
+- Make `NetworkAccountTargetError` public ([#2319](https://github.com/0xMiden/miden-base/pull/2319)).
 
 ## 0.13.0 (2026-01-16)
 
