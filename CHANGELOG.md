@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.1 (TBD)
+
+- Make `NetworkAccountTargetError` public ([#2319](https://github.com/0xMiden/miden-base/pull/2319)).
+
 ## 0.13.0 (2026-01-16)
 
 ### Features
