@@ -3,6 +3,7 @@ use miden::protocol::active_note
 use miden::protocol::faucet
 use miden::protocol::native_account
 use miden::protocol::output_note
+use ::miden::protocol::asset::FUNGIBLE_ASSET_MAX_AMOUNT
 
 # CONSTANTS
 # =================================================================================================
@@ -76,16 +77,13 @@ pub proc distribute
     lte assert.err=ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY
     # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
-    # get the maximum possible amount representable in the protocol
-    dup exec.asset::get_fungible_asset_max_amount
-    # => [max_allowed_supply, max_supply, max_supply, token_supply, amount, tag, note_type, RECIPIENT]
-
     # assert max_supply <= max_allowed_supply
     # ensures the max supply never exceeds what can be represented and because of the previous
     # assertion, this also implies token_supply <= max_supply <= max_allowed_supply
     # this means adding the amount to the token_supply will not exceed the max representable
     # amount either
-    lte assert.err=ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY
+    dup lte.FUNGIBLE_ASSET_MAX_AMOUNT
+    assert.err=ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY
     # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
     dup.2 swap dup.2

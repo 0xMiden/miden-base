@@ -12,8 +12,6 @@ use miden_protocol::errors::MasmError;
 /// Error Message: "burn requires exactly 1 note asset"
 pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
 
-/// Error Message: "asset amount to burn exceeds the existing token supply"
-pub const ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY: MasmError = MasmError::from_static_str("asset amount to burn exceeds the existing token supply");
 /// Error Message: "amount passed to distribute exceeds the maximum supply"
 pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("amount passed to distribute exceeds the maximum supply");
 /// Error Message: "distribute would cause the maximum supply to be exceeded"

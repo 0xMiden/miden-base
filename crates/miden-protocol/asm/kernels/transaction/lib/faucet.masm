@@ -3,6 +3,7 @@ use $kernel::account_id
 use $kernel::asset
 use $kernel::asset_vault
 use $kernel::memory
+use $kernel::util::asset::FUNGIBLE_ASSET_MAX_AMOUNT
 
 # ERRORS
 # =================================================================================================
@@ -47,7 +48,7 @@ pub proc mint_fungible_asset
     # => [TOTAL_ISSUANCE, ASSET]
 
     # prepare stack to ensure that minting the asset will not exceed the maximum
-    dup.7 dup exec.asset::get_fungible_asset_max_amount dup.3
+    dup.7 dup push.FUNGIBLE_ASSET_MAX_AMOUNT dup.3
     # => [total_issuance, max_allowed_issuance, amount, amount, TOTAL_ISSUANCE, ASSET]
 
     # compute difference to ensure that the total issuance will not exceed the maximum
