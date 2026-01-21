@@ -127,8 +127,8 @@ impl NoteTag {
         let prefix_id: u64 = account_id.prefix().into();
 
         // Extract the upper 32 bits of the account ID prefix.
-        // Layout: [ 2 zero bits | 30 bits of account prefix ].
-        let high_bits = (prefix_id >> 32) as u32;
+        //[ 2 zero bits | remaining high bits (30 bits)].
+        let high_bits = (prefix_id >> 34) as u32;
 
         // Mask within the 30-bit prefix space.
         let masked = if tag_len == 0 {
