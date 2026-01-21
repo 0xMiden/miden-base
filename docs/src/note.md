@@ -22,7 +22,7 @@ These components are:
 
 1. [Assets](#assets)
 2. [Script](#script)
-3. [Inputs](#inputs)
+3. [Storage](#storage)
 4. [Serial number](#serial-number)
 5. [Metadata](#metadata)
 
@@ -42,13 +42,13 @@ The code executed when the `Note` is consumed.
 
 Each `Note` has a script that defines the conditions under which it can be consumed. When accounts consume notes in transactions, `Note` scripts call the account’s interface functions. This enables all sorts of operations beyond simple asset transfers. The Miden VM’s Turing completeness allows for arbitrary logic, making `Note` scripts highly versatile. There is no limit to the amount of code a `Note` can hold.
 
-### Inputs
+### Storage
 
 :::note
-Arguments passed to the `Note` script during execution.
+The storage of the `Note` that it can access during execution.
 :::
 
-A `Note` can have up to 128 input values, which adds up to a maximum of 1 KB of data. The `Note` script can access these inputs. They can convey arbitrary parameters for `Note` consumption.
+A `Note` can store up to 1024 items in its storage, which adds up to a maximum of 8 KB of data. The `Note` script can access storage during execution and it is used to parameterize a note's script. For instance, a P2ID note stores the ID of the target account that can consume the note. This makes the P2ID note script reusable by changing the target account ID.
 
 ### Serial number
 
@@ -139,7 +139,7 @@ Using `Note` tags strikes a balance between privacy and efficiency. Without tags
 
 ### Note consumption
 
-To consume a `Note`, the consumer must know its data, including the inputs needed to compute the nullifier. Consumption occurs as part of a transaction. Upon successful consumption a nullifier is generated for the consumed notes.
+To consume a `Note`, the consumer must know its data, including the note's storage which is needed to compute the nullifier. Consumption occurs as part of a transaction. Upon successful consumption a nullifier is generated for the consumed notes.
 
 Upon successful verification of the transaction:
 
@@ -191,7 +191,7 @@ The P2ID note script implements a simple pay-to-account-ID pattern. It adds all 
 **Key characteristics:**
 
 - **Purpose:** Direct asset transfer to a specific account ID
-- **Inputs:** Requires exactly 2 note storage containing the target account ID
+- **Storage:** Requires exactly 2 storage items containing the target account ID
 - **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
 - **Requirements:** Target account must expose the `miden::standards::wallets::basic::receive_asset` procedure
 
@@ -204,7 +204,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 **Key characteristics:**
 
 - **Purpose:** Advanced asset transfer with time-lock and reclaim capabilities
-- **Inputs:** Requires exactly 4 note storage:
+- **Storage:** Requires exactly 4 storage items:
   - Target account ID
   - Reclaim block height (when sender can reclaim)
   - Time-lock block height (when target can consume)
@@ -226,7 +226,7 @@ The SWAP note script implements atomic asset swapping functionality.
 **Key characteristics:**
 
 - **Purpose:** Atomic asset exchange between two parties
-- **Inputs:** Requires exactly 16 note storage specifying:
+- **Storage:** Requires exactly 16 storage items specifying:
   - Requested asset details
   - Payback note recipient information
   - Note creation parameters (type, tag, attachment)
