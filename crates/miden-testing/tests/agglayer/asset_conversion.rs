@@ -1,91 +1,10 @@
 extern crate alloc;
 
-use alloc::sync::Arc;
-
-use miden_agglayer::{agglayer_library, utils};
-use miden_assembly::{Assembler, DefaultSourceManager};
-use miden_core_lib::CoreLibrary;
-use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, StackInputs};
+use miden_agglayer::utils;
 use miden_protocol::Felt;
-use miden_protocol::transaction::TransactionKernel;
 use primitive_types::U256;
 
-// ================================================================================================
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Convert a Vec<Felt> to a U256
-fn felts_to_u256(felts: Vec<Felt>) -> U256 {
-    assert_eq!(felts.len(), 8, "expected exactly 8 felts");
-    let array: [Felt; 8] =
-        [felts[0], felts[1], felts[2], felts[3], felts[4], felts[5], felts[6], felts[7]];
-    let bytes = utils::felts_to_u256_bytes(array);
-    U256::from_little_endian(&bytes)
-}
-
-/// Convert the top 8 u32 values from the execution stack to a U256
-fn stack_to_u256(exec_output: &ExecutionOutput) -> U256 {
-    let felts: Vec<Felt> = exec_output.stack[0..8].to_vec();
-    felts_to_u256(felts)
-}
-
-/// Helper function to convert U256 to Felt array for MASM input
-fn u256_to_felts(value: U256) -> [Felt; 8] {
-    use miden_agglayer::eth_types::EthAmount;
-    let eth_amount = EthAmount::from_u256(value);
-    eth_amount.to_elements()
-}
-
-/// Execute a MASM script with optional advice inputs
-async fn execute_masm_script(
-    script_code: &str,
-    advice_values: Vec<u64>,
-) -> Result<ExecutionOutput, ExecutionError> {
-    let asset_conversion_lib = agglayer_library();
-
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
-        .with_dynamic_library(CoreLibrary::default())
-        .unwrap()
-        .with_dynamic_library(asset_conversion_lib.clone())
-        .unwrap()
-        .assemble_program(script_code)
-        .unwrap();
-
-    let mut host = DefaultHost::default();
-    let test_lib = TransactionKernel::library();
-    host.load_library(test_lib.mast_forest()).unwrap();
-    let std_lib = CoreLibrary::default();
-    host.load_library(std_lib.mast_forest()).unwrap();
-    host.load_library(asset_conversion_lib.mast_forest()).unwrap();
-
-    let stack_inputs = StackInputs::new(vec![]).unwrap();
-    let advice_inputs = if advice_values.is_empty() {
-        AdviceInputs::default()
-    } else {
-        AdviceInputs::default().with_stack_values(advice_values).unwrap()
-    };
-
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-    processor.execute(&program, &mut host).await
-}
-
-/// Helper to assert execution fails with a specific error message
-async fn assert_execution_fails_with(
-    script_code: &str,
-    advice_values: Vec<u64>,
-    expected_error: &str,
-) {
-    let result = execute_masm_script(script_code, advice_values).await;
-    assert!(result.is_err(), "Expected execution to fail but it succeeded");
-    let error_msg = result.unwrap_err().to_string();
-    assert!(
-        error_msg.contains(expected_error),
-        "Expected error containing '{}', got: {}",
-        expected_error,
-        error_msg
-    );
-}
+use super::test_utils::{assert_execution_fails_with, execute_masm_script, stack_to_u256};
 
 // ================================================================================================
 // SCALE UP TESTS (Felt -> U256)
@@ -183,7 +102,7 @@ async fn test_scale_down_helper(
     scale_exp: u32,
     expected_y: u64,
 ) -> anyhow::Result<()> {
-    let x_felts = u256_to_felts(x_u256);
+    let x_felts = utils::u256_to_felts(x_u256);
 
     let script_code = format!(
         "
@@ -259,7 +178,7 @@ async fn test_scale_down_wrong_advice_y_minus_1() {
     let correct_y = 10u64;
     let wrong_y = correct_y - 1; // y=9 is incorrect
 
-    let x_felts = u256_to_felts(x_u256);
+    let x_felts = utils::u256_to_felts(x_u256);
 
     let script_code = format!(
         "
@@ -295,7 +214,7 @@ async fn test_scale_down_wrong_advice_y_plus_1() {
     let correct_y = 10u64;
     let wrong_y = correct_y + 1; // y=11 is incorrect
 
-    let x_felts = u256_to_felts(x_u256);
+    let x_felts = utils::u256_to_felts(x_u256);
 
     let script_code = format!(
         "
@@ -331,7 +250,7 @@ async fn test_scale_down_wrong_advice_with_remainder() {
     let scale_exp = 18;
     let correct_y = 1u64;
 
-    let x_felts = u256_to_felts(x_u256);
+    let x_felts = utils::u256_to_felts(x_u256);
 
     let script_code = format!(
         "
@@ -376,7 +295,7 @@ async fn test_scale_down_wrong_advice_with_remainder() {
 async fn test_scale_down_exceeds_max_scale() {
     // scale_exp = 19 should fail in pow10
     let x_u256 = U256::from(1000u64);
-    let x_felts = u256_to_felts(x_u256);
+    let x_felts = utils::u256_to_felts(x_u256);
 
     let script_code = format!(
         "
@@ -452,7 +371,7 @@ async fn test_scale_down_remainder_exactly_scale_fails() {
     let scale = 10u64.pow(s);
     let x = y * scale + scale; // This is actually (y+1)*scale
 
-    let x_felts = u256_to_felts(U256::from(x));
+    let x_felts = utils::u256_to_felts(U256::from(x));
 
     let script_code = format!(
         "

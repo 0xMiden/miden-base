@@ -1,5 +1,10 @@
+use alloc::vec::Vec;
+
 use miden_core::FieldElement;
 use miden_protocol::Felt;
+use primitive_types::U256;
+
+use super::eth_types::EthAmount;
 
 // UTILITY FUNCTIONS
 // ================================================================================================
@@ -25,4 +30,19 @@ pub fn felts_to_u256_bytes(limbs: [Felt; 8]) -> [u8; 32] {
         bytes[i * 4..(i + 1) * 4].copy_from_slice(&limb_bytes);
     }
     bytes
+}
+
+/// Convert a Vec<Felt> to a U256
+pub fn felts_to_u256(felts: Vec<Felt>) -> U256 {
+    assert_eq!(felts.len(), 8, "expected exactly 8 felts");
+    let array: [Felt; 8] =
+        [felts[0], felts[1], felts[2], felts[3], felts[4], felts[5], felts[6], felts[7]];
+    let bytes = felts_to_u256_bytes(array);
+    U256::from_little_endian(&bytes)
+}
+
+/// Helper function to convert U256 to Felt array for MASM input
+pub fn u256_to_felts(value: U256) -> [Felt; 8] {
+    let eth_amount = EthAmount::from_u256(value);
+    eth_amount.to_elements()
 }

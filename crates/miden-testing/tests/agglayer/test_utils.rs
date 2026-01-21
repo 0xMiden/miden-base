@@ -1,0 +1,174 @@
+extern crate alloc;
+
+use alloc::vec;
+use alloc::vec::Vec;
+use std::sync::Arc;
+
+use miden_agglayer::{agglayer_library, utils};
+use miden_assembly::{Assembler, DefaultSourceManager};
+use miden_core_lib::CoreLibrary;
+use miden_crypto::Felt;
+use miden_processor::fast::{ExecutionOutput, FastProcessor};
+use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
+use miden_protocol::transaction::TransactionKernel;
+use primitive_types::U256;
+
+/// Execute a program with default host and optional advice inputs
+pub async fn execute_program_with_default_host(
+    program: Program,
+    advice_inputs: Option<AdviceInputs>,
+) -> Result<ExecutionOutput, ExecutionError> {
+    let mut host = DefaultHost::default();
+
+    let test_lib = TransactionKernel::library();
+    host.load_library(test_lib.mast_forest()).unwrap();
+
+    let std_lib = CoreLibrary::default();
+    host.load_library(std_lib.mast_forest()).unwrap();
+
+    // Register handlers from std_lib
+    for (event_name, handler) in std_lib.handlers() {
+        host.register_handler(event_name, handler)?;
+    }
+
+    let agglayer_lib = agglayer_library();
+    host.load_library(agglayer_lib.mast_forest()).unwrap();
+
+    let stack_inputs = StackInputs::new(vec![]).unwrap();
+    let advice_inputs = advice_inputs.unwrap_or_default();
+
+    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    processor.execute(&program, &mut host).await
+}
+
+/// Execute a MASM script with optional advice inputs
+pub async fn execute_masm_script(
+    script_code: &str,
+    advice_values: Vec<u64>,
+) -> Result<ExecutionOutput, ExecutionError> {
+    let asset_conversion_lib = agglayer_library();
+
+    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
+        .with_dynamic_library(CoreLibrary::default())
+        .unwrap()
+        .with_dynamic_library(asset_conversion_lib.clone())
+        .unwrap()
+        .assemble_program(script_code)
+        .unwrap();
+
+    let mut host = DefaultHost::default();
+    let test_lib = TransactionKernel::library();
+    host.load_library(test_lib.mast_forest()).unwrap();
+    let std_lib = CoreLibrary::default();
+    host.load_library(std_lib.mast_forest()).unwrap();
+    host.load_library(asset_conversion_lib.mast_forest()).unwrap();
+
+    let stack_inputs = StackInputs::new(vec![]).unwrap();
+    let advice_inputs = if advice_values.is_empty() {
+        AdviceInputs::default()
+    } else {
+        AdviceInputs::default().with_stack_values(advice_values).unwrap()
+    };
+
+    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    processor.execute(&program, &mut host).await
+}
+
+/// Helper to assert execution fails with a specific error message
+pub async fn assert_execution_fails_with(
+    script_code: &str,
+    advice_values: Vec<u64>,
+    expected_error: &str,
+) {
+    let result = execute_masm_script(script_code, advice_values).await;
+    assert!(result.is_err(), "Expected execution to fail but it succeeded");
+    let error_msg = result.unwrap_err().to_string();
+    assert!(
+        error_msg.contains(expected_error),
+        "Expected error containing '{}', got: {}",
+        expected_error,
+        error_msg
+    );
+}
+
+/// Convert the top 8 u32 values from the execution stack to a U256
+pub fn stack_to_u256(exec_output: &ExecutionOutput) -> U256 {
+    let felts: Vec<Felt> = exec_output.stack[0..8].to_vec();
+    utils::felts_to_u256(felts)
+}
+
+// TESTING HELPERS
+// ================================================================================================
+
+/// Type alias for the complex return type of claim_note_test_inputs.
+///
+/// Contains native types for the new ClaimNoteParams structure:
+/// - smt_proof_local_exit_root: `Vec<[u8; 32]>` (256 bytes32 values)
+/// - smt_proof_rollup_exit_root: `Vec<[u8; 32]>` (256 bytes32 values)
+/// - global_index: [u32; 8]
+/// - mainnet_exit_root: [u8; 32]
+/// - rollup_exit_root: [u8; 32]
+/// - origin_network: u32
+/// - origin_token_address: [u8; 20]
+/// - destination_network: u32
+/// - metadata: [u32; 8]
+pub type ClaimNoteTestInputs = (
+    Vec<[u8; 32]>,
+    Vec<[u8; 32]>,
+    [u32; 8],
+    [u8; 32],
+    [u8; 32],
+    u32,
+    [u8; 20],
+    u32,
+    [u32; 8],
+);
+
+/// Returns dummy test inputs for creating CLAIM notes with native types.
+///
+/// This is a convenience function for testing that provides realistic dummy data
+/// for all the agglayer claimAsset function inputs using native types.
+///
+/// # Returns
+/// A tuple containing native types for the new ClaimNoteParams structure
+pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
+    // Create SMT proofs with 32 bytes32 values each (SMT path depth)
+    let smt_proof_local_exit_root = vec![[0u8; 32]; 32];
+    let smt_proof_rollup_exit_root = vec![[0u8; 32]; 32];
+    let global_index = [12345u32, 0, 0, 0, 0, 0, 0, 0];
+
+    let mainnet_exit_root: [u8; 32] = [
+        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66,
+        0x77, 0x88,
+    ];
+
+    let rollup_exit_root: [u8; 32] = [
+        0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+        0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99,
+    ];
+
+    let origin_network = 1u32;
+
+    let origin_token_address: [u8; 20] = [
+        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xaa, 0xbb, 0xcc,
+    ];
+
+    let destination_network = 2u32;
+
+    let metadata: [u32; 8] = [0; 8];
+
+    (
+        smt_proof_local_exit_root,
+        smt_proof_rollup_exit_root,
+        global_index,
+        mainnet_exit_root,
+        rollup_exit_root,
+        origin_network,
+        origin_token_address,
+        destination_network,
+        metadata,
+    )
+}
