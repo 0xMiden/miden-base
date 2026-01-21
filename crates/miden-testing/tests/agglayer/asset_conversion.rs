@@ -129,7 +129,7 @@ async fn test_scale_down_helper(
     let exec_output = execute_masm_script(&script_code, vec![expected_y]).await?;
 
     let actual_y = exec_output.stack[0].as_int();
-    assert_eq!(actual_y, expected_y, "Expected y={}, got y={}", expected_y, actual_y);
+    assert_eq!(actual_y, expected_y, "expected y={}, got y={}", expected_y, actual_y);
 
     Ok(())
 }
