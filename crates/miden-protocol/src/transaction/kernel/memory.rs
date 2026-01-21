@@ -351,7 +351,7 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // ├──────┼────────┼────────┼─────────┼────────────┼───────────┼──────────┼────────────┼───────┼─────────┼────────┼───────┼─────┼───────┼─────────┤
 // 0      4        8        12        16           20          24         28           32       36       40       44 + 4n
 //
-// - STORAGE_LENGTH is encoded as [storage_length, 0, 0, 0].
+// - NUM_STORAGE_ITEMS is encoded as [num_storage_items, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
 // - STORAGE_COMMITMENT is the key to look up note storage in the advice map.
 // - ASSETS_COMMITMENT is the key to look up note assets in the advice map.
@@ -385,7 +385,7 @@ pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
 pub const INPUT_NOTE_METADATA_HEADER_OFFSET: MemoryOffset = 24;
 pub const INPUT_NOTE_ATTACHMENT_OFFSET: MemoryOffset = 28;
 pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 32;
-pub const INPUT_NOTE_STORAGE_LENGTH_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_NUM_STORAGE_ITEMS_OFFSET: MemoryOffset = 36;
 pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 40;
 pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 44;
 

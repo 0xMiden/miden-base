@@ -536,8 +536,8 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
     assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
         assert_eq!(reason.to_string(), format!(
                         "P2IDE note should have {} storage items, but {} was provided",
-                        WellKnownNote::P2IDE.expected_storage_length(),
-                        p2ide_wrong_inputs_number.recipient().storage().len()
+                        WellKnownNote::P2IDE.expected_num_storage_items(),
+                        p2ide_wrong_inputs_number.recipient().storage().num_items()
                     ));
     });
 

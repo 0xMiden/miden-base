@@ -616,10 +616,10 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let output_serial_no = Word::from([0, 1, 2, 3u32]);
     let tag = NoteTag::new(42 << 16 | 42);
     let single_input = 2;
-    let inputs = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
-    let input_commitment = inputs.commitment();
+    let storage = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
+    let storage_commitment = storage.commitment();
 
-    let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
+    let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), storage);
     let code = format!(
         "
         use $kernel::prologue
@@ -630,13 +630,13 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # input
-            push.{input_commitment}
+            # storage
+            push.{storage_commitment}
             # SCRIPT_ROOT
             push.{script_root}
             # SERIAL_NUM
             push.{output_serial_no}
-            # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
+            # => [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
             exec.note::build_recipient_hash
             # => [RECIPIENT, pad(12)]

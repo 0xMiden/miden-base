@@ -34,4 +34,4 @@ pub const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT: MasmError = MasmError::from_s
 pub const ERR_NOTE_INVALID_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("the specified number of note storage items does not match the actual number");
 
 /// Error Message: "number of note storage exceeded the maximum limit of 1024"
-pub const ERR_PROLOGUE_NOTE_STORAGE_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note storage exceeded the maximum limit of 1024");
+pub const ERR_PROLOGUE_NOTE_NUM_STORAGE_ITEMS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note storage exceeded the maximum limit of 1024");

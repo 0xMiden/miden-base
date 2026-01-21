@@ -56,9 +56,6 @@ async fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
         .expect("failed to build tx context")
-        // TODO: This shouldn't be necessary. The attachment should be included in the tx
-        // script's mast forest's advice map.
-        .extend_advice_map(vec![(attachment.content().to_word(), elements)])
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note.clone())])
         .build()?

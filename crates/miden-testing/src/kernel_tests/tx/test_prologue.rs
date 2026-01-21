@@ -486,7 +486,7 @@ fn input_notes_memory_assertions(
         assert_eq!(
             exec_output.get_note_mem_word(note_idx, INPUT_NOTE_STORAGE_COMMITMENT_OFFSET),
             note.storage().commitment(),
-            "note input commitment should be stored at the correct offset"
+            "note storage commitment should be stored at the correct offset"
         );
 
         assert_eq!(

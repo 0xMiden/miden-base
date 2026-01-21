@@ -358,7 +358,7 @@ impl TransactionAdviceInputs {
             note_data.extend(*note_arg);
             note_data.extend(note.metadata().to_header_word());
             note_data.extend(note.metadata().to_attachment_word());
-            note_data.push(recipient.storage().len().into());
+            note_data.push(recipient.storage().num_items().into());
             note_data.push((assets.num_assets() as u32).into());
             note_data.extend(assets.to_padded_assets());
 
