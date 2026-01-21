@@ -33,7 +33,7 @@ use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 
-use super::testing_utils::claim_note_test_inputs;
+use super::test_utils::claim_note_test_inputs;
 
 /// Tests the bridge-in flow: CLAIM note -> Aggfaucet (FPI to Bridge) -> P2ID note created.
 #[tokio::test]
