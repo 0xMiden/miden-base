@@ -146,6 +146,8 @@ pub proc append_and_update_frontier
     # the MMR is full when the number of leaves is equal to 2^TREE_HEIGHT - 1 (as per the
     # Solidity implementation), so the last call to this procedure will be when the number of
     # leaves would be equal to 2^32 - 2.
+    # first assert that the number of leaves is a valid u32, else the u32lt assertion is undefined
+    u32assert.err=ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT
     dup u32lte.MAX_LEAVES_MINUS_1 assert.err=ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT
     # => [num_leaves, mmr_frontier_ptr]
 
