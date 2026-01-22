@@ -4,6 +4,7 @@ use miden_crypto::Felt;
 
 use super::{
     AccountId,
+    AccountStorageMode,
     ByteReader,
     ByteWriter,
     Deserializable,
@@ -11,8 +12,6 @@ use super::{
     NoteError,
     Serializable,
 };
-use crate::account::AccountStorageMode;
-
 // NOTE TAG
 // ================================================================================================
 
@@ -68,9 +67,9 @@ impl NoteTag {
     /// The default note tag length for an account ID with local execution.
     pub const DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH: u8 = 14;
     /// The default note tag length for an account ID with network execution.
-    pub const DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH: u8 = 30;
+    pub const DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH: u8 = 32;
     /// The maximum number of bits that can be encoded into the tag for local accounts.
-    pub const MAX_ACCOUNT_TARGET_TAG_LENGTH: u8 = 30;
+    pub const MAX_ACCOUNT_TARGET_TAG_LENGTH: u8 = 32;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -92,16 +91,15 @@ impl NoteTag {
     ///   ID.
     pub fn with_account_target(account_id: AccountId) -> Self {
         match account_id.storage_mode() {
-            AccountStorageMode::Network => Self::from_network_account_id(account_id),
-            AccountStorageMode::Private | AccountStorageMode::Public => {
-                // safe to unwrap since DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH <
-                // MAX_ACCOUNT_TARGET_TAG_LENGTH
-                Self::with_custom_account_target(
-                    account_id,
-                    Self::DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH,
-                )
-                .unwrap()
+            AccountStorageMode::Network => {
+                let prefix = account_id.prefix().as_u64();
+                Self((prefix >> 34) as u32)
             },
+            _ => Self::with_custom_account_target(
+                account_id,
+                Self::DEFAULT_LOCAL_ACCOUNT_TARGET_TAG_LENGTH,
+            )
+            .unwrap(),
         }
     }
 
@@ -123,39 +121,16 @@ impl NoteTag {
             return Err(NoteError::NoteTagLengthTooLarge(tag_len));
         }
 
-        let prefix_id: u64 = account_id.prefix().into();
+        let prefix = account_id.prefix().as_u64();
+        let extracted = (prefix >> (64 - tag_len)) as u32;
 
-        // Shift the high bits of the account ID such that they are laid out as:
-        // [34 zero bits | remaining high bits (30 bits)].
-        let high_bits = prefix_id >> 34;
+        let tag = if tag_len == 32 {
+            extracted
+        } else {
+            extracted << (32 - tag_len)
+        };
 
-        // This is equivalent to the following layout, interpreted as a u32:
-        // [2 zero bits | remaining high bits (30 bits)].
-        let high_bits = high_bits as u32;
-
-        // Select the top `tag_len` bits of the account ID, i.e.:
-        // [2 zero bits | remaining high bits (tag_len bits) | (30 - tag_len) zero bits].
-        let high_bits = high_bits & (u32::MAX << (32 - 2 - tag_len));
-
-        Ok(Self(high_bits))
-    }
-
-    /// Constructs a network account note tag from the specified `account_id`.
-    ///
-    /// The tag is constructed as follows:
-    ///
-    /// - The two most significant bits are set to `0b00`.
-    /// - The remaining bits are set to the 30 most significant bits of the account ID.
-    pub(crate) fn from_network_account_id(account_id: AccountId) -> Self {
-        let prefix_id: u64 = account_id.prefix().into();
-
-        // Shift the high bits of the account ID such that they are laid out as:
-        // [34 zero bits | remaining high bits (30 bits)].
-        let high_bits = prefix_id >> 34;
-
-        // This is equivalent to the following layout, interpreted as a u32:
-        // [2 zero bits | remaining high bits (30 bits)].
-        Self(high_bits as u32)
+        Ok(Self(tag))
     }
 
     // PUBLIC ACCESSORS
@@ -251,6 +226,7 @@ mod tests {
             AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap(),
             AccountId::try_from(ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET).unwrap(),
         ];
+
         let public_accounts = [
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap(),
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2).unwrap(),
@@ -264,30 +240,37 @@ mod tests {
             AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET).unwrap(),
             AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1).unwrap(),
         ];
+
+        for account_id in private_accounts.iter().chain(public_accounts.iter()) {
+            let tag = NoteTag::with_account_target(*account_id);
+            let tag_u32 = tag.as_u32();
+
+            let used_bits = 32 - tag_u32.leading_zeros();
+
+            if used_bits == 0 {
+                assert_eq!(tag_u32, 0, "tag should be zero when no bits are used");
+                continue;
+            }
+
+            let expected = (account_id.prefix().as_u64() >> (64 - used_bits)) as u32;
+            let actual = tag_u32 >> (32 - used_bits);
+
+            assert_eq!(actual, expected, "top {used_bits} bits should match account prefix");
+        }
+
         let network_accounts = [
             AccountId::try_from(ACCOUNT_ID_REGULAR_NETWORK_ACCOUNT_IMMUTABLE_CODE).unwrap(),
             AccountId::try_from(ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET).unwrap(),
             AccountId::try_from(ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET).unwrap(),
         ];
 
-        for account_id in private_accounts.iter().chain(public_accounts.iter()) {
-            let tag = NoteTag::with_account_target(*account_id);
-            assert_eq!(tag.as_u32() >> 30, 0, "two most significant bits should be zero");
-            assert_eq!(tag.as_u32() << 16, 0, "16 least significant bits should be zero");
-            assert_eq!(
-                (account_id.prefix().as_u64() >> 50) as u32,
-                tag.as_u32() >> 16,
-                "14 most significant bits should match"
-            );
-        }
-
         for account_id in network_accounts {
             let tag = NoteTag::with_account_target(account_id);
-            assert_eq!(tag.as_u32() >> 30, 0, "two most significant bits should be zero");
+
             assert_eq!(
-                account_id.prefix().as_u64() >> 34,
                 tag.as_u32() as u64,
-                "30 most significant bits should match"
+                account_id.prefix().as_u64() >> 34,
+                "network account tag must match prefix >> 34"
             );
         }
     }
@@ -295,17 +278,14 @@ mod tests {
     #[test]
     fn from_custom_account_target() -> anyhow::Result<()> {
         let account_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-        let tag = NoteTag::with_custom_account_target(
-            account_id,
-            NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH,
-        )?;
+        let len = 32;
 
-        assert_eq!(tag.as_u32() >> 30, 0, "two most significant bits should be zero");
-        assert_eq!(
-            (account_id.prefix().as_u64() >> 34) as u32,
-            tag.as_u32(),
-            "30 most significant bits should match"
-        );
+        let tag = NoteTag::with_custom_account_target(account_id, len)?;
+
+        let prefix = account_id.prefix().as_u64();
+        let expected = (prefix >> (64 - len)) as u32;
+
+        assert_eq!(tag.as_u32(), expected, "full 32-bit tag should match account prefix");
 
         Ok(())
     }

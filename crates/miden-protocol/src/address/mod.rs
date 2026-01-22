@@ -16,7 +16,6 @@ pub use interface::AddressInterface;
 use miden_processor::DeserializationError;
 pub use network_id::{CustomNetworkId, NetworkId};
 
-use crate::account::AccountStorageMode;
 use crate::crypto::ies::SealingKey;
 use crate::errors::AddressError;
 use crate::note::NoteTag;
@@ -79,8 +78,8 @@ impl Address {
         Self { id: id.into(), routing_params: None }
     }
 
-    /// For local (both public and private) accounts, up to 30 bits can be encoded into the tag.
-    /// For network accounts, the tag length must be set to 30 bits.
+    /// For local (both public and private) accounts, up to 33 bits can be encoded into the tag.
+    /// For network accounts, the tag length must be set to 32 bits.
     ///
     /// # Errors
     ///
@@ -91,22 +90,8 @@ impl Address {
         mut self,
         routing_params: RoutingParameters,
     ) -> Result<Self, AddressError> {
-        if let Some(tag_len) = routing_params.note_tag_len() {
-            match self.id {
-                AddressId::AccountId(account_id) => {
-                    if account_id.storage_mode() == AccountStorageMode::Network
-                        && tag_len != NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH
-                    {
-                        return Err(AddressError::CustomTagLengthNotAllowedForNetworkAccounts(
-                            tag_len,
-                        ));
-                    }
-                },
-            }
-        }
-
+        // All validation should now live inside RoutingParameters itself.
         self.routing_params = Some(routing_params);
-
         Ok(self)
     }
 
@@ -125,7 +110,7 @@ impl Address {
 
     /// Returns the preferred tag length.
     ///
-    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
     /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
     /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> u8 {
@@ -140,15 +125,11 @@ impl Address {
         let note_tag_len = self.note_tag_len();
 
         match self.id {
-            AddressId::AccountId(id) => {
-                match id.storage_mode() {
-                  AccountStorageMode::Network => NoteTag::from_network_account_id(id),
-                  AccountStorageMode::Private | AccountStorageMode::Public => {
-                      NoteTag::with_custom_account_target(id, note_tag_len)
-                          .expect("address should validate that tag len does not exceed MAX_ACCOUNT_TARGET_TAG_LENGTH bits")
-                    }
-                }
-            },
+            AddressId::AccountId(id) => NoteTag::with_custom_account_target(id, note_tag_len)
+                .expect(
+                    "address should validate that tag len does not exceed \
+                     MAX_ACCOUNT_TARGET_TAG_LENGTH bits",
+                ),
         }
     }
 
@@ -491,7 +472,6 @@ mod tests {
         // (FungibleFaucet)
         let account_id = AccountIdBuilder::new()
             .account_type(AccountType::RegularAccountImmutableCode)
-            .storage_mode(AccountStorageMode::Public)
             .build_with_rng(rng);
 
         // Create keypair
@@ -518,6 +498,21 @@ mod tests {
             .expect("encryption key should be present")
             .clone();
         assert_eq!(decoded_key, sealing_key);
+
+        Ok(())
+    }
+
+    #[test]
+    fn address_allows_max_note_tag_len() -> anyhow::Result<()> {
+        let account_id = AccountIdBuilder::new()
+            .account_type(AccountType::RegularAccountImmutableCode)
+            .build_with_rng(&mut rand::rng());
+
+        let address = Address::new(account_id).with_routing_parameters(
+            RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(32)?,
+        )?;
+
+        assert_eq!(address.note_tag_len(), 32);
 
         Ok(())
     }

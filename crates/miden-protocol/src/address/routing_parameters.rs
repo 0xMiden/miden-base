@@ -108,7 +108,7 @@ impl RoutingParameters {
 
     /// Returns the note tag length preference.
     ///
-    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
     /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
     /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> Option<u8> {
@@ -269,11 +269,11 @@ fn encode_receiver_profile(interface: AddressInterface, note_tag_len: Option<u8>
     let note_tag_len = note_tag_len.unwrap_or(ABSENT_NOTE_TAG_LEN);
 
     let interface = interface as u16;
-    debug_assert_eq!(interface >> 11, 0, "address interface should have its upper 5 bits unset");
+    debug_assert_eq!(interface >> 10, 0, "address interface should fit into 10 bits");
 
     // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
     // together.
-    let tag_len = (note_tag_len as u16) << 11;
+    let tag_len = (note_tag_len as u16) << 10;
     let receiver_profile: u16 = tag_len | interface;
     receiver_profile.to_be_bytes()
 }
@@ -290,14 +290,16 @@ fn decode_receiver_profile(
     let byte1 = byte_iter.next().expect("byte1 should exist");
     let receiver_profile = u16::from_be_bytes([byte0, byte1]);
 
-    let tag_len = (receiver_profile >> 11) as u8;
-    let note_tag_len = if tag_len == ABSENT_NOTE_TAG_LEN {
-        None
-    } else {
-        Some(tag_len)
+    let tag_len = (receiver_profile >> 10) as u8;
+    let note_tag_len = match tag_len {
+        ABSENT_NOTE_TAG_LEN => None,
+        0..=32 => Some(tag_len),
+        _ => {
+            return Err(AddressError::decode_error(format!("invalid note tag length {}", tag_len)));
+        },
     };
 
-    let addr_interface = receiver_profile & 0b0000_0111_1111_1111;
+    let addr_interface = receiver_profile & 0b0000_0011_1111_1111;
     let addr_interface = AddressInterface::try_from(addr_interface).map_err(|err| {
         AddressError::decode_error_with_source("failed to decode address interface", err)
     })?;
