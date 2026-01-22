@@ -63,6 +63,7 @@
 - Added `StorageSchema::commitment()` ([#2244](https://github.com/0xMiden/miden-base/pull/2244)).
 - [BREAKING] `RpoFalcon512` was renamed to `Falcon512Rpo` everywhere, including procedure and file names ([#2264](https://github.com/0xMiden/miden-base/pull/2264)).
 - [BREAKING] Removed top-level error exports from `miden-protocol` crate (the are still accessible under `miden_protocol::errors`).
+- Documented native account requirement for `get_storage_slot_type` and `set_item` procedures ([#XXXX](https://github.com/0xMiden/miden-base/pull/XXXX)).
 
 ## 0.12.4 (2025-11-26)
 
