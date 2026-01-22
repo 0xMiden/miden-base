@@ -183,7 +183,16 @@ where
 
         let (mut host, stack_inputs, advice_inputs) = self.prepare_transaction(&tx_inputs).await?;
 
-        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+        // instantiate the processor in debug mode only when debug mode is specified via execution
+        // options; this is important because in debug mode execution is almost 100x slower
+        // TODO: the processor does not yet respect other execution options (e.g., max cycles);
+        // this will be fixed in v0.21 release of the VM
+        let processor = if self.exec_options.enable_debugging() {
+            FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs)
+        } else {
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs)
+        };
+
         let output = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await

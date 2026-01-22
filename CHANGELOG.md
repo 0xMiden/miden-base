@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.2 (2026-01-21)
+
+- Make transaction executor respect debug mode settings ([#2327](https://github.com/0xMiden/miden-base/pull/2327)).
+
 ## 0.13.1 (2026-01-20)
 
 - Make `NetworkAccountTargetError` public ([#2319](https://github.com/0xMiden/miden-base/pull/2319)).
