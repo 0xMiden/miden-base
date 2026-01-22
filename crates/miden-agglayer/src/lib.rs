@@ -19,28 +19,26 @@ use miden_protocol::account::{
     StorageSlotName,
 };
 use miden_protocol::asset::TokenSymbol;
-use miden_protocol::crypto::rand::FeltRng;
-use miden_protocol::errors::NoteError;
-use miden_protocol::note::{
-    Note,
-    NoteAssets,
-    NoteMetadata,
-    NoteRecipient,
-    NoteScript,
-    NoteStorage,
-    NoteTag,
-    NoteType,
-};
+use miden_protocol::note::NoteScript;
 use miden_standards::account::auth::NoAuth;
 use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
 
+pub mod claim_note;
 pub mod errors;
-pub mod eth_address;
+pub mod eth_types;
 pub mod utils;
 
-pub use eth_address::EthAddressFormat;
-use utils::bytes32_to_felts;
+pub use claim_note::{
+    ClaimNoteInputs,
+    ExitRoot,
+    LeafData,
+    OutputNoteData,
+    ProofData,
+    SmtNode,
+    create_claim_note,
+};
+pub use eth_types::{EthAddressFormat, EthAmount, EthAmountError};
 
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
@@ -331,6 +329,7 @@ pub fn create_existing_agglayer_faucet(
         .build_existing()
         .expect("Agglayer faucet account should be valid")
 }
+<<<<<<< HEAD
 
 // AGGLAYER NOTE CREATION HELPERS
 // ================================================================================================
@@ -607,3 +606,5 @@ pub fn claim_note_test_inputs(
         metadata,
     )
 }
+=======
+>>>>>>> 221ac03f (`CLAIM` note followup: helper functions & refactoring (#2270))
