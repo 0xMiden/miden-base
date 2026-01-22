@@ -1,7 +1,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_core::{Felt, FieldElement, Word};
+use miden_core::{Felt, Word};
 use miden_protocol::account::AccountId;
 use miden_protocol::crypto::SequentialCommit;
 use miden_protocol::crypto::rand::FeltRng;
@@ -223,11 +223,9 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
         // 536 + 28 + 4 + 7
         let mut claim_inputs = Vec::with_capacity(574);
 
-        let empty_word = Word::from([Felt::ZERO; 4]);
-
         claim_inputs.extend(inputs.proof_data.to_elements());
         claim_inputs.extend(inputs.leaf_data.to_elements());
-        claim_inputs.extend(empty_word);
+        claim_inputs.extend(Word::empty());
         claim_inputs.extend(inputs.output_note_data.to_elements());
 
         NoteInputs::new(claim_inputs)
