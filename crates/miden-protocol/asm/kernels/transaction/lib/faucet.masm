@@ -30,8 +30,8 @@ const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUC
 #! - the asset is not well formed.
 #! - the total issuance after minting is greater than the maximum amount allowed.
 pub proc mint_fungible_asset
-    # assert that the asset is associated with the faucet the transaction is being executed against
-    # and that the asset is valid
+    # assert that the asset was issued by the faucet the transaction is being executed against and
+    # that the asset is valid
     exec.account::get_id
     exec.asset::validate_fungible_asset_origin
     # => [ASSET]
@@ -142,11 +142,13 @@ end
 #! - the non-fungible asset being burned is not associated with the faucet the transaction is being
 #!   executed against.
 proc burn_non_fungible_asset
-    # assert that we are executing a transaction against the non-fungible faucet (access checks)
-    # TODO: This does not validate the ASSET - should this not be calling
-    # validate_non_fungible_asset_origin?
-    exec.account::get_id swap drop exec.account_id::is_non_fungible_faucet
-    assert.err=ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET
+    # assert that the asset was issued by the faucet the transaction is being executed against and
+    # that the asset is valid
+    exec.account::get_id
+    swap drop
+    # => [faucet_id_prefix, ASSET]
+
+    exec.asset::validate_non_fungible_asset_origin
     # => [ASSET]
 
     # remove the non-fungible asset from the input vault for asset preservation
