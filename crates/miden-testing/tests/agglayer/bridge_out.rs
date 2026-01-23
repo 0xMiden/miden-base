@@ -1,6 +1,7 @@
 extern crate alloc;
 
-use miden_agglayer::{EthAddressFormat, b2agg_script, bridge_out_component};
+use miden_agglayer::{B2AggNoteStorage, EthAddressFormat, bridge_out_component, create_b2agg_note};
+use miden_protocol::Felt;
 use miden_protocol::account::{
     Account,
     AccountId,
@@ -11,20 +12,8 @@ use miden_protocol::account::{
     StorageSlotName,
 };
 use miden_protocol::asset::{Asset, FungibleAsset};
-use miden_protocol::note::{
-    Note,
-    NoteAttachment,
-    NoteAttachmentScheme,
-    NoteAssets,
-    NoteMetadata,
-    NoteRecipient,
-    NoteScript,
-    NoteStorage,
-    NoteTag,
-    NoteType,
-};
+use miden_protocol::note::{NoteAssets, NoteScript, NoteTag, NoteType};
 use miden_protocol::transaction::OutputNote;
-use miden_protocol::{Felt, Word};
 use miden_standards::account::faucets::FungibleFaucetExt;
 use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
@@ -70,44 +59,25 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
 
     let amount = Felt::new(100);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::new(0);
-    let note_type = NoteType::Public; // Use Public note type for network transaction
-
-    // Get the B2AGG note script
-    let b2agg_script = b2agg_script();
 
     // Create note storage with destination network and address
-    // destination_network: u32 (AggLayer-assigned network ID)
-    // destination_address: 20 bytes (Ethereum address) split into 5 u32 values
-    let destination_network = Felt::new(1); // Example network ID
+    let destination_network = 1u32; // Example network ID
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
     let eth_address =
         EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
-    let address_felts = eth_address.to_elements().to_vec();
 
-    // Combine network ID and address felts into the note storage (6 felts total)
-    let mut input_felts = vec![destination_network];
-    input_felts.extend(address_felts);
+    let storage = B2AggNoteStorage::new(destination_network, eth_address);
+    let assets = NoteAssets::new(vec![bridge_asset])?;
 
-    let inputs = NoteStorage::new(input_felts.clone())?;
-    let target_account_id = bridge_account.id();
-    // Store the target account ID in the attachment: [prefix, suffix, 0, 0].
-    let attachment_word = Word::from([
-        target_account_id.prefix().as_felt(),
-        target_account_id.suffix(),
-        Felt::new(0),
-        Felt::new(0),
-    ]);
-    let attachment = NoteAttachment::new_word(NoteAttachmentScheme::none(), attachment_word);
-
-    // Create the B2AGG note with assets from the faucet
-    let b2agg_note_metadata =
-        NoteMetadata::new(faucet.id(), note_type, tag).with_attachment(attachment);
-    let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
-    let serial_num = Word::from([1, 2, 3, 4u32]);
-    let b2agg_note_script = NoteScript::new(b2agg_script);
-    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_note_script, inputs);
-    let b2agg_note = Note::new(b2agg_note_assets, b2agg_note_metadata, b2agg_note_recipient);
+    // Create the B2AGG note using the helper
+    let b2agg_note = create_b2agg_note(
+        storage,
+        assets,
+        bridge_account.id(),
+        faucet.id(),
+        NoteType::Public,
+        builder.rng_mut(),
+    )?;
 
     // Add the B2AGG note to the mock chain
     builder.add_output_note(OutputNote::Full(b2agg_note.clone()));
@@ -238,43 +208,26 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 
     let amount = Felt::new(50);
     let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
-    let tag = NoteTag::new(0);
-    let note_type = NoteType::Public;
-
-    // Get the B2AGG note script
-    let b2agg_script = b2agg_script();
 
     // Create note storage with destination network and address
-    let destination_network = Felt::new(1);
+    let destination_network = 1u32;
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
     let eth_address =
         EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
-    let address_felts = eth_address.to_elements().to_vec();
 
-    // Combine network ID and address felts into the note storage (6 felts total)
-    let mut input_felts = vec![destination_network];
-    input_felts.extend(address_felts);
-
-    let inputs = NoteStorage::new(input_felts.clone())?;
-    let target_account_id = user_account.id();
-    // Store the target account ID in the attachment: [prefix, suffix, 0, 0].
-    let attachment_word = Word::from([
-        target_account_id.prefix().as_felt(),
-        target_account_id.suffix(),
-        Felt::new(0),
-        Felt::new(0),
-    ]);
-    let attachment = NoteAttachment::new_word(NoteAttachmentScheme::none(), attachment_word);
+    let storage = B2AggNoteStorage::new(destination_network, eth_address);
+    let assets = NoteAssets::new(vec![bridge_asset])?;
 
     // Create the B2AGG note with the USER ACCOUNT as the sender
     // This is the key difference - the note sender will be the same as the consuming account
-    let b2agg_note_metadata =
-        NoteMetadata::new(user_account.id(), note_type, tag).with_attachment(attachment);
-    let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
-    let serial_num = Word::from([1, 2, 3, 4u32]);
-    let b2agg_note_script = NoteScript::new(b2agg_script);
-    let b2agg_note_recipient = NoteRecipient::new(serial_num, b2agg_note_script, inputs);
-    let b2agg_note = Note::new(b2agg_note_assets, b2agg_note_metadata, b2agg_note_recipient);
+    let b2agg_note = create_b2agg_note(
+        storage,
+        assets,
+        user_account.id(),
+        user_account.id(),
+        NoteType::Public,
+        builder.rng_mut(),
+    )?;
 
     // Add the B2AGG note to the mock chain
     builder.add_output_note(OutputNote::Full(b2agg_note.clone()));
