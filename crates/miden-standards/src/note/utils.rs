@@ -5,7 +5,7 @@ use miden_protocol::errors::NoteError;
 use miden_protocol::note::{NoteRecipient, NoteStorage, NoteTag, NoteType};
 use miden_protocol::{Felt, Word};
 
-use super::well_known_note::WellKnownNote;
+use super::standard_note::StandardNote;
 
 /// Creates a [NoteRecipient] for the P2ID note.
 ///
@@ -15,7 +15,7 @@ pub fn build_p2id_recipient(
     target: AccountId,
     serial_num: Word,
 ) -> Result<NoteRecipient, NoteError> {
-    let note_script = WellKnownNote::P2ID.script();
+    let note_script = StandardNote::P2ID.script();
     let note_storage = NoteStorage::new(vec![target.suffix(), target.prefix().as_felt()])?;
 
     Ok(NoteRecipient::new(serial_num, note_script, note_storage))
@@ -31,7 +31,7 @@ pub fn build_p2ide_recipient(
     timelock_block_height: Option<BlockNumber>,
     serial_num: Word,
 ) -> Result<NoteRecipient, NoteError> {
-    let note_script = WellKnownNote::P2IDE.script();
+    let note_script = StandardNote::P2IDE.script();
 
     let reclaim_height_u32 = reclaim_block_height.map_or(0, |bn| bn.as_u32());
     let timelock_height_u32 = timelock_block_height.map_or(0, |bn| bn.as_u32());
@@ -63,7 +63,7 @@ pub fn build_swap_tag(
     offered_asset: &Asset,
     requested_asset: &Asset,
 ) -> NoteTag {
-    let swap_root_bytes = WellKnownNote::SWAP.script().root().as_bytes();
+    let swap_root_bytes = StandardNote::SWAP.script().root().as_bytes();
     // Construct the swap use case ID from the 14 most significant bits of the script root. This
     // leaves the two most significant bits zero.
     let mut swap_use_case_id = (swap_root_bytes[0] as u16) << 6;
@@ -147,13 +147,13 @@ mod tests {
         // Check the 8 bits of the first script root byte.
         assert_eq!(
             (actual_tag.as_u32() >> 22) as u8,
-            WellKnownNote::SWAP.script().root().as_bytes()[0],
+            StandardNote::SWAP.script().root().as_bytes()[0],
             "swap script root byte 0 should match"
         );
         // Extract the 6 bits of the second script root byte and shift for comparison.
         assert_eq!(
             ((actual_tag.as_u32() & 0b00000000_00111111_00000000_00000000) >> 16) as u8,
-            WellKnownNote::SWAP.script().root().as_bytes()[1] >> 2,
+            StandardNote::SWAP.script().root().as_bytes()[1] >> 2,
             "swap script root byte 1 should match with the lower two bits set to zero"
         );
     }
