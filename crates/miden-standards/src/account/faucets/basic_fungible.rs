@@ -301,13 +301,10 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// via the specified authentication scheme. The `burn` procedure can only be called from a note
 /// script and requires the calling note to contain the asset to be burned.
 ///
-/// The storage layout of the faucet account is:
-/// - Slot 0: Reserved slot for faucets.
-/// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: [num_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
-///   0].
-/// - Slot 3: A map with trigger procedure roots.
-/// - Slot 4: Token metadata of the faucet.
+/// The storage layout of the faucet account is defined by the combination of the following
+/// components (see their docs for details):
+/// - [`BasicFungibleFaucet`]
+/// - [`AuthEcdsaK256KeccakAcl`] or [`AuthFalcon512RpoAcl`]
 pub fn create_basic_fungible_faucet(
     init_seed: [u8; 32],
     symbol: TokenSymbol,
