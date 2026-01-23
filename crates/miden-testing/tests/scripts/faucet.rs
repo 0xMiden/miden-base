@@ -30,6 +30,7 @@ use miden_protocol::{Felt, Word};
 use miden_standards::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::errors::standards::{
+    ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY,
     ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY,
     ERR_SENDER_NOT_OWNER,
 };
@@ -143,6 +144,7 @@ async fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
     Ok(())
 }
 
+/// Tests that distribute fails when the minted amount would exceed the max supply.
 #[tokio::test]
 async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure)
@@ -278,6 +280,53 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
 
     assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+    Ok(())
+}
+
+/// Tests that burning a fungible asset fails when the amount exceeds the token supply.
+#[tokio::test]
+async fn faucet_burn_fungible_asset_fails_amount_exceeds_token_supply() -> anyhow::Result<()> {
+    let max_supply = 200u32;
+    let token_supply = 50u32;
+
+    let mut builder = MockChain::builder();
+    let faucet = builder.add_existing_basic_faucet(
+        Auth::BasicAuth,
+        "TST",
+        max_supply.into(),
+        Some(token_supply.into()),
+    )?;
+
+    // Try to burn 100 tokens when only 50 have been issued
+    let burn_amount = 100u64;
+    let fungible_asset = FungibleAsset::new(faucet.id(), burn_amount).unwrap();
+
+    let burn_note_script_code = "
+        # burn the asset
+        begin
+            dropw
+            # => []
+
+            call.::miden::standards::faucets::basic_fungible::burn
+            # => [ASSET]
+
+            # truncate the stack
+            dropw
+        end
+        ";
+
+    let note = get_note_with_fungible_asset_and_script(fungible_asset, burn_note_script_code);
+
+    builder.add_output_note(OutputNote::Full(note.clone()));
+    let mock_chain = builder.build()?;
+
+    let tx = mock_chain
+        .build_tx_context(faucet.id(), &[note.id()], &[])?
+        .build()?
+        .execute()
+        .await;
+
+    assert_transaction_executor_error!(tx, ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY);
     Ok(())
 }
 
