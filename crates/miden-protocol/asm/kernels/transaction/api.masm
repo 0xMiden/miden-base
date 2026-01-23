@@ -20,8 +20,6 @@ use $kernel::tx
 # ERRORS
 # =================================================================================================
 
-const ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED="for faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item"
-
 const ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the faucet_get_total_fungible_asset_issuance procedure can only be called on a fungible faucet"
 
 const ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
@@ -366,23 +364,11 @@ end
 #! Panics if:
 #! - a slot with the provided slot ID does not exist in account storage.
 #! - the invocation of this procedure does not originate from the native account.
-#! - the native account is a faucet and the provided slot ID points to the reserved faucet storage slot.
 #!
 #! Invocation: dynexec
 pub proc account_set_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
-
-    # if the transaction is being executed against a faucet account then assert
-    # the slot that is being written to is not the reserved faucet slot.
-    dup.1 dup.1 exec.account::is_faucet_storage_data_slot
-    # => [is_faucet_storage_data_slot, slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
-
-    exec.account::get_id swap drop exec.account_id::is_faucet
-    # => [is_faucet_account, is_faucet_storage_data_slot, slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
-
-    and assertz.err=ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED
     # => [slot_id_prefix, slot_id_suffix, VALUE, pad(10)]
 
     # authenticate that the procedure invocation originates from the account context
