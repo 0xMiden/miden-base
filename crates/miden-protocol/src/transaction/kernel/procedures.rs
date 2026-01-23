@@ -60,7 +60,7 @@ pub const KERNEL_PROCEDURES: [Word; 53] = [
     // account_has_procedure
     word!("0xb0b63fdd01af0bcb4aacb2412e934cdc7691308647152d416c7ae4fc909da076"),
     // faucet_mint_asset
-    word!("0x3d533697caf8b2522507c33b98af7652f3eb2e4f5d29d64f3d147af07ed2c494"),
+    word!("0xd679a269617e079893786a7c5dc8f34307d5dfa006fb008f32e3bde1cd42058b"),
     // faucet_burn_asset
     word!("0xb35934a02c60bd2eb1178d09ed866b98c1e1026891326e5bc1ddd855da331469"),
     // faucet_get_total_fungible_asset_issuance
