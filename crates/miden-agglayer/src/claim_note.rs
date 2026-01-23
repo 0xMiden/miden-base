@@ -195,7 +195,7 @@ pub struct OutputNoteData {
 impl OutputNoteData {
     /// Converts the output note data to a vector of field elements for note storage
     pub fn to_elements(&self) -> Vec<Felt> {
-        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 8; // 4 + 2 + 1 + 1 + 1 (serial_num + account_id + tag + scaled_amount)
+        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 8; // 4 + 2 + 1 + 1(serial_num + account_id + tag + scaled_amount)
         let mut elements = Vec::with_capacity(OUTPUT_NOTE_DATA_ELEMENT_COUNT);
 
         // P2ID note serial number (4 felts as Word)
@@ -233,8 +233,8 @@ impl TryFrom<ClaimNoteStorage> for NoteStorage {
 
     fn try_from(storage: ClaimNoteStorage) -> Result<Self, Self::Error> {
         // proof_data + leaf_data + output_note_data
-        // 536 + 32 + 9 = 577
-        let mut claim_storage = Vec::with_capacity(577);
+        // 536 + 32 + 8 = 576
+        let mut claim_storage = Vec::with_capacity(576);
 
         claim_storage.extend(storage.proof_data.to_elements());
         claim_storage.extend(storage.leaf_data.to_elements());
