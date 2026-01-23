@@ -1,5 +1,12 @@
 use miden::agglayer::crypto_utils
 
+# Inputs: [GER_UPPER[4], GER_LOWER[4]]
+# Outputs: []
+pub proc update_ger
+    # TODO: Implement GER update logic
+    dropw dropw
+end
+
 # Inputs: []
 # Output: [GER_ROOT[8]]
 pub proc get_rollup_exit_root
