@@ -9,7 +9,8 @@ use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
-use miden_protocol::{transaction::TransactionKernel, Felt};
+use miden_protocol::Felt;
+use miden_protocol::transaction::TransactionKernel;
 use primitive_types::U256;
 
 /// Execute a program with default host and optional advice inputs
