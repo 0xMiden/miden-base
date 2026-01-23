@@ -77,10 +77,6 @@ pub const ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME: MasmError = Ma
 pub const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the burn_non_fungible_asset procedure can only be called on a non-fungible faucet");
 /// Error Message: "the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 pub const ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet");
-/// Error Message: "failed to mint new non-fungible asset because it was already issued"
-pub const ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED: MasmError = MasmError::from_static_str("failed to mint new non-fungible asset because it was already issued");
-/// Error Message: "failed to burn non-existent non-fungible asset in the vault"
-pub const ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND: MasmError = MasmError::from_static_str("failed to burn non-existent non-fungible asset in the vault");
 /// Error Message: "for faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item"
 pub const ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED: MasmError = MasmError::from_static_str("for faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item");
 /// Error Message: "the faucet_get_total_fungible_asset_issuance procedure can only be called on a fungible faucet"
