@@ -8,9 +8,9 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -279,7 +279,7 @@ fn test_basic_wallet_custom_notes() {
         end
     ";
     let note_script = CodeBuilder::default().compile_note_script(compatible_source_code).unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -307,7 +307,7 @@ fn test_basic_wallet_custom_notes() {
         end
     ";
     let note_script = CodeBuilder::default().compile_note_script(incompatible_source_code).unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -360,7 +360,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         end
     ";
     let note_script = CodeBuilder::default().compile_note_script(compatible_source_code).unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -390,7 +390,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         end
     ";
     let note_script = CodeBuilder::default().compile_note_script(incompatible_source_code).unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -466,7 +466,7 @@ fn test_custom_account_custom_notes() {
         .unwrap()
         .compile_note_script(compatible_source_code)
         .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -493,7 +493,7 @@ fn test_custom_account_custom_notes() {
         .unwrap()
         .compile_note_script(incompatible_source_code)
         .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -576,7 +576,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .unwrap()
         .compile_note_script(compatible_source_code)
         .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata.clone(), recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -614,7 +614,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .unwrap()
         .compile_note_script(incompatible_source_code)
         .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NoteStorage::default());
     let incompatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,

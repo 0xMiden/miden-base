@@ -118,20 +118,20 @@ impl WellKnownNote {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// Expected number of inputs of the P2ID note.
-    const P2ID_NUM_INPUTS: usize = 2;
+    /// Expected number of storage items of the P2ID note.
+    const P2ID_NUM_STORAGE_ITEMS: usize = 2;
 
-    /// Expected number of inputs of the P2IDE note.
-    const P2IDE_NUM_INPUTS: usize = 4;
+    /// Expected number of storage items of the P2IDE note.
+    const P2IDE_NUM_STORAGE_ITEMS: usize = 4;
 
-    /// Expected number of inputs of the SWAP note.
-    const SWAP_NUM_INPUTS: usize = 16;
+    /// Expected number of storage items of the SWAP note.
+    const SWAP_NUM_STORAGE_ITEMS: usize = 16;
 
-    /// Expected number of inputs of the MINT note (private mode).
-    const MINT_NUM_INPUTS_PRIVATE: usize = 8;
+    /// Expected number of storage items of the MINT note (private mode).
+    const MINT_NUM_STORAGE_ITEMS_PRIVATE: usize = 8;
 
-    /// Expected number of inputs of the BURN note.
-    const BURN_NUM_INPUTS: usize = 0;
+    /// Expected number of storage items of the BURN note.
+    const BURN_NUM_STORAGE_ITEMS: usize = 0;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -163,14 +163,14 @@ impl WellKnownNote {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the expected inputs number of the active note.
-    pub fn num_expected_inputs(&self) -> usize {
+    /// Returns the expected number of storage items of the active note.
+    pub fn expected_num_storage_items(&self) -> usize {
         match self {
-            Self::P2ID => Self::P2ID_NUM_INPUTS,
-            Self::P2IDE => Self::P2IDE_NUM_INPUTS,
-            Self::SWAP => Self::SWAP_NUM_INPUTS,
-            Self::MINT => Self::MINT_NUM_INPUTS_PRIVATE,
-            Self::BURN => Self::BURN_NUM_INPUTS,
+            Self::P2ID => Self::P2ID_NUM_STORAGE_ITEMS,
+            Self::P2IDE => Self::P2IDE_NUM_STORAGE_ITEMS,
+            Self::SWAP => Self::SWAP_NUM_STORAGE_ITEMS,
+            Self::MINT => Self::MINT_NUM_STORAGE_ITEMS_PRIVATE,
+            Self::BURN => Self::BURN_NUM_STORAGE_ITEMS,
         }
     }
 
@@ -261,11 +261,11 @@ impl WellKnownNote {
     ///
     /// It performs:
     /// - for `P2ID` note:
-    ///     - check that note inputs have correct number of values.
-    ///     - assertion that the account ID provided by the note inputs is equal to the target
+    ///     - check that note storage has correct number of values.
+    ///     - assertion that the account ID provided by the note storage is equal to the target
     ///       account ID.
     /// - for `P2IDE` note:
-    ///     - check that note inputs have correct number of values.
+    ///     - check that note storage has correct number of values.
     ///     - check that the target account is either the receiver account or the sender account.
     ///     - check that depending on whether the target account is sender or receiver, it could be
     ///       either consumed, or consumed after timelock height, or consumed after reclaim height.
@@ -277,17 +277,17 @@ impl WellKnownNote {
     ) -> Result<Option<NoteConsumptionStatus>, StaticAnalysisError> {
         match self {
             WellKnownNote::P2ID => {
-                let input_account_id = parse_p2id_inputs(note.inputs().values())?;
+                let input_account_id = parse_p2id_storage(note.storage().items())?;
 
                 if input_account_id == target_account_id {
                     Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
                 } else {
-                    Ok(Some(NoteConsumptionStatus::NeverConsumable("account ID provided to the P2ID note inputs doesn't match the target account ID".into())))
+                    Ok(Some(NoteConsumptionStatus::NeverConsumable("account ID provided to the P2ID note storage doesn't match the target account ID".into())))
                 }
             },
             WellKnownNote::P2IDE => {
                 let (receiver_account_id, reclaim_height, timelock_height) =
-                    parse_p2ide_inputs(note.inputs().values())?;
+                    parse_p2ide_storage(note.storage().items())?;
 
                 let current_block_height = block_ref.as_u32();
 
@@ -318,10 +318,10 @@ impl WellKnownNote {
                         ))))
                     }
                 // if the target account is neither the sender nor the receiver (from the note's
-                // inputs), then this account cannot consume the note
+                // storage), then this account cannot consume the note
                 } else {
                     Ok(Some(NoteConsumptionStatus::NeverConsumable(
-                        "target account of the transaction does not match neither the receiver account specified by the P2IDE inputs, nor the sender account".into()
+                        "target account of the transaction does not match neither the receiver account specified by the P2IDE storage, nor the sender account".into()
                     )))
                 }
             },
@@ -336,71 +336,75 @@ impl WellKnownNote {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Returns the receiver account ID parsed from the provided P2ID note inputs.
+/// Returns the receiver account ID parsed from the provided P2ID note storage.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - the length of the provided note inputs array is not equal to the expected inputs number of the
-///   P2ID note.
-/// - first two elements of the note inputs array does not form the valid account ID.
-fn parse_p2id_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
-    if note_inputs.len() != WellKnownNote::P2ID.num_expected_inputs() {
+/// - the length of the provided note storage array is not equal to the expected number of storage
+///   items of the P2ID note.
+/// - first two elements of the note storage array does not form the valid account ID.
+fn parse_p2id_storage(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
+    if note_storage.len() != WellKnownNote::P2ID.expected_num_storage_items() {
         return Err(StaticAnalysisError::new(format!(
-            "P2ID note should have {} inputs, but {} was provided",
-            WellKnownNote::P2ID.num_expected_inputs(),
-            note_inputs.len()
+            "P2ID note should have {} storage items, but {} was provided",
+            WellKnownNote::P2ID.expected_num_storage_items(),
+            note_storage.len()
         )));
     }
 
-    try_read_account_id_from_inputs(note_inputs)
+    try_read_account_id_from_storage(note_storage)
 }
 
 /// Returns the receiver account ID, reclaim height and timelock height parsed from the provided
-/// P2IDE note inputs.
+/// P2IDE note storage.
 ///
 /// # Errors
 ///
 /// Returns an error if:
-/// - the length of the provided note inputs array is not equal to the expected inputs number of the
-///   P2IDE note.
-/// - first two elements of the note inputs array does not form the valid account ID.
-/// - third note inputs array element (reclaim height) is not a valid u32 value.
-/// - fourth note inputs array element (timelock height) is not a valid u32 value.
-fn parse_p2ide_inputs(note_inputs: &[Felt]) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
-    if note_inputs.len() != WellKnownNote::P2IDE.num_expected_inputs() {
+/// - the length of the provided note storage array is not equal to the expected number of storage
+///   items of the P2IDE note.
+/// - first two elements of the note storage array does not form the valid account ID.
+/// - third note storage array element (reclaim height) is not a valid u32 value.
+/// - fourth note storage array element (timelock height) is not a valid u32 value.
+fn parse_p2ide_storage(
+    note_storage: &[Felt],
+) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
+    if note_storage.len() != WellKnownNote::P2IDE.expected_num_storage_items() {
         return Err(StaticAnalysisError::new(format!(
-            "P2IDE note should have {} inputs, but {} was provided",
-            WellKnownNote::P2IDE.num_expected_inputs(),
-            note_inputs.len()
+            "P2IDE note should have {} storage items, but {} was provided",
+            WellKnownNote::P2IDE.expected_num_storage_items(),
+            note_storage.len()
         )));
     }
 
-    let receiver_account_id = try_read_account_id_from_inputs(note_inputs)?;
+    let receiver_account_id = try_read_account_id_from_storage(note_storage)?;
 
-    let reclaim_height = u32::try_from(note_inputs[2])
+    let reclaim_height = u32::try_from(note_storage[2])
         .map_err(|_err| StaticAnalysisError::new("reclaim block height should be a u32"))?;
 
-    let timelock_height = u32::try_from(note_inputs[3])
+    let timelock_height = u32::try_from(note_storage[3])
         .map_err(|_err| StaticAnalysisError::new("timelock block height should be a u32"))?;
 
     Ok((receiver_account_id, reclaim_height, timelock_height))
 }
 
-/// Reads the account ID from the first two note input values.
+/// Reads the account ID from the first two note storage values.
 ///
-/// Returns None if the note input values used to construct the account ID are invalid.
-fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
-    if note_inputs.len() < 2 {
+/// Returns None if the note storage values used to construct the account ID are invalid.
+fn try_read_account_id_from_storage(
+    note_storage: &[Felt],
+) -> Result<AccountId, StaticAnalysisError> {
+    if note_storage.len() < 2 {
         return Err(StaticAnalysisError::new(format!(
-            "P2ID and P2IDE notes should have at least 2 note inputs, but {} was provided",
-            note_inputs.len()
+            "P2ID and P2IDE notes should have at least 2 note storage items, but {} was provided",
+            note_storage.len()
         )));
     }
 
-    AccountId::try_from([note_inputs[1], note_inputs[0]]).map_err(|source| {
+    AccountId::try_from([note_storage[1], note_storage[0]]).map_err(|source| {
         StaticAnalysisError::with_source(
-            "failed to create an account ID from the first two note inputs",
+            "failed to create an account ID from the first two note storage items",
             source,
         )
     })

@@ -9,9 +9,9 @@ use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -183,7 +183,7 @@ pub struct OutputNoteData {
 }
 
 impl OutputNoteData {
-    /// Converts the output note data to a vector of field elements for note inputs
+    /// Converts the output note data to a vector of field elements for note storage
     pub fn to_elements(&self) -> Vec<Felt> {
         const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 7; // 4 + 2 + 1 (serial_num + account_id + tag)
         let mut elements = Vec::with_capacity(OUTPUT_NOTE_DATA_ELEMENT_COUNT);
@@ -202,11 +202,11 @@ impl OutputNoteData {
     }
 }
 
-/// Inputs for creating a CLAIM note.
+/// Data for creating a CLAIM note.
 ///
 /// This struct groups the core data needed to create a CLAIM note that exactly
 /// matches the agglayer claimAsset function signature.
-pub struct ClaimNoteInputs {
+pub struct ClaimNoteStorage {
     /// Proof data containing SMT proofs and root hashes
     pub proof_data: ProofData,
     /// Leaf data containing network, address, amount, and metadata
@@ -215,20 +215,20 @@ pub struct ClaimNoteInputs {
     pub output_note_data: OutputNoteData,
 }
 
-impl TryFrom<ClaimNoteInputs> for NoteInputs {
+impl TryFrom<ClaimNoteStorage> for NoteStorage {
     type Error = NoteError;
 
-    fn try_from(inputs: ClaimNoteInputs) -> Result<Self, Self::Error> {
+    fn try_from(storage: ClaimNoteStorage) -> Result<Self, Self::Error> {
         // proof_data + leaf_data + empty_word + output_note_data
         // 536 + 28 + 4 + 7
-        let mut claim_inputs = Vec::with_capacity(574);
+        let mut claim_storage = Vec::with_capacity(574);
 
-        claim_inputs.extend(inputs.proof_data.to_elements());
-        claim_inputs.extend(inputs.leaf_data.to_elements());
-        claim_inputs.extend(Word::empty());
-        claim_inputs.extend(inputs.output_note_data.to_elements());
+        claim_storage.extend(storage.proof_data.to_elements());
+        claim_storage.extend(storage.leaf_data.to_elements());
+        claim_storage.extend(Word::empty());
+        claim_storage.extend(storage.output_note_data.to_elements());
 
-        NoteInputs::new(claim_inputs)
+        NoteStorage::new(claim_storage)
     }
 }
 
@@ -238,25 +238,25 @@ impl TryFrom<ClaimNoteInputs> for NoteInputs {
 /// Generates a CLAIM note - a note that instructs an agglayer faucet to validate and mint assets.
 ///
 /// # Parameters
-/// - `inputs`: The core inputs for creating the CLAIM note
+/// - `storage`: The core storage for creating the CLAIM note
 /// - `sender_account_id`: The account ID of the CLAIM note creator
 /// - `rng`: Random number generator for creating the CLAIM note serial number
 ///
 /// # Errors
 /// Returns an error if note creation fails.
 pub fn create_claim_note<R: FeltRng>(
-    inputs: ClaimNoteInputs,
+    storage: ClaimNoteStorage,
     sender_account_id: AccountId,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
-    let note_inputs = NoteInputs::try_from(inputs)?;
+    let note_storage = NoteStorage::try_from(storage)?;
 
     // TODO: Make CLAIM note a Network Note once NoteAttachment PR lands
     let tag = NoteTag::new(0);
 
     let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, tag);
 
-    let recipient = NoteRecipient::new(rng.draw_word(), claim_script(), note_inputs);
+    let recipient = NoteRecipient::new(rng.draw_word(), claim_script(), note_storage);
     let assets = NoteAssets::new(vec![])?;
 
     Ok(Note::new(assets, metadata, recipient))
