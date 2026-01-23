@@ -545,14 +545,14 @@ pub fn claim_note_test_inputs(
     let smt_proof_local_exit_root = vec![Felt::new(0); 256];
     let smt_proof_rollup_exit_root = vec![Felt::new(0); 256];
     let global_index = [
-        Felt::new(12345),
         Felt::new(0),
         Felt::new(0),
         Felt::new(0),
         Felt::new(0),
         Felt::new(0),
+        Felt::new(1), // mainnet flag
         Felt::new(0),
-        Felt::new(0),
+        Felt::new(2), // leaf index (mainnet)
     ];
 
     let mainnet_exit_root: [u8; 32] = [

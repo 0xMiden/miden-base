@@ -1,10 +1,23 @@
 use miden::agglayer::crypto_utils
+use miden::core::crypto::hashes::keccak256
+use miden::core::mem
 
-# Inputs: []
-# Output: [GER_ROOT[8]]
-pub proc get_rollup_exit_root
-    # Push dummy GER (8 elements)
-    push.0.0.0.0.0.0.0.0  # dummy GER
+const PROOF_DATA_PTR = 0
+const PROOF_DATA_WORD_LEN = 134
+const SMT_PROOF_LOCAL_EXIT_ROOT_PTR = 0 # local SMT proof is first
+const GLOBAL_INDEX_PTR = PROOF_DATA_PTR + 2 * 256 # 512
+const EXIT_ROOTS_PTR = GLOBAL_INDEX_PTR + 8 # 520
+const MAINNET_EXIT_ROOT_PTR = GLOBAL_INDEX_PTR # it's the first exit root
+
+const ERR_BRIDGE_NOT_MAINNET = "bridge not mainnet"
+const ERR_LEADING_BITS_NON_ZERO = "leading bits of global index must be zero"
+const ERR_ROLLUP_INDEX_NON_ZERO = "rollup index must be zero for a mainnet deposit"
+
+# Inputs: [GER_ROOT[8]]
+# Output: []
+pub proc assert_valid_ger
+    # TODO verify that GER is in storage
+    dropw dropw
 end
 
 #! Computes the leaf value and verifies it against the AggLayer bridge.
@@ -41,17 +54,77 @@ pub proc verify_leaf_bridge
     movupw.3 dropw
     # => [LEAF_VALUE[8], PROOF_DATA_KEY, pad(4)]
 
-    # delegate proof verification (stubbed for now)
+    # delegate proof verification
     exec.verify_leaf
 end
 
 #! Verify leaf and checks that it has not been claimed.
 #!
 #! Inputs:
-#!   Operand stack: [LEAF_VALUE[8], PROOF_DATA_KEY, pad(4)]
+#!   Operand stack: [LEAF_VALUE[8], PROOF_DATA_KEY]
+#!
+#! Outputs: []
+#!
 #! Invocation: exec
 proc verify_leaf
-    # TODO: Awaiting https://github.com/0xMiden/miden-base/issues/2277
-    dropw dropw dropw
-    # => [pad(16)]
+    movupw.2
+    # load proof data from the advice map into memory
+    adv.push_mapval
+    # => [PROOF_DATA_KEY, LEAF_VALUE[8]]
+
+    push.SMT_PROOF_LOCAL_EXIT_ROOT_PTR push.PROOF_DATA_WORD_LEN
+    exec.mem::pipe_preimage_to_memory drop
+
+    # 1. compute GER from mainnet + rollup exit roots
+    push.EXIT_ROOTS_PTR
+    # => [exit_roots_ptr, LEAF_VALUE[8]]
+    exec.crypto_utils::compute_ger
+    # => [GER[8], LEAF_VALUE[8]]
+
+    # 2. assert the GER is valid
+    exec.assert_valid_ger
+    # => [LEAF_VALUE[8]]
+
+    # 3. load global index from memory
+    padw mem_loadw_le.GLOBAL_INDEX_PTR
+    padw push.GLOBAL_INDEX_PTR add.4 mem_loadw_le swapw
+    # => [GLOBAL_INDEX[8], LEAF_VALUE[8]]
+
+    # to see if we're dealing with a deposit from mainnet or from a rollup, process the global index
+    # TODO currently only implemented for mainnet deposits (mainnet flag must be 1)
+    exec.process_global_index_mainnet
+    # => [leaf_index]
+
+    # load the pointers to the merkle proof and root, to pass to `verify_merkle_proof`
+    push.SMT_PROOF_LOCAL_EXIT_ROOT_PTR
+    push.MAINNET_EXIT_ROOT_PTR
+
+    # => [mainnet_exit_root_ptr, smt_proof_local_exit_root_ptr, leaf_index, LEAF_VALUE[8]]
+    movdn.10
+    # => [smt_proof_local_exit_root_ptr, leaf_index, LEAF_VALUE[8], mainnet_exit_root_ptr]
+    # delegate verification to crypto_utils::verify_merkle_proof (stubbed for now)
+    exec.crypto_utils::verify_merkle_proof
+end
+
+#! Assert the global index is valid for a mainnet deposit.
+#!
+#! Inputs: [GLOBAL_INDEX[8]]
+#! Outputs: [leaf_index]
+#!
+#! Invocation: exec
+pub proc process_global_index_mainnet
+# for v0.1, let's only implement the mainnet branch
+    # the top 191 bits of the global index are zero
+    repeat.5 assertz.err=ERR_LEADING_BITS_NON_ZERO end
+
+    # the next element is a u32 mainnet flag bit
+    # enforce that this limb is one
+    # => [mainnet_flag, GLOBAL_INDEX[6..8], LEAF_VALUE[8]]
+    assert.err=ERR_BRIDGE_NOT_MAINNET
+
+    # the next element is a u32 rollup index, must be zero for a mainnet deposit
+    assertz.err=ERR_ROLLUP_INDEX_NON_ZERO
+
+    # finally, the leaf index = lowest 32 bits = last limb
+    # => [leaf_index]
 end
