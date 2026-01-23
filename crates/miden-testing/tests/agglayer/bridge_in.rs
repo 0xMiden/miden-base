@@ -4,7 +4,7 @@ use core::slice;
 
 use miden_agglayer::claim_note::{ExitRoot, SmtNode};
 use miden_agglayer::{
-    ClaimNoteInputs,
+    ClaimNoteStorage,
     EthAddressFormat,
     EthAmount,
     LeafData,
@@ -138,15 +138,15 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         output_note_tag: NoteTag::with_account_target(user_account.id()),
     };
 
-    let claim_inputs = ClaimNoteInputs { proof_data, leaf_data, output_note_data };
+    let claim_inputs = ClaimNoteStorage { proof_data, leaf_data, output_note_data };
 
     let claim_note = create_claim_note(claim_inputs, user_account.id(), builder.rng_mut())?;
 
     // Create P2ID note for the user account (similar to network faucet test)
     let p2id_script = StandardNote::P2ID.script();
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
-    let note_inputs = NoteStorage::new(p2id_inputs)?;
-    let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);
+    let note_storage = NoteStorage::new(p2id_inputs)?;
+    let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_storage);
 
     // Add the claim note to the builder before building the mock chain
     builder.add_output_note(OutputNote::Full(claim_note.clone()));
