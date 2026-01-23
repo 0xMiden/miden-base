@@ -73,8 +73,6 @@ pub const ERR_EPILOGUE_NONCE_CANNOT_BE_0: MasmError = MasmError::from_static_str
 /// Error Message: "total number of assets in the account and all involved notes must stay the same"
 pub const ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME: MasmError = MasmError::from_static_str("total number of assets in the account and all involved notes must stay the same");
 
-/// Error Message: "asset amount to burn can not exceed the existing total supply"
-pub const ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY: MasmError = MasmError::from_static_str("asset amount to burn can not exceed the existing total supply");
 /// Error Message: "the burn_non_fungible_asset procedure can only be called on a non-fungible faucet"
 pub const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the burn_non_fungible_asset procedure can only be called on a non-fungible faucet");
 /// Error Message: "the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
