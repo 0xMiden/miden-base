@@ -11,7 +11,7 @@ use miden_protocol::account::{
 };
 use miden_protocol::asset::TokenSymbol;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word};
 
 use super::{BasicFungibleFaucet, FungibleFaucetError};
 use crate::account::auth::NoAuth;
@@ -113,49 +113,39 @@ impl NetworkFungibleFaucet {
         interface: AccountInterface,
         storage: &AccountStorage,
     ) -> Result<Self, FungibleFaucetError> {
-        for component in interface.components().iter() {
-            if let AccountComponentInterface::NetworkFungibleFaucet = component {
-                // obtain metadata from storage using offset provided by NetworkFungibleFaucet
-                // interface
-                let faucet_metadata = storage
-                    .get_item(NetworkFungibleFaucet::metadata_slot())
-                    .map_err(|err| FungibleFaucetError::StorageLookupFailed {
-                        slot_name: NetworkFungibleFaucet::metadata_slot().clone(),
-                        source: err,
-                    })?;
-                let [max_supply, decimals, token_symbol, _] = *faucet_metadata;
-
-                // obtain owner account ID from the next storage slot
-                let owner_account_id_word: Word = storage
-                    .get_item(NetworkFungibleFaucet::owner_config_slot())
-                    .map_err(|err| FungibleFaucetError::StorageLookupFailed {
-                        slot_name: NetworkFungibleFaucet::owner_config_slot().clone(),
-                        source: err,
-                    })?;
-
-                // Convert Word back to AccountId
-                // Storage format: [0, 0, suffix, prefix]
-                let prefix = owner_account_id_word[3];
-                let suffix = owner_account_id_word[2];
-                let owner_account_id = AccountId::new_unchecked([prefix, suffix]);
-
-                // verify metadata values and create BasicFungibleFaucet
-                let token_symbol = TokenSymbol::try_from(token_symbol)
-                    .map_err(FungibleFaucetError::InvalidTokenSymbol)?;
-                let decimals = decimals.as_int().try_into().map_err(|_| {
-                    FungibleFaucetError::TooManyDecimals {
-                        actual: decimals.as_int(),
-                        max: Self::MAX_DECIMALS,
-                    }
-                })?;
-
-                let faucet = BasicFungibleFaucet::new(token_symbol, decimals, max_supply)?;
-
-                return Ok(Self { faucet, owner_account_id });
-            }
+        // Check that the procedures of the network fungible faucet exist in the account.
+        if !interface
+            .components()
+            .contains(&AccountComponentInterface::NetworkFungibleFaucet)
+        {
+            return Err(FungibleFaucetError::MissingNetworkFungibleFaucetInterface);
         }
 
-        Err(FungibleFaucetError::NoAvailableInterface)
+        debug_assert_eq!(
+            NetworkFungibleFaucet::metadata_slot(),
+            BasicFungibleFaucet::metadata_slot(),
+            "the code below assumes the slots of both components are identical"
+        );
+
+        // This is safe because the NetworkFungibleFaucet's metadata slot is identical to the one in
+        // the basic fungible faucet.
+        let faucet = BasicFungibleFaucet::try_from_storage(storage)?;
+
+        // obtain owner account ID from the next storage slot
+        let owner_account_id_word: Word = storage
+            .get_item(NetworkFungibleFaucet::owner_config_slot())
+            .map_err(|err| FungibleFaucetError::StorageLookupFailed {
+                slot_name: NetworkFungibleFaucet::owner_config_slot().clone(),
+                source: err,
+            })?;
+
+        // Convert Word back to AccountId
+        // Storage format: [0, 0, suffix, prefix]
+        let prefix = owner_account_id_word[3];
+        let suffix = owner_account_id_word[2];
+        let owner_account_id = AccountId::new_unchecked([prefix, suffix]);
+
+        Ok(Self { faucet, owner_account_id })
     }
 
     // PUBLIC ACCESSORS
@@ -187,6 +177,11 @@ impl NetworkFungibleFaucet {
         self.faucet.max_supply()
     }
 
+    /// Returns the token supply (in base units) of the faucet.
+    pub fn token_supply(&self) -> Felt {
+        self.faucet.token_supply()
+    }
+
     /// Returns the owner account ID of the faucet.
     pub fn owner_account_id(&self) -> AccountId {
         self.owner_account_id
@@ -201,18 +196,26 @@ impl NetworkFungibleFaucet {
     pub fn burn_digest() -> Word {
         *NETWORK_FUNGIBLE_FAUCET_BURN
     }
+
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Sets the token_supply (in base units) of the basic fungible faucet.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the token supply exceeds the max supply.
+    pub fn with_token_supply(mut self, token_supply: Felt) -> Result<Self, FungibleFaucetError> {
+        self.faucet = self.faucet.with_token_supply(token_supply)?;
+
+        Ok(self)
+    }
 }
 
 impl From<NetworkFungibleFaucet> for AccountComponent {
     fn from(network_faucet: NetworkFungibleFaucet) -> Self {
-        // Note: data is stored as [a0, a1, a2, a3] but loaded onto the stack as
-        // [a3, a2, a1, a0, ...]
-        let metadata = Word::new([
-            network_faucet.faucet.max_supply(),
-            Felt::from(network_faucet.faucet.decimals()),
-            network_faucet.faucet.symbol().into(),
-            Felt::ZERO,
-        ]);
+        let metadata_word = network_faucet.faucet.to_metadata_word();
 
         // Convert AccountId into its Word encoding for storage.
         let owner_account_id_word: Word = [
@@ -224,7 +227,7 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
         .into();
 
         let metadata_slot =
-            StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata);
+            StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
         let owner_slot = StorageSlot::with_value(
             NetworkFungibleFaucet::owner_config_slot().clone(),
             owner_account_id_word,

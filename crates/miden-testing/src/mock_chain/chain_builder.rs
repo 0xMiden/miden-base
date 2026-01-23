@@ -20,7 +20,6 @@ use miden_protocol::account::{
     AccountBuilder,
     AccountDelta,
     AccountId,
-    AccountStorage,
     AccountStorageMode,
     AccountType,
     StorageSlot,
@@ -47,7 +46,7 @@ use miden_protocol::note::{Note, NoteAttachment, NoteDetails, NoteType};
 use miden_protocol::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_protocol::testing::random_signer::RandomBlockSigner;
 use miden_protocol::transaction::{OrderedTransactionHeaders, OutputNote, TransactionKernel};
-use miden_protocol::{Felt, MAX_OUTPUT_NOTES_PER_BATCH, Word, ZERO};
+use miden_protocol::{Felt, MAX_OUTPUT_NOTES_PER_BATCH, Word};
 use miden_standards::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::note::{create_p2id_note, create_p2ide_note, create_swap_note};
@@ -363,7 +362,8 @@ impl MockChainBuilder {
         token_symbol: &str,
         max_supply: u64,
         owner_account_id: AccountId,
-        total_issuance: Option<u64>,
+        // TODO(rm_sysdata): Remove.
+        _total_issuance: Option<u64>,
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
         let network_faucet = NetworkFungibleFaucet::new(
@@ -379,24 +379,8 @@ impl MockChainBuilder {
             .with_component(network_faucet)
             .account_type(AccountType::FungibleFaucet);
 
-        // Network faucets always use Noop auth (no authentication)
-        let mut account =
-            self.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
-
-        // The faucet's sysdata slot is initialized to an empty word by default.
-        // If total_issuance is set, overwrite it and reinsert the account.
-        if let Some(issuance) = total_issuance {
-            account
-                .storage_mut()
-                .set_item(
-                    AccountStorage::faucet_sysdata_slot(),
-                    Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
-                )
-                .context("failed to set faucet storage")?;
-            self.accounts.insert(account.id(), account.clone());
-        }
-
-        Ok(account)
+        // Network faucets always use IncrNonce auth (no authentication)
+        self.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
     }
 
     /// Creates a new public account with an [`MockAccountComponent`] and registers the
