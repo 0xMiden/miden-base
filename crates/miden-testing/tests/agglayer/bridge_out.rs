@@ -13,6 +13,8 @@ use miden_protocol::account::{
 use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{
     Note,
+    NoteAttachment,
+    NoteAttachmentScheme,
     NoteAssets,
     NoteMetadata,
     NoteRecipient,
@@ -83,14 +85,24 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
     let address_felts = eth_address.to_elements().to_vec();
 
-    // Combine network ID and address felts into note storage (6 felts total)
+    // Combine network ID and address felts into the note storage (6 felts total)
     let mut input_felts = vec![destination_network];
     input_felts.extend(address_felts);
 
     let inputs = NoteStorage::new(input_felts.clone())?;
+    let target_account_id = bridge_account.id();
+    // Store the target account ID in the attachment: [prefix, suffix, 0, 0].
+    let attachment_word = Word::from([
+        target_account_id.prefix().as_felt(),
+        target_account_id.suffix(),
+        Felt::new(0),
+        Felt::new(0),
+    ]);
+    let attachment = NoteAttachment::new_word(NoteAttachmentScheme::none(), attachment_word);
 
     // Create the B2AGG note with assets from the faucet
-    let b2agg_note_metadata = NoteMetadata::new(faucet.id(), note_type, tag);
+    let b2agg_note_metadata =
+        NoteMetadata::new(faucet.id(), note_type, tag).with_attachment(attachment);
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let b2agg_note_script = NoteScript::new(b2agg_script);
@@ -239,15 +251,25 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
         EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
     let address_felts = eth_address.to_elements().to_vec();
 
-    // Combine network ID and address felts into note storage (6 felts total)
+    // Combine network ID and address felts into the note storage (6 felts total)
     let mut input_felts = vec![destination_network];
     input_felts.extend(address_felts);
 
     let inputs = NoteStorage::new(input_felts.clone())?;
+    let target_account_id = user_account.id();
+    // Store the target account ID in the attachment: [prefix, suffix, 0, 0].
+    let attachment_word = Word::from([
+        target_account_id.prefix().as_felt(),
+        target_account_id.suffix(),
+        Felt::new(0),
+        Felt::new(0),
+    ]);
+    let attachment = NoteAttachment::new_word(NoteAttachmentScheme::none(), attachment_word);
 
     // Create the B2AGG note with the USER ACCOUNT as the sender
     // This is the key difference - the note sender will be the same as the consuming account
-    let b2agg_note_metadata = NoteMetadata::new(user_account.id(), note_type, tag);
+    let b2agg_note_metadata =
+        NoteMetadata::new(user_account.id(), note_type, tag).with_attachment(attachment);
     let b2agg_note_assets = NoteAssets::new(vec![bridge_asset])?;
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let b2agg_note_script = NoteScript::new(b2agg_script);

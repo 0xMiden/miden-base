@@ -12,8 +12,9 @@ const B2AGG_NOTE_NUM_STORAGE_ITEMS=6
 # ERRORS
 # =================================================================================================
 const ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note asset"
-
 const ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="B2AGG script expects exactly 6 note storage items"
+const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account does not match consuming account"
+
 
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!
@@ -34,13 +35,37 @@ const ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="B2AGG script expects exactly
 #!   - destination_address_2: bytes 8-11
 #!   - destination_address_3: bytes 12-15
 #!   - destination_address_4: bytes 16-19
+#! Note attachment is assumed to be a word layout:
+#! - [target_id_prefix, target_id_suffix, 0, 0]
 #!
 #! Panics if:
 #! - The note does not contain exactly 6 storage items.
 #! - The note does not contain exactly 1 asset.
+#! - The note attachment does not target the consuming account.
 #!
 begin
     dropw
+    # => [pad(16)]
+
+    # Ensure note attachment targets the consuming account.
+    exec.active_note::get_metadata
+    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
+
+    swapw dropw
+    # => [NOTE_ATTACHMENT, pad(12)]
+
+    # Reorder attachment word to [target_id_prefix, target_id_suffix, 0, 0].
+    movup.2 movup.3
+    # => [target_id_prefix, target_id_suffix, 0, 0, pad(12)]
+
+    exec.active_account::get_id
+    # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix, 0, 0, pad(8)]
+
+    exec.account_id::is_equal
+    assert.err=ERR_B2AGG_TARGET_ACCOUNT_MISMATCH
+    # => [0, 0, pad(14)]
+
+    drop drop
     # => [pad(16)]
 
     # Check if reclaim
