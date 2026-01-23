@@ -1744,6 +1744,8 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rstest",
+ "serde",
+ "serde_json",
  "thiserror",
  "tokio",
  "winter-rand-utils",
