@@ -1,13 +1,16 @@
 extern crate alloc;
 
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_agglayer::agglayer_library;
+use miden_agglayer::{agglayer_library, utils};
+use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
 use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
-use miden_protocol::transaction::TransactionKernel;
+use miden_protocol::{transaction::TransactionKernel, Felt};
+use primitive_types::U256;
 
 /// Execute a program with default host and optional advice inputs
 pub async fn execute_program_with_default_host(
@@ -35,6 +38,62 @@ pub async fn execute_program_with_default_host(
 
     let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
     processor.execute(&program, &mut host).await
+}
+
+/// Execute a MASM script with optional advice inputs
+pub async fn execute_masm_script(
+    script_code: &str,
+    advice_values: Vec<u64>,
+) -> Result<ExecutionOutput, ExecutionError> {
+    let asset_conversion_lib = agglayer_library();
+
+    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
+        .with_dynamic_library(CoreLibrary::default())
+        .unwrap()
+        .with_dynamic_library(asset_conversion_lib.clone())
+        .unwrap()
+        .assemble_program(script_code)
+        .unwrap();
+
+    let mut host = DefaultHost::default();
+    let test_lib = TransactionKernel::library();
+    host.load_library(test_lib.mast_forest()).unwrap();
+    let std_lib = CoreLibrary::default();
+    host.load_library(std_lib.mast_forest()).unwrap();
+    host.load_library(asset_conversion_lib.mast_forest()).unwrap();
+
+    let stack_inputs = StackInputs::new(vec![]).unwrap();
+    let advice_inputs = if advice_values.is_empty() {
+        AdviceInputs::default()
+    } else {
+        AdviceInputs::default().with_stack_values(advice_values).unwrap()
+    };
+
+    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    processor.execute(&program, &mut host).await
+}
+
+/// Helper to assert execution fails with a specific error message
+pub async fn assert_execution_fails_with(
+    script_code: &str,
+    advice_values: Vec<u64>,
+    expected_error: &str,
+) {
+    let result = execute_masm_script(script_code, advice_values).await;
+    assert!(result.is_err(), "Expected execution to fail but it succeeded");
+    let error_msg = result.unwrap_err().to_string();
+    assert!(
+        error_msg.contains(expected_error),
+        "Expected error containing '{}', got: {}",
+        expected_error,
+        error_msg
+    );
+}
+
+/// Convert the top 8 u32 values from the execution stack to a U256
+pub fn stack_to_u256(exec_output: &ExecutionOutput) -> U256 {
+    let felts: Vec<Felt> = exec_output.stack[0..8].to_vec();
+    utils::felts_to_u256(felts)
 }
 
 // TESTING HELPERS
