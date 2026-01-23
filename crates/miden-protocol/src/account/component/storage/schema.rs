@@ -8,7 +8,6 @@ use miden_processor::DeserializationError;
 
 use super::type_registry::{SCHEMA_TYPE_REGISTRY, SchemaRequirement, SchemaTypeId};
 use super::{InitStorageData, StorageValueName, WordValue};
-use crate::account::storage::is_reserved_slot_name;
 use crate::account::{StorageMap, StorageSlot, StorageSlotName};
 use crate::crypto::utils::bytes_to_elements_with_padding;
 use crate::errors::AccountComponentTemplateError;
@@ -110,10 +109,6 @@ impl StorageSchema {
         let mut init_values = BTreeMap::new();
 
         for (slot_name, schema) in self.slots.iter() {
-            if is_reserved_slot_name(slot_name) {
-                return Err(AccountComponentTemplateError::ReservedSlotName(slot_name.clone()));
-            }
-
             schema.validate()?;
             schema.collect_init_value_requirements(slot_name, &mut init_values)?;
         }

@@ -376,7 +376,6 @@ pub fn create_basic_fungible_faucet(
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_protocol::account::AccountStorage;
     use miden_protocol::account::auth::PublicKeyCommitment;
     use miden_protocol::{FieldElement, ONE, Word};
 
@@ -420,15 +419,6 @@ mod tests {
             auth_scheme,
         )
         .unwrap();
-
-        // The faucet sysdata slot should be initialized to an empty word.
-        assert_eq!(
-            faucet_account
-                .storage()
-                .get_item(AccountStorage::faucet_sysdata_slot())
-                .unwrap(),
-            Word::empty()
-        );
 
         // The falcon auth component's public key should be present.
         assert_eq!(

@@ -1,3 +1,4 @@
+use miden_protocol::Felt;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -5,13 +6,9 @@ use miden_protocol::account::{
     AccountId,
     AccountStorage,
     AccountType,
-    StorageMap,
-    StorageSlot,
 };
-use miden_protocol::asset::{AssetVault, NonFungibleAsset};
-use miden_protocol::testing::constants::{self};
+use miden_protocol::asset::AssetVault;
 use miden_protocol::testing::noop_auth_component::NoopAuthComponent;
-use miden_protocol::{Felt, Word, ZERO};
 
 use crate::testing::account_component::{MockAccountComponent, MockFaucetComponent};
 
@@ -46,12 +43,7 @@ pub trait MockAccountExt {
             .with_component(MockFaucetComponent)
             .build_existing()
             .expect("account should be valid");
-        let (_id, vault, mut storage, code, nonce, _seed) = account.into_parts();
-
-        let faucet_sysdata_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
-        storage
-            .set_item(AccountStorage::faucet_sysdata_slot(), faucet_sysdata_slot)
-            .unwrap();
+        let (_id, vault, storage, code, nonce, _seed) = account.into_parts();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
     }
@@ -67,16 +59,7 @@ pub trait MockAccountExt {
             .with_component(MockFaucetComponent)
             .build_existing()
             .expect("account should be valid");
-        let (_id, vault, _storage, code, nonce, _seed) = account.into_parts();
-
-        let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
-        let non_fungible_storage_map =
-            StorageMap::with_entries([(asset.vault_key().into(), asset.into())]).unwrap();
-        let storage = AccountStorage::new(vec![StorageSlot::with_map(
-            AccountStorage::faucet_sysdata_slot().clone(),
-            non_fungible_storage_map,
-        )])
-        .unwrap();
+        let (_id, vault, storage, code, nonce, _seed) = account.into_parts();
 
         Account::new_existing(account_id, vault, storage, code, nonce)
     }
