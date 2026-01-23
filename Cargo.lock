@@ -1388,6 +1388,7 @@ dependencies = [
  "miden-assembly",
  "miden-core",
  "miden-core-lib",
+ "miden-crypto",
  "miden-protocol",
  "miden-standards",
  "miden-utils-sync",
