@@ -103,7 +103,7 @@ impl EthAmount {
         }
     }
 
-    /// Converts the amount to a vector of field elements for note inputs.
+    /// Converts the amount to a vector of field elements for note storage.
     ///
     /// Each u32 value in the amount array is converted to a [`Felt`].
     pub fn to_elements(&self) -> [Felt; 8] {

@@ -30,7 +30,7 @@ pub mod eth_types;
 pub mod utils;
 
 pub use claim_note::{
-    ClaimNoteInputs,
+    ClaimNoteStorage,
     ExitRoot,
     LeafData,
     OutputNoteData,

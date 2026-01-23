@@ -10,26 +10,26 @@ use miden_protocol::note::{
     NoteAssets,
     NoteAttachment,
     NoteDetails,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
 use miden_protocol::{Felt, Word};
 use utils::build_swap_tag;
 
-pub mod mint_inputs;
+pub mod mint_storage;
 pub mod utils;
 
 mod network_account_target;
-pub use network_account_target::NetworkAccountTarget;
+pub use network_account_target::{NetworkAccountTarget, NetworkAccountTargetError};
 
 mod well_known_note_attachment;
 pub use well_known_note_attachment::WellKnownNoteAttachment;
 
 mod well_known_note;
-pub use mint_inputs::MintNoteInputs;
+pub use mint_storage::MintNoteStorage;
 pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
 
 // STANDARDIZED SCRIPTS
@@ -143,7 +143,7 @@ pub fn create_swap_note<R: FeltRng>(
     inputs.extend_from_slice(attachment.as_elements());
     inputs.extend_from_slice(requested_asset_word.as_elements());
     inputs.extend_from_slice(payback_recipient.digest().as_elements());
-    let inputs = NoteInputs::new(inputs)?;
+    let inputs = NoteStorage::new(inputs)?;
 
     // build the tag for the SWAP use case
     let tag = build_swap_tag(swap_note_type, &offered_asset, &requested_asset);
@@ -171,7 +171,7 @@ pub fn create_swap_note<R: FeltRng>(
 /// checking if the note sender equals the faucet owner to authorize minting.
 ///
 /// MINT notes are always PUBLIC (for network execution). Output notes can be either PRIVATE
-/// or PUBLIC depending on the MintNoteInputs variant used.
+/// or PUBLIC depending on the MintNoteStorage variant used.
 ///
 /// The passed-in `rng` is used to generate a serial number for the note. The note's tag
 /// is automatically set to the faucet's account ID for proper routing.
@@ -179,7 +179,7 @@ pub fn create_swap_note<R: FeltRng>(
 /// # Parameters
 /// - `faucet_id`: The account ID of the network faucet that will mint the assets
 /// - `sender`: The account ID of the note creator (must be the faucet owner)
-/// - `mint_inputs`: The input configuration specifying private or public output mode
+/// - `mint_storage`: The storage configuration specifying private or public output mode
 /// - `attachment`: The [`NoteAttachment`] of the MINT note
 /// - `rng`: Random number generator for creating the serial number
 ///
@@ -188,7 +188,7 @@ pub fn create_swap_note<R: FeltRng>(
 pub fn create_mint_note<R: FeltRng>(
     faucet_id: AccountId,
     sender: AccountId,
-    mint_inputs: MintNoteInputs,
+    mint_storage: MintNoteStorage,
     attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
@@ -198,14 +198,14 @@ pub fn create_mint_note<R: FeltRng>(
     // MINT notes are always public for network execution
     let note_type = NoteType::Public;
 
-    // Convert MintNoteInputs to NoteInputs
-    let inputs = NoteInputs::from(mint_inputs);
+    // Convert MintNoteStorage to NoteStorage
+    let storage = NoteStorage::from(mint_storage);
 
     let tag = NoteTag::with_account_target(faucet_id);
 
     let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
     let assets = NoteAssets::new(vec![])?; // MINT notes have no assets
-    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+    let recipient = NoteRecipient::new(serial_num, note_script, storage);
 
     Ok(Note::new(assets, metadata, recipient))
 }
@@ -244,7 +244,7 @@ pub fn create_burn_note<R: FeltRng>(
     // BURN notes are always public
     let note_type = NoteType::Public;
 
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let tag = NoteTag::with_account_target(faucet_id);
 
     let metadata = NoteMetadata::new(sender, note_type, tag).with_attachment(attachment);
