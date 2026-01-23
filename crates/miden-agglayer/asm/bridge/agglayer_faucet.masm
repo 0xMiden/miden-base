@@ -144,10 +144,10 @@ end
 # Outputs: [U256[0], U256[1]]
 proc get_raw_claim_amount
     padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1
-    # exec.word::reverse
+    exec.word::reverse
 
     padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0
-    # exec.word::reverse
+    exec.word::reverse
 end
 
 # Inputs: [U256[0], U256[1]]
@@ -254,13 +254,9 @@ proc build_p2id_output_note
     exec.get_raw_claim_amount
     # => [AMOUNT[0], AMOUNT[1], amount, scale_exp, tag, note_type, RECIPIENT]
 
-    push.111 debug.stack drop
-
-    # TODO: implement scale down logic; stubbed out for now
+    # Check that provided bridge amount is valid conversion from EVM amount
     exec.asset_conversion::scale_u256_to_native_amount
     # => [amount, tag, note_type, RECIPIENT]
-
-    push.222 debug.stack drop
 
     exec.faucets::distribute
     # => [pad(16)]

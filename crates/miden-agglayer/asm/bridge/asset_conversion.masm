@@ -138,9 +138,6 @@ end
 #! - x < y * 10^scale_exp (underflow)
 #! - (x - y * 10^scale_exp) >= 10^scale_exp (remainder too large)
 pub proc scale_u256_to_native_amount
-
-    push.2202 debug.stack drop
-
     # --- enforce x < 2^128 (x4..x7 == 0) ---
     dup.4 assertz.err=ERR_X_TOO_LARGE
     dup.5 assertz.err=ERR_X_TOO_LARGE
@@ -222,9 +219,4 @@ pub proc scale_u256_to_native_amount
 
     assert.err=ERR_REMAINDER_TOO_LARGE
     # => [y_ret]
-end
-
-# TODO: Rm & use scale_u256_to_native_amount
-pub proc scale_u256_to_native_amount_stubbed
-    repeat.7 drop end
 end
