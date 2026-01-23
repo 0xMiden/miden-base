@@ -32,6 +32,9 @@ pub const ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT: MasmError = MasmError::from_
 /// Error Message: "address limb is not u32"
 pub const ERR_NOT_U32: MasmError = MasmError::from_static_str("address limb is not u32");
 
+/// Error Message: "origin token addresses do not match"
+pub const ERR_ORIGIN_ADDRESSES_MISMATCH: MasmError = MasmError::from_static_str("origin token addresses do not match");
+
 /// Error Message: "remainder z must be < 10^s"
 pub const ERR_REMAINDER_TOO_LARGE: MasmError = MasmError::from_static_str("remainder z must be < 10^s");
 

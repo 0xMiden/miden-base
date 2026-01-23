@@ -99,7 +99,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         mainnet_exit_root,
         rollup_exit_root,
         origin_network,
-        origin_token_address,
         destination_network,
         metadata,
     ) = claim_note_test_inputs();
@@ -135,7 +134,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     let leaf_data = LeafData {
         origin_network,
-        origin_token_address: EthAddressFormat::new(origin_token_address),
+        origin_token_address,
         destination_network,
         destination_address: EthAddressFormat::new(destination_address),
         amount: eth_amount_l1,

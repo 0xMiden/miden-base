@@ -100,17 +100,8 @@ pub fn stack_to_u256(exec_output: &ExecutionOutput) -> U256 {
 /// - origin_token_address: [u8; 20]
 /// - destination_network: u32
 /// - metadata: [u32; 8]
-pub type ClaimNoteTestInputs = (
-    Vec<[u8; 32]>,
-    Vec<[u8; 32]>,
-    [u32; 8],
-    [u8; 32],
-    [u8; 32],
-    u32,
-    [u8; 20],
-    u32,
-    [u32; 8],
-);
+pub type ClaimNoteTestInputs =
+    (Vec<[u8; 32]>, Vec<[u8; 32]>, [u32; 8], [u8; 32], [u8; 32], u32, u32, [u32; 8]);
 
 /// Returns dummy test inputs for creating CLAIM notes with native types.
 ///
@@ -139,11 +130,6 @@ pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
 
     let origin_network = 1u32;
 
-    let origin_token_address: [u8; 20] = [
-        0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-        0x88, 0x99, 0xaa, 0xbb, 0xcc,
-    ];
-
     let destination_network = 2u32;
 
     let metadata: [u32; 8] = [0; 8];
@@ -155,7 +141,6 @@ pub fn claim_note_test_inputs() -> ClaimNoteTestInputs {
         mainnet_exit_root,
         rollup_exit_root,
         origin_network,
-        origin_token_address,
         destination_network,
         metadata,
     )

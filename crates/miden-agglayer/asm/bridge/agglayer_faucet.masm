@@ -43,6 +43,12 @@ const OUTPUT_NOTE_SCALED_AMOUNT_MEM_ADDR = 575
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 552
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 556
 
+const ORIGIN_TOKEN_ADDRESS_0 = 541
+const ORIGIN_TOKEN_ADDRESS_1 = 542
+const ORIGIN_TOKEN_ADDRESS_2 = 543
+const ORIGIN_TOKEN_ADDRESS_3 = 544
+const ORIGIN_TOKEN_ADDRESS_4 = 545
+
 const DESTINATION_ADDRESS_0 = 547
 const DESTINATION_ADDRESS_1 = 548
 const DESTINATION_ADDRESS_2 = 549
@@ -63,6 +69,7 @@ const P2ID_OUTPUT_NOTE_AMOUNT_MEM_PTR = 611
 # =================================================================================================
 
 const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
+const ERR_ORIGIN_ADDRESSES_MISMATCH = "origin token addresses do not match"
 
 #! Inputs:  [PROOF_DATA_KEY, LEAF_DATA_KEY]
 #! Outputs: []
@@ -74,6 +81,10 @@ const ERR_INVALID_CLAIM_PROOF = "invalid claim proof"
 #!
 #! Invocation: exec
 proc validate_claim
+    # Check origin token address matches storage origin address
+    exec.assert_origin_address_eq_storage_address
+    # => [PROOF_DATA_KEY, LEAF_DATA_KEY]
+
     # Get bridge_in::check_claim_proof procedure MAST root
     procref.bridge_in::check_claim_proof
     # => [BRIDGE_PROC_MAST_ROOT]
@@ -98,6 +109,39 @@ proc validate_claim
     # => [] 
 end
 
+
+#! Verifies that the origin token address from the claim matches the stored origin token address.
+#!
+#! This procedure loads the origin token address from the claim data in memory and compares it
+#! against the origin token address stored in the faucet's metadata storage slots. All 5 u32
+#! limbs of the address must match exactly.
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Panics if:
+#! - any of the 5 u32 limbs of the origin token address do not match.
+#!
+#! Invocation: exec
+proc assert_origin_address_eq_storage_address
+    mem_load.ORIGIN_TOKEN_ADDRESS_0
+    mem_load.ORIGIN_TOKEN_ADDRESS_1
+    mem_load.ORIGIN_TOKEN_ADDRESS_2
+    mem_load.ORIGIN_TOKEN_ADDRESS_3
+    mem_load.ORIGIN_TOKEN_ADDRESS_4
+    # => [ORIGIN_TOKEN_ADDRESS_CLAIM[5]]
+
+    exec.get_origin_token_address
+    # => [ORIGIN_TOKEN_ADDRESS[5], ORIGIN_TOKEN_ADDRESS_CLAIM[5]]
+
+    movup.5 assert_eq.err=ERR_ORIGIN_ADDRESSES_MISMATCH
+    movup.4 assert_eq.err=ERR_ORIGIN_ADDRESSES_MISMATCH
+    movup.3 assert_eq.err=ERR_ORIGIN_ADDRESSES_MISMATCH
+    movup.2 assert_eq.err=ERR_ORIGIN_ADDRESSES_MISMATCH
+    assert_eq.err=ERR_ORIGIN_ADDRESSES_MISMATCH
+    # => []
+end
+
 #! Reads the origin token address from the aggfaucet metadata storage slots.
 #!
 #! Inputs:  []
@@ -105,22 +149,15 @@ end
 #!
 #! Invocation: exec
 proc get_origin_token_address
-    # Get first word: [tok0, tok1, tok2, tok3]
+    # Get first word: [tok1, tok2, tok3, tok4]
     push.AGGFAUCET_METADATA_SLOT_0[0..2]
     exec.active_account::get_item
-    # => [tok0, tok1, tok2, tok3]
+    # => [tok1, tok2, tok3, tok4]
     
-    # Get second word: [tok4, scaling_factor, 0, 0]
+    # Get second word: [0, 0, scaling_factor, tok0]
     push.AGGFAUCET_METADATA_SLOT_1[0..2]
     exec.active_account::get_item
-    # => [tok4, scaling_factor, 0, 0, tok0, tok1, tok2, tok3]
-    
-    # Extract tok4 and drop the rest
-    swap.3 drop swap.3 drop swap.3 drop
-    # => [tok4, tok0, tok1, tok2, tok3]
-    
-    # Rearrange to [tok0, tok1, tok2, tok3, tok4]
-    movdn.4
+    drop drop drop
     # => [tok0, tok1, tok2, tok3, tok4]
 end
 
