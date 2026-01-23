@@ -12,7 +12,7 @@ use super::{
     Serializable,
     Word,
 };
-use crate::account::{AccountComponent, AccountType};
+use crate::account::AccountComponent;
 use crate::crypto::SequentialCommit;
 
 mod slot;
@@ -91,22 +91,12 @@ impl AccountStorage {
 
     /// Creates an [`AccountStorage`] from the provided components' storage slots.
     ///
-    /// If the account type is faucet the reserved slot (slot 0) will be initialized.
-    /// - For Fungible Faucets the value is [`StorageSlot::empty_value`].
-    /// - For Non-Fungible Faucets the value is [`StorageSlot::empty_map`].
-    ///
-    /// If the storage needs to be initialized with certain values in that slot, those can be added
-    /// after construction with the standard set methods for items and maps.
-    ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
-    /// - Any component accesses [`AccountStorage::faucet_sysdata_slot`].
     pub(super) fn from_components(
         components: Vec<AccountComponent>,
-        // TODO(rm_sysdata): Remove.
-        _account_type: AccountType,
     ) -> Result<AccountStorage, AccountError> {
         let storage_slots = components
             .into_iter()

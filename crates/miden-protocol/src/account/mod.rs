@@ -186,7 +186,7 @@ impl Account {
         validate_components_support_account_type(&components, account_type)?;
 
         let code = AccountCode::from_components_unchecked(&components)?;
-        let storage = AccountStorage::from_components(components, account_type)?;
+        let storage = AccountStorage::from_components(components)?;
 
         Ok((code, storage))
     }
