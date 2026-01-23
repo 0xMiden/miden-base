@@ -178,7 +178,8 @@ pub fn falcon_512_rpo_multisig_library() -> Library {
 // STANDARD ACCOUNT COMPONENTS
 // ================================================================================================
 
-/// The enum holding the types of standard account components defined in the `miden-standards` crate.
+/// The enum holding the types of standard account components defined in the `miden-standards`
+/// crate.
 pub enum StandardAccountComponent {
     BasicWallet,
     BasicFungibleFaucet,
