@@ -27,11 +27,7 @@ use miden_protocol::note::{
 use miden_protocol::testing::account_id::ACCOUNT_ID_PRIVATE_SENDER;
 use miden_protocol::transaction::{ExecutedTransaction, OutputNote};
 use miden_protocol::{Felt, Word};
-use miden_standards::account::faucets::{
-    BasicFungibleFaucet,
-    FungibleFaucetExt,
-    NetworkFungibleFaucet,
-};
+use miden_standards::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::errors::standards::{
     ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
@@ -495,7 +491,8 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 50.
-    assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(50));
+    let initial_token_supply = NetworkFungibleFaucet::try_from(&faucet)?.token_supply();
+    assert_eq!(initial_token_supply, Felt::new(50));
 
     // CREATE MINT NOTE USING STANDARD NOTE
     // --------------------------------------------------------------------------------------------
@@ -1101,8 +1098,8 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     // Check the initial token issuance before burning
-    let initial_issuance = faucet.get_token_issuance().unwrap();
-    assert_eq!(initial_issuance, Felt::new(100));
+    let initial_token_supply = NetworkFungibleFaucet::try_from(&faucet)?.token_supply();
+    assert_eq!(initial_token_supply, Felt::new(100));
 
     // EXECUTE BURN NOTE AGAINST NETWORK FAUCET
     // --------------------------------------------------------------------------------------------
@@ -1118,8 +1115,8 @@ async fn network_faucet_burn() -> anyhow::Result<()> {
 
     // Apply the delta to the faucet account and verify the token issuance decreased
     faucet.apply_delta(executed_transaction.account_delta())?;
-    let final_issuance = faucet.get_token_issuance().unwrap();
-    assert_eq!(final_issuance, Felt::new(initial_issuance.as_int() - burn_amount));
+    let final_token_supply = NetworkFungibleFaucet::try_from(&faucet)?.token_supply();
+    assert_eq!(final_token_supply, Felt::new(initial_token_supply.as_int() - burn_amount));
 
     Ok(())
 }
