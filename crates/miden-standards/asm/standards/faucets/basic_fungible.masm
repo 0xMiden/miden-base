@@ -5,18 +5,7 @@
 
 use miden::standards::faucets
 
-# CONSTANTS
-# =================================================================================================
-
-const PRIVATE_NOTE=2
-
-# ERRORS
-# =================================================================================================
-const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
-
-const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
-
-# CONSTANTS
+# PROCEDURES
 # =================================================================================================
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.

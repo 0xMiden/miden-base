@@ -7,8 +7,6 @@ use miden_processor::{AdviceInputs, Word};
 use miden_protocol::account::{
     Account,
     AccountBuilder,
-    AccountId,
-    AccountIdVersion,
     AccountProcedureRoot,
     AccountStorageMode,
     AccountType,
@@ -91,7 +89,6 @@ use crate::{
     TransactionContext,
     TransactionContextBuilder,
     assert_execution_error,
-    assert_transaction_executor_error,
 };
 
 #[tokio::test]
@@ -613,34 +610,6 @@ pub async fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
     create_multiple_accounts_test(AccountStorageMode::Public).await?;
 
     create_multiple_accounts_test(AccountStorageMode::Network).await
-}
-
-/// Takes an account with a placeholder ID and returns the same account but with its ID replaced
-/// with a newly generated one.
-fn compute_valid_account_id(account: Account) -> Account {
-    let init_seed: [u8; 32] = [5; 32];
-    let seed = AccountId::compute_account_seed(
-        init_seed,
-        account.account_type(),
-        AccountStorageMode::Public,
-        AccountIdVersion::Version0,
-        account.code().commitment(),
-        account.storage().to_commitment(),
-    )
-    .unwrap();
-
-    let account_id = AccountId::new(
-        seed,
-        AccountIdVersion::Version0,
-        account.code().commitment(),
-        account.storage().to_commitment(),
-    )
-    .unwrap();
-
-    // Overwrite old ID with generated ID.
-    let (_, vault, storage, code, _nonce, _seed) = account.into_parts();
-    // Set nonce to zero so this is considered a new account.
-    Account::new(account_id, vault, storage, code, ZERO, Some(seed)).unwrap()
 }
 
 /// Tests that supplying an invalid seed causes account creation to fail.

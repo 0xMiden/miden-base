@@ -17,8 +17,6 @@ pub const ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY: MasmError = MasmError::fr
 
 /// Error Message: "amount passed to distribute exceeds the maximum supply"
 pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("amount passed to distribute exceeds the maximum supply");
-/// Error Message: "distribute would cause the maximum supply to be exceeded"
-pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED: MasmError = MasmError::from_static_str("distribute would cause the maximum supply to be exceeded");
 /// Error Message: "max supply exceeds maximum representable supply"
 pub const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY: MasmError = MasmError::from_static_str("max supply exceeds maximum representable supply");
 /// Error Message: "token supply exceeds max supply"

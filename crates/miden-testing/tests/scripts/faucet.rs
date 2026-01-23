@@ -30,7 +30,7 @@ use miden_protocol::{Felt, Word};
 use miden_standards::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::errors::standards::{
-    ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
+    ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY,
     ERR_SENDER_NOT_OWNER,
 };
 use miden_standards::note::{MintNoteStorage, WellKnownNote, create_burn_note, create_mint_note};
@@ -187,11 +187,7 @@ async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyho
         .execute()
         .await;
 
-    // Execute the transaction and get the witness
-    assert_transaction_executor_error!(
-        tx,
-        ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
-    );
+    assert_transaction_executor_error!(tx, ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY);
     Ok(())
 }
 
@@ -460,6 +456,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
 /// Tests minting on network faucet
 #[tokio::test]
 async fn network_faucet_mint() -> anyhow::Result<()> {
+    let max_supply = 1000u64;
+    let token_supply = 50u64;
+
     let mut builder = MockChain::builder();
 
     let faucet_owner_account_id = AccountId::dummy(
@@ -469,18 +468,19 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
         AccountStorageMode::Private,
     );
 
-    let faucet =
-        builder.add_existing_network_faucet("NET", 1000, faucet_owner_account_id, Some(50))?;
+    let faucet = builder.add_existing_network_faucet(
+        "NET",
+        max_supply,
+        faucet_owner_account_id,
+        Some(token_supply),
+    )?;
 
     // Create a target account to consume the minted note
     let mut target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
-    // The Network Fungible Faucet component is added as the second component after auth, so its
-    // storage slot offset will be 2. Check that max_supply at the word's index 0 is 200.
-    assert_eq!(
-        faucet.storage().get_item(NetworkFungibleFaucet::metadata_slot()).unwrap()[0],
-        Felt::new(1000)
-    );
+    // Check the Network Fungible Faucet's max supply.
+    let actual_max_supply = NetworkFungibleFaucet::try_from(&faucet)?.max_supply();
+    assert_eq!(actual_max_supply.as_int(), max_supply);
 
     // Check that the creator account ID is stored in slot 2 (second storage slot of the component)
     // The owner_account_id is stored as Word [0, 0, suffix, prefix]
@@ -492,7 +492,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 50.
     let initial_token_supply = NetworkFungibleFaucet::try_from(&faucet)?.token_supply();
-    assert_eq!(initial_token_supply, Felt::new(50));
+    assert_eq!(initial_token_supply.as_int(), token_supply);
 
     // CREATE MINT NOTE USING STANDARD NOTE
     // --------------------------------------------------------------------------------------------

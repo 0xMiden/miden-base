@@ -362,17 +362,23 @@ impl MockChainBuilder {
         token_symbol: &str,
         max_supply: u64,
         owner_account_id: AccountId,
-        // TODO(rm_sysdata): Remove.
-        _total_issuance: Option<u64>,
+        token_supply: Option<u64>,
     ) -> anyhow::Result<Account> {
-        let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
+        let max_supply = Felt::try_from(max_supply)
+            .map_err(|err| anyhow::anyhow!("failed to convert max_supply to felt: {err}"))?;
+        let token_supply = Felt::try_from(token_supply.unwrap_or(0))
+            .map_err(|err| anyhow::anyhow!("failed to convert token_supply to felt: {err}"))?;
+        let token_symbol =
+            TokenSymbol::new(token_symbol).context("failed to create token symbol")?;
+
         let network_faucet = NetworkFungibleFaucet::new(
             token_symbol,
             DEFAULT_FAUCET_DECIMALS,
-            Felt::new(max_supply),
+            max_supply,
             owner_account_id,
         )
-        .context("invalid argument")?;
+        .and_then(|fungible_faucet| fungible_faucet.with_token_supply(token_supply))
+        .context("failed to create network fungible faucet")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Network)
