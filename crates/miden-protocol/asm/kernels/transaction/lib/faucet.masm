@@ -25,10 +25,8 @@ const ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUC
 #!
 #! Panics if:
 #! - the transaction is not being executed against a fungible faucet.
-#! - the fungible asset being minted is not associated with the faucet the transaction is being
-#!   executed against.
+#! - the fungible asset's faucet ID does not match the native account's ID.
 #! - the asset is not well formed.
-#! - the total issuance after minting is greater than the maximum amount allowed.
 pub proc mint_fungible_asset
     # assert that the asset was issued by the faucet the transaction is being executed against and
     # that the asset is valid

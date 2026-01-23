@@ -46,8 +46,9 @@ const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 #! - note_idx is the index of the created note.
 #!
 #! Panics if:
-#! - TODO: Double check.
 #! - the transaction is being executed against an account that is not a fungible asset faucet.
+#! - the token supply exceeds the maximum supply.
+#! - the maximum supply exceeds the maximum representable fungible asset amount.
 #! - the token supply after minting is greater than the maximum allowed supply.
 #!
 #! Invocation: exec
@@ -74,8 +75,8 @@ pub proc distribute
     # if token_supply > max_supply, then computing max_supply - token_supply would wrap around,
     # because `sub` has wrapping semantics, and this would allow minting larger amounts than
     # intended
-    # this primarily protects against misconfigurations, since token_supply cannot exceed
-    # max_supply by the remaining logic here
+    # this protects against misconfigurations but also ensures token_supply <= max_allowed_supply
+    # due to the remaining checks (see below).
     lte assert.err=ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY
     # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
