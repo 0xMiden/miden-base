@@ -1,4 +1,3 @@
-use miden_protocol::Felt;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -33,7 +32,7 @@ pub trait MockAccountExt {
     }
 
     /// Creates a mock account with fungible faucet storage and the given account ID.
-    fn mock_fungible_faucet(account_id: u128, initial_balance: Felt) -> Account {
+    fn mock_fungible_faucet(account_id: u128) -> Account {
         let account_id = AccountId::try_from(account_id).unwrap();
         assert_eq!(account_id.account_type(), AccountType::FungibleFaucet);
 

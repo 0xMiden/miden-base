@@ -585,13 +585,11 @@ async fn test_account_set_item_fails_on_reserved_faucet_metadata_slot() -> anyho
             "#;
     let tx_script = CodeBuilder::default().compile_tx_script(code)?;
 
-    let tx_context = TransactionContextBuilder::with_fungible_faucet(
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        Felt::from(0u32),
-    )
-    .tx_script(tx_script)
-    .build()
-    .unwrap();
+    let tx_context =
+        TransactionContextBuilder::with_fungible_faucet(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)
+            .tx_script(tx_script)
+            .build()
+            .unwrap();
 
     let result = tx_context.execute().await;
     assert_transaction_executor_error!(result, ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED);
