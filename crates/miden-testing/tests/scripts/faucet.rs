@@ -229,8 +229,16 @@ async fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
 /// Tests that burning a fungible asset on an existing faucet succeeds and proves the transaction.
 #[tokio::test]
 async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
+    let max_supply = 200u32;
+    let token_supply = 100u32;
+
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_basic_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
+    let faucet = builder.add_existing_basic_faucet(
+        Auth::BasicAuth,
+        "TST",
+        max_supply.into(),
+        Some(token_supply.into()),
+    )?;
 
     let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 
@@ -254,16 +262,15 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
     builder.add_output_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
+    let basic_faucet = BasicFungibleFaucet::try_from(&faucet)?;
+
     // Check that max_supply at the word's index 0 is 200. The remainder of the word is initialized
     // with the metadata of the faucet which we don't need to check.
-    assert_eq!(
-        faucet.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap()[0],
-        Felt::new(200)
-    );
+    assert_eq!(basic_faucet.max_supply(), Felt::from(max_supply));
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
-    assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(100));
+    assert_eq!(basic_faucet.token_supply(), Felt::from(token_supply));
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------

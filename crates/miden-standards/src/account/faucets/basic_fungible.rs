@@ -438,7 +438,7 @@ mod tests {
         // Check that faucet metadata was initialized to the given values.
         assert_eq!(
             faucet_account.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap(),
-            [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
+            [Felt::ZERO, Felt::new(123), Felt::new(2), token_symbol.into()].into()
         );
 
         assert!(faucet_account.is_faucet());
