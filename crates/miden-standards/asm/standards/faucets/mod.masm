@@ -19,6 +19,8 @@ const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY="max supply excee
 
 const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY="amount passed to distribute exceeds the maximum supply"
 
+const ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY="asset amount to burn exceeds the existing token supply"
+
 const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 note asset"
 
 # CONSTANTS
@@ -160,11 +162,15 @@ end
 #! - the note does not contain exactly one asset.
 #! - the transaction is executed against an account which is not a fungible asset faucet.
 #! - the transaction is executed against a faucet which is not the origin of the specified asset.
-#! - the amount about to be burned is greater than the outstanding supply of the asset.
+#! - the amount about to be burned is greater than the token_supply of the faucet.
 #!
 #! Invocation: call
+@locals(4)
 pub proc burn
-    # Get the assets from the note. This will fail if not called from a note context.
+    # Get the asset from the note.
+    # ---------------------------------------------------------------------------------------------
+
+    # this will fail if not called from a note context.
     push.0 exec.active_note::get_assets
     # => [num_assets, dest_ptr, pad(16)]
 
@@ -174,11 +180,46 @@ pub proc burn
 
     mem_loadw_be
     # => [ASSET, pad(16)]
+    # => [[faucet_id_prefix, faucet_id_suffix, 0, amount], pad(16)]
 
-    # burning the asset
-    exec.faucet::burn
+    dup.3
+    # => [amount, ASSET, pad(16)]
+
+    # Get current token_supply to compute the new one.
+    # ---------------------------------------------------------------------------------------------
+
+    push.METADATA_SLOT[0..2] exec.active_account::get_item
+    # => [token_symbol, decimals, max_supply, token_supply, amount, ASSET, pad(16)]
+
+    # store a copy of the current slot content for the token_supply update later
+    loc_storew_be.METADATA_SLOT_LOCAL
+    drop drop drop
+    # => [token_supply, amount, ASSET, pad(16)]
+
+    dup.1 dup.1
+    # => [token_supply, amount, token_supply, amount, ASSET, pad(16)]
+
+    # assert that amount <= token_supply
+    lte assert.err=ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY
+    # => [token_supply, amount, ASSET, pad(16)]
+
+    # compute new_token_supply = token_supply - amount
+    swap sub
+    # => [new_token_supply, ASSET, pad(16)]
+
+    padw loc_loadw_be.METADATA_SLOT_LOCAL
+    # => [[token_symbol, decimals, max_supply, token_supply], new_token_supply, ASSET, pad(16)]
+
+    movup.4 swap.4 drop
+    # => [[token_symbol, decimals, max_supply, new_token_supply], ASSET, pad(16)]
+
+    # update the metadata slot with the new supply
+    push.METADATA_SLOT[0..2] exec.native_account::set_item dropw
     # => [ASSET, pad(16)]
 
-    dropw
+    # Burn the asset from the transaction vault
+    # ---------------------------------------------------------------------------------------------
+
+    exec.faucet::burn dropw
     # => [pad(16)]
 end
