@@ -1,10 +1,34 @@
 use miden::agglayer::crypto_utils
+use miden::protocol::active_account
+use miden::protocol::native_account
+
+# CONSTANTS
+# =================================================================================================
+const GER_UPPER_STORAGE_SLOT=word("miden::agglayer::bridge::ger_upper")
+const GER_LOWER_STORAGE_SLOT=word("miden::agglayer::bridge::ger_lower")
 
 # Inputs: [GER_UPPER[4], GER_LOWER[4]]
 # Outputs: []
 pub proc update_ger
-    # TODO: Implement GER update logic
-    dropw dropw
+    # Store GER_UPPER at key [0,0,0,0]
+    push.GER_UPPER_STORAGE_SLOT[0..2]
+    # => [slot_id_prefix, slot_id_suffix, GER_UPPER[4], GER_LOWER[4]]
+
+    exec.native_account::set_item
+    # => [OLD_VALUE, GER_LOWER[4]]
+
+    dropw
+    # => [GER_LOWER[4]]
+
+    # Store GER_LOWER at key [1,0,0,0]
+    push.GER_LOWER_STORAGE_SLOT[0..2]
+    # => [slot_id_prefix, slot_id_suffix, GER_LOWER[4]]
+
+    exec.native_account::set_item
+    # => [OLD_VALUE]
+
+    dropw
+    # => []
 end
 
 # Inputs: []
