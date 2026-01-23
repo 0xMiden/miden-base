@@ -42,10 +42,7 @@ pub async fn execute_program_with_default_host(
 }
 
 /// Execute a MASM script with optional advice inputs
-pub async fn execute_masm_script(
-    script_code: &str,
-    advice_values: Vec<u64>,
-) -> Result<ExecutionOutput, ExecutionError> {
+pub async fn execute_masm_script(script_code: &str) -> Result<ExecutionOutput, ExecutionError> {
     let asset_conversion_lib = agglayer_library();
 
     let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
@@ -64,23 +61,14 @@ pub async fn execute_masm_script(
     host.load_library(asset_conversion_lib.mast_forest()).unwrap();
 
     let stack_inputs = StackInputs::new(vec![]).unwrap();
-    let advice_inputs = if advice_values.is_empty() {
-        AdviceInputs::default()
-    } else {
-        AdviceInputs::default().with_stack_values(advice_values).unwrap()
-    };
 
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), AdviceInputs::default());
     processor.execute(&program, &mut host).await
 }
 
 /// Helper to assert execution fails with a specific error message
-pub async fn assert_execution_fails_with(
-    script_code: &str,
-    advice_values: Vec<u64>,
-    expected_error: &str,
-) {
-    let result = execute_masm_script(script_code, advice_values).await;
+pub async fn assert_execution_fails_with(script_code: &str, expected_error: &str) {
+    let result = execute_masm_script(script_code).await;
     assert!(result.is_err(), "Expected execution to fail but it succeeded");
     let error_msg = result.unwrap_err().to_string();
     assert!(
