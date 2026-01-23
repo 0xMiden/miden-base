@@ -27,7 +27,6 @@ impl StorageSchema {
     ///
     /// # Errors
     /// - If `fields` contains duplicate slot names.
-    /// - If `fields` contains the protocol-reserved faucet metadata slot name.
     /// - If any slot schema is invalid.
     /// - If multiple schema fields map to the same init value name.
     pub fn new(

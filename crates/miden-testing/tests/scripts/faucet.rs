@@ -260,7 +260,7 @@ async fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::R
     // with the metadata of the faucet which we don't need to check.
     assert_eq!(basic_faucet.max_supply(), Felt::from(max_supply));
 
-    // Check that the faucet reserved slot has been correctly initialized.
+    // Check that the faucet's token supply has been correctly initialized.
     // The already issued amount should be 100.
     assert_eq!(basic_faucet.token_supply(), Felt::from(token_supply));
 
@@ -489,7 +489,7 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     assert_eq!(stored_owner_id[3], faucet_owner_account_id.prefix().as_felt());
     assert_eq!(stored_owner_id[2], Felt::new(faucet_owner_account_id.suffix().as_int()));
 
-    // Check that the faucet reserved slot has been correctly initialized.
+    // Check that the faucet's token supply has been correctly initialized.
     // The already issued amount should be 50.
     let initial_token_supply = NetworkFungibleFaucet::try_from(&faucet)?.token_supply();
     assert_eq!(initial_token_supply.as_int(), token_supply);

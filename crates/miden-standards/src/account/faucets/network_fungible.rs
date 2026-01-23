@@ -277,14 +277,8 @@ impl TryFrom<&Account> for NetworkFungibleFaucet {
 /// - [`AccountStorageMode::Network`] for storage
 /// - [`NoAuth`] for authentication
 ///
-/// The storage layout of the network faucet account is:
-/// - Slot 0: Reserved slot for faucets.
-/// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: [num_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
-///   0].
-/// - Slot 3: A map with trigger procedure roots.
-/// - Slot 4: Token metadata of the faucet.
-/// - Slot 5: Owner account ID.
+/// The storage layout of the faucet account is documented on the [`NetworkFungibleFaucet`] type and
+/// contains no additional storage slots for its auth ([`NoAuth`]).
 pub fn create_network_fungible_faucet(
     init_seed: [u8; 32],
     symbol: TokenSymbol,
