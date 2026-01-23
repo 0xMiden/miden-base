@@ -66,8 +66,8 @@ procedure_digest!(
 ///
 /// [builder]: crate::code_builder::CodeBuilder
 pub struct BasicFungibleFaucet {
-    max_supply: Felt,
     token_supply: Felt,
+    max_supply: Felt,
     decimals: u8,
     symbol: TokenSymbol,
 }
@@ -113,8 +113,8 @@ impl BasicFungibleFaucet {
         }
 
         Ok(Self {
-            max_supply,
             token_supply: Felt::ZERO,
+            max_supply,
             decimals,
             symbol,
         })
@@ -155,8 +155,6 @@ impl BasicFungibleFaucet {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the provided [`AccountInterface`] does not contain a
-    ///   [`AccountComponentInterface::BasicFungibleFaucet`] component.
     /// - the decimals parameter exceeds maximum value of [`Self::MAX_DECIMALS`].
     /// - the max supply value exceeds maximum possible amount for a fungible asset of
     ///   [`FungibleAsset::MAX_AMOUNT`].
