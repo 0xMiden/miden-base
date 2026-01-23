@@ -15,7 +15,6 @@ use miden::core::word
 # Constants for different note types
 const PUBLIC_NOTE=1     # 0b01
 const PRIVATE_NOTE=2    # 0b10
-const ENCRYPTED_NOTE=3  # 0b11
 
 # The default value of the felt at index 3 in the note metadata header when a new note is created.
 # All zeros sets the attachment kind to None and the user-defined attachment scheme to "none".
