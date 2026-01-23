@@ -16,6 +16,12 @@ use miden::core::word
 # The slot in this component's storage layout where the bridge account ID is stored.
 const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
+# The slots where origin token address and scaling factor are stored
+# AGGFAUCET_METADATA_SLOT_0: [tok0, tok1, tok2, tok3]
+# AGGFAUCET_METADATA_SLOT_1: [tok4, scaling_factor, 0, 0]
+const AGGFAUCET_METADATA_SLOT_0 = word("miden::agglayer::aggfaucet_metadata_0")
+const AGGFAUCET_METADATA_SLOT_1 = word("miden::agglayer::aggfaucet_metadata_1")
+
 const PROOF_DATA_WORD_LEN = 134
 const LEAF_DATA_WORD_LEN = 8
 const OUTPUT_NOTE_DATA_WORD_LEN = 2
@@ -33,6 +39,7 @@ const CLAIM_NOTE_DATA_MEM_ADDR = 712
 const OUTPUT_NOTE_INPUTS_MEM_ADDR = 0
 const OUTPUT_NOTE_TAG_MEM_ADDR = 574
 const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 568
+const OUTPUT_NOTE_SCALED_AMOUNT_MEM_ADDR = 575
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 552
 const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 556
 
@@ -41,6 +48,8 @@ const DESTINATION_ADDRESS_1 = 548
 const DESTINATION_ADDRESS_2 = 549
 const DESTINATION_ADDRESS_3 = 550
 const DESTINATION_ADDRESS_4 = 551
+
+const SCALED_ASSET_AMOUNT_MEM_ADDR = 575
 
 # P2ID output note constants
 const P2ID_SCRIPT_ROOT = [13362761878458161062, 15090726097241769395, 444910447169617901, 3558201871398422326]
@@ -89,11 +98,56 @@ proc validate_claim
     # => [] 
 end
 
+#! Reads the origin token address from the aggfaucet metadata storage slots.
+#!
+#! Inputs:  []
+#! Outputs: [origin_token_addr[0], origin_token_addr[1], origin_token_addr[2], origin_token_addr[3], origin_token_addr[4]]
+#!
+#! Invocation: exec
+proc get_origin_token_address
+    # Get first word: [tok0, tok1, tok2, tok3]
+    push.AGGFAUCET_METADATA_SLOT_0[0..2]
+    exec.active_account::get_item
+    # => [tok0, tok1, tok2, tok3]
+    
+    # Get second word: [tok4, scaling_factor, 0, 0]
+    push.AGGFAUCET_METADATA_SLOT_1[0..2]
+    exec.active_account::get_item
+    # => [tok4, scaling_factor, 0, 0, tok0, tok1, tok2, tok3]
+    
+    # Extract tok4 and drop the rest
+    swap.3 drop swap.3 drop swap.3 drop
+    # => [tok4, tok0, tok1, tok2, tok3]
+    
+    # Rearrange to [tok0, tok1, tok2, tok3, tok4]
+    movdn.4
+    # => [tok0, tok1, tok2, tok3, tok4]
+end
+
+#! Reads the scaling factor from the aggfaucet metadata storage slot.
+#!
+#! Inputs:  []
+#! Outputs: [scaling_factor]
+#!
+#! Invocation: exec
+proc get_scaling_factor
+    # Get second word: [tok4, scaling_factor, 0, 0]
+    push.AGGFAUCET_METADATA_SLOT_1[0..2]
+    exec.active_account::get_item
+    # => [ 0, 0, scaling_factor, tok4]
+
+   drop drop swap drop 
+    # => [scaling_factor]
+end
+
 # Inputs: []
 # Outputs: [U256[0], U256[1]]
 proc get_raw_claim_amount
-    padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0
     padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1
+    # exec.word::reverse
+
+    padw mem_loadw_be.OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0
+    # exec.word::reverse
 end
 
 # Inputs: [U256[0], U256[1]]
@@ -191,12 +245,22 @@ proc build_p2id_output_note
     mem_load.OUTPUT_NOTE_TAG_MEM_ADDR
     # => [tag, RECIPIENT]
 
+    mem_load.SCALED_ASSET_AMOUNT_MEM_ADDR
+    # => [amount, scale_exp, tag, RECIPIENT]
+    
+    exec.get_scaling_factor
+    # => [scale_exp, tag, RECIPIENT]
+
     exec.get_raw_claim_amount
-    # => [AMOUNT[1], AMOUNT[0], tag, note_type, RECIPIENT]
+    # => [AMOUNT[0], AMOUNT[1], amount, scale_exp, tag, note_type, RECIPIENT]
+
+    push.111 debug.stack drop
 
     # TODO: implement scale down logic; stubbed out for now
-    exec.asset_conversion::scale_u256_to_native_amount_stubbed
+    exec.asset_conversion::scale_u256_to_native_amount
     # => [amount, tag, note_type, RECIPIENT]
+
+    push.222 debug.stack drop
 
     exec.faucets::distribute
     # => [pad(16)]
@@ -237,6 +301,8 @@ end
 #!     output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
 #!     agglayer_faucet_account_id[2],   // Agglayer faucet account ID (2 felts, prefix and suffix)
 #!     output_note_tag[1],              // P2ID output note tag
+#!     scaled_bridged_amount[1],        // Scaled bridged amount (quotient from amount / 10^scale_exp)
+#!     padding[1],                      // padding (1 felt)
 #!   ]
 #! }
 #!

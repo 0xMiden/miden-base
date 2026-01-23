@@ -83,7 +83,7 @@ end
 #!   output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
 #!   target_faucet_account_id[2],     // Target faucet account ID (2 felts, prefix and suffix)
 #!   output_note_tag[1],              // P2ID output note tag
-#!   padding[1],                      // padding (1 felt)
+#!   scaled_bridged_amount[1],        // Scaled bridged amount (quotient from amount / 10^scale_exp)
 #! ]
 #!
 #! Invocation: exec
@@ -147,7 +147,7 @@ end
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
-#! NoteStorage layout (576 felts total):
+#! NoteStorage layout (577 felts total):
 #! - smtProofLocalExitRoot      [0..255]  : 256 felts
 #! - smtProofRollupExitRoot     [256..511]: 256 felts
 #! - globalIndex                [512..519]: 8 felts
@@ -164,7 +164,8 @@ end
 #! - output_p2id_serial_num     [568..571]: 4 felts
 #! - target_faucet_account_id   [572..573]: 2 felts
 #! - output_note_tag            [574]     : 1 felt
-#! - padding                    [575]     : 1 felt
+#! - scaled_bridged_amount      [575]     : 1 felt
+#! - padding                    [576]     : 1 felt
 #!
 #! Where:
 #! - smtProofLocalExitRoot: SMT proof for local exit root (bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
@@ -188,6 +189,7 @@ end
 #! - target_faucet_account_id: Target agglayer faucet account ID (prefix and suffix). Only this specific
 #!   account can consume the note - any other account will cause a panic.
 #! - output_note_tag: P2ID output note tag
+#! - scaled_bridged_amount: Scaled bridged amount (quotient from amount / 10^scale_exp)
 #! - padding (1 felt)
 #!
 #! Panics if:
