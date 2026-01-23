@@ -186,14 +186,6 @@ pub const ERR_PROLOGUE_NATIVE_ASSET_ID_IS_NOT_FUNGIBLE: MasmError = MasmError::f
 pub const ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO: MasmError = MasmError::from_static_str("new account must have a zero nonce");
 /// Error Message: "new account must have an empty vault"
 pub const ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY: MasmError = MasmError::from_static_str("new account must have an empty vault");
-/// Error Message: "reserved slot for new fungible faucet has an invalid type"
-pub const ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE: MasmError = MasmError::from_static_str("reserved slot for new fungible faucet has an invalid type");
-/// Error Message: "reserved slot for new fungible faucet is not empty"
-pub const ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY: MasmError = MasmError::from_static_str("reserved slot for new fungible faucet is not empty");
-/// Error Message: "reserved slot for new non-fungible faucet has an invalid type"
-pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE: MasmError = MasmError::from_static_str("reserved slot for new non-fungible faucet has an invalid type");
-/// Error Message: "reserved slot for non-fungible faucet is not a valid empty SMT"
-pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT: MasmError = MasmError::from_static_str("reserved slot for non-fungible faucet is not a valid empty SMT");
 /// Error Message: "failed to authenticate note inclusion in block"
 pub const ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED: MasmError = MasmError::from_static_str("failed to authenticate note inclusion in block");
 /// Error Message: "number of input notes exceeds the kernel's maximum limit of 1024"
