@@ -22,8 +22,8 @@ const ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS = "UPDATE_GER script exp
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #! NoteStorage layout (8 felts total):
-#! - GER_UPPER [0..3]
-#! - GER_LOWER [4..7]
+#! - GER_LOWER [0..3]
+#! - GER_UPPER [4..7]
 #!
 #! Panics if:
 #! - account does not expose update_ger procedure.
@@ -39,13 +39,10 @@ begin
     push.UPDATE_GER_NOTE_NUM_STORAGE_ITEMS assert_eq.err=ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS drop
     # => [pad(16)]
 
-    # Load GER_UPPER and GER_LOWER from note storage
-    mem_loadw_be.STORAGE_PTR_GER_LOWER
-    swapw mem_loadw_be.STORAGE_PTR_GER_UPPER
+    # Load GER_LOWER and GER_UPPER from note storage
+    mem_loadw_be.STORAGE_PTR_GER_UPPER
+    swapw mem_loadw_be.STORAGE_PTR_GER_LOWER
     # => [GER_LOWER[4], GER_UPPER[4]]
-
-    swapw
-    # => [GER_UPPER[4], GER_LOWER[4]]
 
     call.bridge_in::update_ger
     # => []

@@ -49,8 +49,8 @@ async fn test_update_ger_note_updates_storage() -> anyhow::Result<()> {
         .storage()
         .get_item(&StorageSlotName::new("miden::agglayer::bridge::ger_lower")?)
         .unwrap();
-    let expected_upper: Word = ger.to_elements()[0..4].try_into().unwrap();
-    let expected_lower: Word = ger.to_elements()[4..8].try_into().unwrap();
+    let expected_lower: Word = ger.to_elements()[0..4].try_into().unwrap();
+    let expected_upper: Word = ger.to_elements()[4..8].try_into().unwrap();
     assert_eq!(ger_upper, expected_upper);
     assert_eq!(ger_lower, expected_lower);
 
