@@ -152,7 +152,7 @@ where
         note: InputNote,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionStatus, NoteCheckerError> {
-        // return the consumption status if we manage to determine it from the standard note
+        // Return the consumption status if we manage to determine it from the standard note
         if let Some(standard_note) = StandardNote::from_note(note.note())
             && let Some(consumption_status) =
                 standard_note.is_consumable(note.note(), target_account_id, block_ref)
