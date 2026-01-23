@@ -1,7 +1,7 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use miden_core::{Felt, Word};
+use miden_core::{Felt, FieldElement, Word};
 use miden_protocol::account::AccountId;
 use miden_protocol::crypto::SequentialCommit;
 use miden_protocol::crypto::rand::FeltRng;
@@ -145,8 +145,16 @@ impl SequentialCommit for LeafData {
     type Commitment = Word;
 
     fn to_elements(&self) -> Vec<Felt> {
-        const LEAF_DATA_ELEMENT_COUNT: usize = 28; // 1 + 5 + 1 + 5 + 8 + 8 (networks + addresses + amount + metadata)
+        const LEAF_DATA_ELEMENT_COUNT: usize = 32; // 1 + 3 + 1 + 5 + 1 + 5 + 8 + 8 (leafType + padding + networks + addresses + amount + metadata)
         let mut elements = Vec::with_capacity(LEAF_DATA_ELEMENT_COUNT);
+
+        // LeafType (uint32 as Felt): 0u32 for transfer Ether / ERC20 tokens, 1u32 for message
+        // passing.
+        // for a `CLAIM` note, leafType is always 0 (transfer Ether / ERC20 tokens)
+        elements.push(Felt::ZERO);
+
+        // Padding
+        elements.extend(vec![Felt::ZERO; 3]);
 
         // Origin network
         elements.push(Felt::new(self.origin_network as u64));
@@ -185,7 +193,7 @@ pub struct OutputNoteData {
 impl OutputNoteData {
     /// Converts the output note data to a vector of field elements for note storage
     pub fn to_elements(&self) -> Vec<Felt> {
-        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 7; // 4 + 2 + 1 (serial_num + account_id + tag)
+        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 8; // 4 + 2 + 1 + 1 (serial_num + account_id + tag + padding)
         let mut elements = Vec::with_capacity(OUTPUT_NOTE_DATA_ELEMENT_COUNT);
 
         // P2ID note serial number (4 felts as Word)
@@ -197,6 +205,9 @@ impl OutputNoteData {
 
         // Output note tag
         elements.push(Felt::new(self.output_note_tag.as_u32() as u64));
+
+        // Padding
+        elements.extend(vec![Felt::ZERO; 1]);
 
         elements
     }
@@ -220,12 +231,11 @@ impl TryFrom<ClaimNoteStorage> for NoteStorage {
 
     fn try_from(storage: ClaimNoteStorage) -> Result<Self, Self::Error> {
         // proof_data + leaf_data + empty_word + output_note_data
-        // 536 + 28 + 4 + 7
-        let mut claim_storage = Vec::with_capacity(574);
+        // 536 + 32 + 8
+        let mut claim_storage = Vec::with_capacity(576);
 
         claim_storage.extend(storage.proof_data.to_elements());
         claim_storage.extend(storage.leaf_data.to_elements());
-        claim_storage.extend(Word::empty());
         claim_storage.extend(storage.output_note_data.to_elements());
 
         NoteStorage::new(claim_storage)

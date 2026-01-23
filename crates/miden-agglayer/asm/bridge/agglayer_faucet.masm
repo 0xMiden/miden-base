@@ -17,7 +17,7 @@ use miden::core::word
 const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
 const PROOF_DATA_WORD_LEN = 134
-const LEAF_DATA_WORD_LEN = 6
+const LEAF_DATA_WORD_LEN = 8
 const OUTPUT_NOTE_DATA_WORD_LEN = 2
 
 const PROOF_DATA_START_PTR = 0
@@ -33,14 +33,14 @@ const CLAIM_NOTE_DATA_MEM_ADDR = 712
 const OUTPUT_NOTE_INPUTS_MEM_ADDR = 0
 const OUTPUT_NOTE_TAG_MEM_ADDR = 574
 const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 568
-const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
-const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
+const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 552
+const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 556
 
-const DESTINATION_ADDRESS_0 = 543
-const DESTINATION_ADDRESS_1 = 544
-const DESTINATION_ADDRESS_2 = 545
-const DESTINATION_ADDRESS_3 = 546
-const DESTINATION_ADDRESS_4 = 547
+const DESTINATION_ADDRESS_0 = 547
+const DESTINATION_ADDRESS_1 = 548
+const DESTINATION_ADDRESS_2 = 549
+const DESTINATION_ADDRESS_3 = 550
+const DESTINATION_ADDRESS_4 = 551
 
 # P2ID output note constants
 const P2ID_SCRIPT_ROOT = [13362761878458161062, 15090726097241769395, 444910447169617901, 3558201871398422326]
@@ -100,12 +100,6 @@ end
 # Outputs: [amount]
 proc scale_down_amount
     repeat.7 drop end
-end
-
-# Inputs: []
-# Outputs: [prefix, suffix]
-proc get_destination_account_id
-    mem_load.543 mem_load.544
 end
 
 # Inputs: [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
@@ -238,7 +232,6 @@ end
 #!     destinationAddress[5],           // Destination address (5 felts, address as 5 u32 felts)
 #!     amount[8],                       // Amount of tokens (8 felts, uint256 as 8 u32 felts)
 #!     metadata[8],                     // ABI encoded metadata (8 felts, fixed size)
-#!     EMPTY_WORD                       // padding
 #!   ],
 #!   OUTPUT_NOTE_DATA_KEY => [
 #!     output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)
