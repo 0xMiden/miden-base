@@ -7,6 +7,7 @@ use miden_protocol::Felt;
 use miden_protocol::utils::sync::LazyLock;
 use miden_standards::code_builder::CodeBuilder;
 use miden_testing::TransactionContextBuilder;
+use serde::Deserialize;
 
 // KECCAK MMR FRONTIER
 // ================================================================================================
@@ -126,6 +127,95 @@ async fn test_check_empty_mmr_root() -> anyhow::Result<()> {
         .await?;
 
     Ok(())
+}
+
+// SOLIDITY COMPATIBILITY TESTS
+// ================================================================================================
+// These tests verify that the Rust KeccakMmrFrontier32 implementation produces identical
+// results to the Solidity DepositContractBase.sol implementation.
+// Test vectors generated from: https://github.com/agglayer/agglayer-contracts
+// Run `make generate-solidity-test-vectors` to regenerate the test vectors.
+
+/// Canonical zeros JSON embedded at compile time from the Foundry-generated file.
+const CANONICAL_ZEROS_JSON: &str =
+    include_str!("../../../miden-agglayer/solidity-compat/test-vectors/canonical_zeros.json");
+
+/// MMR frontier vectors JSON embedded at compile time from the Foundry-generated file.
+const MMR_FRONTIER_VECTORS_JSON: &str =
+    include_str!("../../../miden-agglayer/solidity-compat/test-vectors/mmr_frontier_vectors.json");
+
+/// Deserialized canonical zeros from Solidity DepositContractBase.sol
+#[derive(Debug, Deserialize)]
+struct CanonicalZerosFile {
+    canonical_zeros: Vec<String>,
+}
+
+/// Deserialized MMR frontier vectors from Solidity DepositContractBase.sol
+/// Uses parallel arrays for leaves, roots, and counts instead of array of objects
+#[derive(Debug, Deserialize)]
+struct MmrFrontierVectorsFile {
+    leaves: Vec<String>,
+    roots: Vec<String>,
+    counts: Vec<u32>,
+}
+
+/// Lazily parsed canonical zeros from the JSON file.
+static SOLIDITY_CANONICAL_ZEROS: LazyLock<CanonicalZerosFile> = LazyLock::new(|| {
+    serde_json::from_str(CANONICAL_ZEROS_JSON).expect("Failed to parse canonical zeros JSON")
+});
+
+/// Lazily parsed MMR frontier vectors from the JSON file.
+static SOLIDITY_MMR_FRONTIER_VECTORS: LazyLock<MmrFrontierVectorsFile> = LazyLock::new(|| {
+    serde_json::from_str(MMR_FRONTIER_VECTORS_JSON)
+        .expect("failed to parse MMR frontier vectors JSON")
+});
+
+/// Verifies that the Rust KeccakMmrFrontier32 produces the same canonical zeros as Solidity.
+#[test]
+fn test_solidity_canonical_zeros_compatibility() {
+    for (height, expected_hex) in SOLIDITY_CANONICAL_ZEROS.canonical_zeros.iter().enumerate() {
+        let expected = Keccak256Digest::try_from(expected_hex.as_str()).unwrap();
+        let actual = CANONICAL_ZEROS_32[height];
+
+        assert_eq!(
+            actual, expected,
+            "canonical zero mismatch at height {}: expected {}, got {:?}",
+            height, expected_hex, actual
+        );
+    }
+}
+
+/// Verifies that the Rust KeccakMmrFrontier32 produces the same roots as Solidity's
+/// DepositContractBase after adding each leaf.
+#[test]
+fn test_solidity_mmr_frontier_compatibility() {
+    let v = &*SOLIDITY_MMR_FRONTIER_VECTORS;
+
+    // Validate parallel arrays have same length
+    assert_eq!(v.leaves.len(), v.roots.len());
+    assert_eq!(v.leaves.len(), v.counts.len());
+
+    let mut mmr_frontier = KeccakMmrFrontier32::<32>::new();
+
+    for i in 0..v.leaves.len() {
+        let leaf = Keccak256Digest::try_from(v.leaves[i].as_str()).unwrap();
+        let expected_root = Keccak256Digest::try_from(v.roots[i].as_str()).unwrap();
+
+        let actual_root = mmr_frontier.append_and_update_frontier(leaf);
+        let actual_count = mmr_frontier.num_leaves;
+
+        assert_eq!(
+            actual_count, v.counts[i],
+            "leaf count mismatch after adding leaf {}: expected {}, got {}",
+            v.leaves[i], v.counts[i], actual_count
+        );
+
+        assert_eq!(
+            actual_root, expected_root,
+            "root mismatch after adding leaf {} (count={}): expected {}, got {:?}",
+            v.leaves[i], v.counts[i], v.roots[i], actual_root
+        );
+    }
 }
 
 // HELPER FUNCTIONS
