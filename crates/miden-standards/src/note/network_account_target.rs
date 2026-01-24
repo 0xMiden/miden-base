@@ -283,6 +283,51 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn network_account_target_attachment_round_trip() -> anyhow::Result<()> {
+        let target_id = AccountIdBuilder::new()
+            .storage_mode(AccountStorageMode::Network)
+            .build_with_rng(&mut rand::rng());
+        let exec_hint = NoteExecutionHint::Always;
+
+        let attachment = NoteAttachment::from(NetworkAccountTarget::new(target_id, exec_hint)?);
+        let metadata =
+            NoteMetadata::new(target_id, NoteType::Public, NoteTag::with_account_target(target_id))
+                .with_attachment(attachment.clone());
+        let metadata_header = metadata.to_header_word();
+
+        let source = format!(
+            r#"
+            use miden::standards::attachment::network_account_target
+
+            begin
+                push.{metadata_header}
+                push.{exec_hint}
+                push.{target_id_suffix}
+                push.{target_id_prefix}
+                # => [target_id_prefix, target_id_suffix, exec_hint]
+                exec.network_account_target::new_attachment
+                # => [ATTACHMENT, METADATA_HEADER]
+                exec.network_account_target::get_id
+                # => [target_id_prefix, target_id_suffix]
+                movup.2 drop movup.2 drop
+            end
+            "#,
+            metadata_header = metadata_header,
+            target_id_prefix = target_id.prefix().as_felt(),
+            target_id_suffix = target_id.suffix(),
+            exec_hint = Felt::from(exec_hint),
+        );
+
+        let program = assemble_program(&source)?;
+        let exec_output = execute_program_with_default_host(program).await?;
+
+        assert_eq!(exec_output.stack[0], target_id.prefix().as_felt());
+        assert_eq!(exec_output.stack[1], target_id.suffix());
+
+        Ok(())
+    }
+
     #[test]
     fn network_account_target_fails_on_private_network_target_account() -> anyhow::Result<()> {
         let id = AccountIdBuilder::new()
