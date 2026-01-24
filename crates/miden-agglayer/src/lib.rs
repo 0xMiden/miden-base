@@ -27,6 +27,7 @@ use miden_utils_sync::LazyLock;
 pub mod claim_note;
 pub mod errors;
 pub mod eth_types;
+pub mod update_ger_note;
 pub mod utils;
 
 pub use claim_note::{
@@ -39,6 +40,7 @@ pub use claim_note::{
     create_claim_note,
 };
 pub use eth_types::{EthAddressFormat, EthAmount, EthAmountError};
+pub use update_ger_note::create_update_ger_note;
 
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
@@ -64,6 +66,19 @@ static CLAIM_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
 /// Returns the CLAIM (Bridge from AggLayer) note script.
 pub fn claim_script() -> NoteScript {
     CLAIM_SCRIPT.clone()
+}
+
+// Initialize the UPDATE_GER note script only once
+static UPDATE_GER_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/UPDATE_GER.masb"));
+    let program =
+        Program::read_from_bytes(bytes).expect("Shipped UPDATE_GER script is well-formed");
+    NoteScript::new(program)
+});
+
+/// Returns the UPDATE_GER note script.
+pub fn update_ger_script() -> NoteScript {
+    UPDATE_GER_SCRIPT.clone()
 }
 
 // AGGLAYER ACCOUNT COMPONENTS
@@ -191,20 +206,6 @@ pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountCom
 // AGGLAYER ACCOUNT CREATION HELPERS
 // ================================================================================================
 
-/// Creates a bridge account component with the standard bridge storage slot.
-///
-/// This is a convenience function that creates the bridge storage slot with the standard
-/// name "miden::agglayer::bridge" and returns the bridge_out component.
-///
-/// # Returns
-/// Returns an [`AccountComponent`] configured for bridge operations with MMR validation.
-pub fn create_bridge_account_component() -> AccountComponent {
-    let bridge_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge")
-        .expect("Bridge storage slot name should be valid");
-    let bridge_storage_slots = vec![StorageSlot::with_empty_map(bridge_storage_slot_name)];
-    bridge_out_component(bridge_storage_slots)
-}
-
 /// Creates an agglayer faucet account component with the specified configuration.
 ///
 /// This function creates all the necessary storage slots for an agglayer faucet:
@@ -253,10 +254,23 @@ pub fn create_agglayer_faucet_component(
 
 /// Creates a complete bridge account builder with the standard configuration.
 pub fn create_bridge_account_builder(seed: Word) -> AccountBuilder {
-    let bridge_component = create_bridge_account_component();
+    let ger_upper_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge::ger_upper")
+        .expect("Bridge storage slot name should be valid");
+    let ger_lower_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge::ger_lower")
+        .expect("Bridge storage slot name should be valid");
+    let bridge_storage_slots = vec![
+        StorageSlot::with_value(ger_upper_storage_slot_name, Word::empty()),
+        StorageSlot::with_value(ger_lower_storage_slot_name, Word::empty()),
+    ];
+
+    let bridge_in_component = bridge_in_component(bridge_storage_slots);
+
+    let bridge_out_component = bridge_out_component(vec![]);
+
     Account::builder(seed.into())
         .storage_mode(AccountStorageMode::Public)
-        .with_component(bridge_component)
+        .with_component(bridge_out_component)
+        .with_component(bridge_in_component)
 }
 
 /// Creates a new bridge account with the standard configuration.
