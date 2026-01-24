@@ -1,5 +1,6 @@
 extern crate alloc;
 
+use miden_agglayer::errors::ERR_B2AGG_TARGET_ACCOUNT_MISMATCH;
 use miden_agglayer::{
     B2AggNoteStorage,
     EthAddressFormat,
@@ -14,8 +15,7 @@ use miden_protocol::note::{NoteAssets, NoteScript, NoteTag, NoteType};
 use miden_protocol::transaction::OutputNote;
 use miden_standards::account::faucets::FungibleFaucetExt;
 use miden_standards::note::StandardNote;
-use miden_testing::{AccountState, Auth, MockChain};
-use rand::Rng;
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 /// Tests the B2AGG (Bridge to AggLayer) note script with bridge_out account component.
 ///
@@ -263,6 +263,88 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     // Apply the transaction to the mock chain
     mock_chain.add_pending_executed_transaction(&executed_transaction)?;
     mock_chain.prove_next_block()?;
+
+    Ok(())
+}
+
+/// Tests that a non-target account cannot consume a B2AGG note (non-reclaim branch).
+///
+/// This test covers the security check in the B2AGG note script that ensures only the
+/// designated target account (specified in the note attachment) can consume the note
+/// when not in reclaim mode.
+///
+/// Test flow:
+/// 1. Creates a network faucet to provide assets
+/// 2. Creates a bridge account as the designated target for the B2AGG note
+/// 3. Creates a user account as the sender (creator) of the B2AGG note
+/// 4. Creates a "malicious" account with a bridge interface
+/// 5. Attempts to consume the B2AGG note with the malicious account
+/// 6. Verifies that the transaction fails with ERR_B2AGG_TARGET_ACCOUNT_MISMATCH
+#[tokio::test]
+async fn test_b2agg_note_non_target_account_cannot_consume() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    // Create a network faucet owner account
+    let faucet_owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    // Create a network faucet to provide assets for the B2AGG note
+    let faucet =
+        builder.add_existing_network_faucet("AGG", 1000, faucet_owner_account_id, Some(100))?;
+
+    // Create a bridge account as the designated TARGET for the B2AGG note
+    let bridge_account = create_existing_bridge_account(builder.rng_mut().draw_word());
+    builder.add_account(bridge_account.clone())?;
+
+    // Create a user account as the SENDER of the B2AGG note
+    let sender_account = builder.add_existing_wallet(Auth::BasicAuth)?;
+
+    // Create a "malicious" account with a bridge interface
+    let malicious_account = create_existing_bridge_account(builder.rng_mut().draw_word());
+    builder.add_account(malicious_account.clone())?;
+
+    // CREATE B2AGG NOTE
+    // --------------------------------------------------------------------------------------------
+
+    let amount = Felt::new(50);
+    let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
+
+    // Create note storage with destination network and address
+    let destination_network = 1u32;
+    let destination_address = "0x1234567890abcdef1122334455667788990011aa";
+    let eth_address =
+        EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
+
+    let storage = B2AggNoteStorage::new(destination_network, eth_address);
+    let assets = NoteAssets::new(vec![bridge_asset])?;
+
+    // Create the B2AGG note
+    let b2agg_note = create_b2agg_note(
+        storage,
+        assets,
+        bridge_account.id(), // target
+        sender_account.id(), // sender
+        NoteType::Public,
+        builder.rng_mut(),
+    )?;
+
+    // Add the B2AGG note to the mock chain
+    builder.add_output_note(OutputNote::Full(b2agg_note.clone()));
+    let mock_chain = builder.build()?;
+
+    // ATTEMPT TO CONSUME B2AGG NOTE WITH MALICIOUS ACCOUNT (SHOULD FAIL)
+    // --------------------------------------------------------------------------------------------
+    let result = mock_chain
+        .build_tx_context(malicious_account.id(), &[], &[b2agg_note])?
+        .build()?
+        .execute()
+        .await;
+
+    assert_transaction_executor_error!(result, ERR_B2AGG_TARGET_ACCOUNT_MISMATCH);
 
     Ok(())
 }
