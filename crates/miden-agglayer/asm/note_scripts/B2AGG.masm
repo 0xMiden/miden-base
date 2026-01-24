@@ -2,6 +2,7 @@ use miden::agglayer::bridge_out
 use miden::protocol::account_id
 use miden::protocol::active_account
 use miden::protocol::active_note
+use miden::standards::attachment::network_account_target
 use miden::standards::wallets::basic->basic_wallet
 
 # CONSTANTS
@@ -66,15 +67,10 @@ begin
         exec.active_note::get_metadata
         # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 
-        swapw dropw
-        # => [NOTE_ATTACHMENT, pad(12)]
-
-        # Reorder attachment word to [target_id_prefix, target_id_suffix].
-        drop drop
-        # => [target_id_prefix, target_id_suffix, pad(14)] (auto-padding)
+        exec.network_account_target::get_id
+        # => [target_id_prefix, target_id_suffix, pad(14)]
 
         exec.active_account::get_id
-        # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix, pad(14)]
 
         exec.account_id::is_equal
         assert.err=ERR_B2AGG_TARGET_ACCOUNT_MISMATCH
