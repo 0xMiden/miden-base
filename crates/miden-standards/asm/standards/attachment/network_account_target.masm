@@ -39,3 +39,19 @@ pub proc get_id
     drop drop
     # => [account_id_prefix, account_id_suffix]
 end
+
+#! Creates a new attachment of type NetworkAccountTarget with the following layout:
+#! [0, exec_hint_tag, account_id_prefix, account_id_suffix]
+#!
+#! Inputs:  [account_id_prefix, account_id_suffix, exec_hint]
+#! Outputs: [NOTE_ATTACHMENT]
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of an account ID.
+#! - exec_hint is the execution hint for the note.
+#!
+#! Invocation: exec
+pub proc new_attachment
+    movup.2
+    push.0
+end
