@@ -40,16 +40,9 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let faucet =
         builder.add_existing_network_faucet("AGG", 1000, faucet_owner_account_id, Some(100))?;
 
-    // Create a bridge account with the bridge_out component using network (public) storage
-    // Add a storage map for the bridge component to store MMR frontier data
-    let storage_slot_name = StorageSlotName::new("miden::agglayer::let").unwrap();
-    let storage_slots = vec![StorageSlot::with_empty_map(storage_slot_name)];
-    let bridge_component = bridge_out_component(storage_slots);
-    let account_builder = Account::builder(builder.rng_mut().random())
-        .storage_mode(AccountStorageMode::Public)
-        .with_component(bridge_component);
-    let mut bridge_account =
-        builder.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)?;
+    // Create a bridge account (includes a `bridge_out` component tested here)
+    let mut bridge_account = create_existing_bridge_account(builder.rng_mut().draw_word());
+    builder.add_account(bridge_account.clone())?;
 
     // CREATE B2AGG NOTE WITH ASSETS
     // --------------------------------------------------------------------------------------------
