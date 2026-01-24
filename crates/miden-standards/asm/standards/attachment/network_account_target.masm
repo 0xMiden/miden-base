@@ -14,6 +14,9 @@ const ERR_ATTACHMENT_SCHEME_MISMATCH = "expected network account target attachme
 
 #! Returns the ID encoded in the attachment.
 #!
+#! The attachment is expected to have the following layout:
+#! [0, exec_hint_tag, account_id_prefix, account_id_suffix]
+#!
 #! Inputs:  [NOTE_ATTACHMENT, NOTE_METADATA_HEADER]
 #! Outputs: [account_id_prefix, account_id_suffix]
 #!
