@@ -103,7 +103,6 @@ pub fn create_b2agg_note<R: FeltRng>(
 
     let tag = NoteTag::new(0);
 
-    // map error into other error
     let attachment = NoteAttachment::from(
         NetworkAccountTarget::new(target_account_id, NoteExecutionHint::None)
             .map_err(|e| NoteError::other(e.to_string()))?,
