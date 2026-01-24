@@ -15,10 +15,10 @@ const ERR_ATTACHMENT_SCHEME_MISMATCH = "expected network account target attachme
 #! Returns the ID encoded in the attachment.
 #!
 #! Inputs:  [NOTE_ATTACHMENT, NOTE_METADATA_HEADER]
-#! Outputs: [target_id_prefix, target_id_suffix]
+#! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - target_id_{prefix,suffix} are the prefix and suffix felts of the target account ID.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of an account ID.
 #!
 #! Invocation: exec
 pub proc get_id
@@ -37,5 +37,5 @@ pub proc get_id
     # => [NOTE_ATTACHMENT]
 
     drop drop
-    # => [target_id_prefix, target_id_suffix]
+    # => [account_id_prefix, account_id_suffix]
 end
