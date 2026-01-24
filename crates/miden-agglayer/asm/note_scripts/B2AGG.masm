@@ -36,7 +36,7 @@ const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account do
 #!   - destination_address_3: bytes 12-15
 #!   - destination_address_4: bytes 16-19
 #! Note attachment is assumed to be a word layout:
-#! - [target_id_prefix, target_id_suffix, 0, 0]
+#! - [target_id_suffix, target_id_prefix, 0, 0]
 #!
 #! Panics if:
 #! - The note does not contain exactly 6 storage items.
@@ -45,27 +45,6 @@ const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account do
 #!
 begin
     dropw
-    # => [pad(16)]
-
-    # Ensure note attachment targets the consuming account.
-    exec.active_note::get_metadata
-    # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
-
-    swapw dropw
-    # => [NOTE_ATTACHMENT, pad(12)]
-
-    # Reorder attachment word to [target_id_prefix, target_id_suffix, 0, 0].
-    movup.2 movup.3
-    # => [target_id_prefix, target_id_suffix, 0, 0, pad(12)]
-
-    exec.active_account::get_id
-    # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix, 0, 0, pad(8)]
-
-    exec.account_id::is_equal
-    assert.err=ERR_B2AGG_TARGET_ACCOUNT_MISMATCH
-    # => [0, 0, pad(14)]
-
-    drop drop
     # => [pad(16)]
 
     # Check if reclaim
@@ -83,6 +62,24 @@ begin
         exec.basic_wallet::add_assets_to_account
         # => [pad(16)]
     else
+        # Ensure note attachment targets the consuming bridge account.
+        exec.active_note::get_metadata
+        # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
+
+        swapw dropw
+        # => [NOTE_ATTACHMENT, pad(12)]
+
+        # Reorder attachment word to [target_id_prefix, target_id_suffix].
+        drop drop
+        # => [target_id_prefix, target_id_suffix, pad(14)] (auto-padding)
+
+        exec.active_account::get_id
+        # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix, pad(14)]
+
+        exec.account_id::is_equal
+        assert.err=ERR_B2AGG_TARGET_ACCOUNT_MISMATCH
+        # => [pad(16)]
+
         # Store note storage -> mem[8..14]
         push.8 exec.active_note::get_storage
         # => [num_storage_items, dest_ptr, pad(16)]

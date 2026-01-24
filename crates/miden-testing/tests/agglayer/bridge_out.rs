@@ -1,16 +1,14 @@
 extern crate alloc;
 
-use miden_agglayer::{B2AggNoteStorage, EthAddressFormat, bridge_out_component, create_b2agg_note};
-use miden_protocol::Felt;
-use miden_protocol::account::{
-    Account,
-    AccountId,
-    AccountIdVersion,
-    AccountStorageMode,
-    AccountType,
-    StorageSlot,
-    StorageSlotName,
+use miden_agglayer::{
+    B2AggNoteStorage,
+    EthAddressFormat,
+    create_b2agg_note,
+    create_existing_bridge_account,
 };
+use miden_crypto::rand::FeltRng;
+use miden_protocol::Felt;
+use miden_protocol::account::{AccountId, AccountIdVersion, AccountStorageMode, AccountType};
 use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{NoteAssets, NoteScript, NoteTag, NoteType};
 use miden_protocol::transaction::OutputNote;
@@ -200,6 +198,10 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     let faucet =
         builder.add_existing_network_faucet("AGG", 1000, faucet_owner_account_id, Some(100))?;
 
+    // Create a bridge account (includes a `bridge_out` component tested here)
+    let bridge_account = create_existing_bridge_account(builder.rng_mut().draw_word());
+    builder.add_account(bridge_account.clone())?;
+
     // Create a user account that will create and consume the B2AGG note
     let mut user_account = builder.add_existing_wallet(Auth::BasicAuth)?;
 
@@ -223,7 +225,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     let b2agg_note = create_b2agg_note(
         storage,
         assets,
-        user_account.id(),
+        bridge_account.id(),
         user_account.id(),
         NoteType::Public,
         builder.rng_mut(),

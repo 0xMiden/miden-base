@@ -3,9 +3,10 @@
 //! This module provides helpers for creating B2AGG (Bridge to AggLayer) notes,
 //! which are used to bridge assets out from Miden to the AggLayer network.
 
+use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use miden_core::{Felt, Word};
+use miden_core::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::errors::NoteError;
@@ -13,13 +14,14 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteAttachmentScheme,
+    NoteExecutionHint,
     NoteMetadata,
     NoteRecipient,
     NoteStorage,
     NoteTag,
     NoteType,
 };
+use miden_standards::note::NetworkAccountTarget;
 
 use crate::{EthAddressFormat, b2agg_script};
 
@@ -101,14 +103,11 @@ pub fn create_b2agg_note<R: FeltRng>(
 
     let tag = NoteTag::new(0);
 
-    // Store the target account ID in the attachment: [prefix, suffix, 0, 0]
-    let attachment_word = Word::from([
-        target_account_id.prefix().as_felt(),
-        target_account_id.suffix(),
-        Felt::new(0),
-        Felt::new(0),
-    ]);
-    let attachment = NoteAttachment::new_word(NoteAttachmentScheme::none(), attachment_word);
+    // map error into other error
+    let attachment = NoteAttachment::from(
+        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::None)
+            .map_err(|e| NoteError::other(e.to_string()))?,
+    );
 
     let metadata = NoteMetadata::new(sender_account_id, note_type, tag).with_attachment(attachment);
 
