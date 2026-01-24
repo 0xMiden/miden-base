@@ -144,11 +144,21 @@ pub enum NetworkAccountTargetError {
 
 #[cfg(test)]
 mod tests {
+    use std::string::ToString;
+    use std::sync::Arc;
+
     use assert_matches::assert_matches;
+    use miden_processor::fast::{ExecutionOutput, FastProcessor};
+    use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program};
     use miden_protocol::account::AccountStorageMode;
+    use miden_protocol::assembly::{Assembler, DefaultSourceManager};
+    use miden_protocol::note::{NoteMetadata, NoteTag, NoteType};
     use miden_protocol::testing::account_id::AccountIdBuilder;
+    use miden_protocol::vm::StackInputs;
+    use miden_protocol::{CoreLibrary, Felt};
 
     use super::*;
+    use crate::standards_lib::StandardsLib;
 
     #[test]
     fn network_account_target_serde() -> anyhow::Result<()> {
@@ -160,6 +170,115 @@ mod tests {
             network_account_target,
             NetworkAccountTarget::try_from(&NoteAttachment::from(network_account_target))?
         );
+
+        Ok(())
+    }
+
+    fn assemble_program(source: &str) -> anyhow::Result<Program> {
+        let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
+            .with_dynamic_library(CoreLibrary::default())
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?
+            .with_dynamic_library(StandardsLib::default())
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?
+            .assemble_program(source)
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?;
+
+        Ok(program)
+    }
+
+    async fn execute_program_with_default_host(
+        program: Program,
+    ) -> Result<ExecutionOutput, ExecutionError> {
+        let mut host = DefaultHost::default();
+
+        let core_lib = CoreLibrary::default();
+        host.load_library(core_lib.mast_forest()).unwrap();
+
+        let standards_lib = StandardsLib::default();
+        host.load_library(standards_lib.mast_forest()).unwrap();
+
+        let stack_inputs = StackInputs::new(vec![]).unwrap();
+        let advice_inputs = AdviceInputs::default();
+
+        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+        processor.execute(&program, &mut host).await
+    }
+
+    #[tokio::test]
+    async fn network_account_target_get_id() -> anyhow::Result<()> {
+        let target_id = AccountIdBuilder::new()
+            .storage_mode(AccountStorageMode::Network)
+            .build_with_rng(&mut rand::rng());
+        let exec_hint = NoteExecutionHint::Always;
+
+        let attachment = NoteAttachment::from(NetworkAccountTarget::new(target_id, exec_hint)?);
+        let metadata =
+            NoteMetadata::new(target_id, NoteType::Public, NoteTag::with_account_target(target_id))
+                .with_attachment(attachment.clone());
+        let metadata_header = metadata.to_header_word();
+
+        let source = format!(
+            r#"
+            use miden::standards::attachment::network_account_target
+
+            begin
+                push.{metadata_header}
+                push.{attachment_word}
+                exec.network_account_target::get_id
+                # cleanup stack
+                movup.2 drop movup.2 drop
+            end
+            "#,
+            metadata_header = metadata_header,
+            attachment_word = attachment.content().to_word(),
+        );
+
+        let program = assemble_program(&source)?;
+        let exec_output = execute_program_with_default_host(program).await?;
+
+        assert_eq!(exec_output.stack[0], target_id.prefix().as_felt());
+        assert_eq!(exec_output.stack[1], target_id.suffix());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn network_account_target_new_attachment() -> anyhow::Result<()> {
+        let target_id = AccountIdBuilder::new()
+            .storage_mode(AccountStorageMode::Network)
+            .build_with_rng(&mut rand::rng());
+        let exec_hint = NoteExecutionHint::Always;
+
+        let attachment = NoteAttachment::from(NetworkAccountTarget::new(target_id, exec_hint)?);
+        let attachment_word = attachment.content().to_word();
+
+        let source = format!(
+            r#"
+            use miden::standards::attachment::network_account_target
+
+            begin
+                push.{exec_hint}
+                push.{target_id_suffix}
+                push.{target_id_prefix}
+                # => [target_id_prefix, target_id_suffix, exec_hint]
+                exec.network_account_target::new_attachment
+                # cleanup stack
+                swapw dropw
+            end
+            "#,
+            target_id_prefix = target_id.prefix().as_felt(),
+            target_id_suffix = target_id.suffix(),
+            exec_hint = Felt::from(exec_hint),
+        );
+
+        let program = assemble_program(&source)?;
+        let exec_output = execute_program_with_default_host(program).await?;
+
+        // TODO check why the attachment word is in reverse order
+        assert_eq!(exec_output.stack[0], attachment_word[3]);
+        assert_eq!(exec_output.stack[1], attachment_word[2]);
+        assert_eq!(exec_output.stack[2], attachment_word[1]);
+        assert_eq!(exec_output.stack[3], attachment_word[0]);
 
         Ok(())
     }
