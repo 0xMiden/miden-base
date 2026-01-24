@@ -270,7 +270,7 @@ pub fn create_bridge_account_builder(seed: Word) -> AccountBuilder {
     let bridge_out_component = bridge_out_component(vec![]);
 
     Account::builder(seed.into())
-        .storage_mode(AccountStorageMode::Public)
+        .storage_mode(AccountStorageMode::Network)
         .with_component(bridge_out_component)
         .with_component(bridge_in_component)
 }
