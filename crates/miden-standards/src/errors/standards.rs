@@ -9,6 +9,9 @@ use miden_protocol::errors::MasmError;
 // STANDARDS ERRORS
 // ================================================================================================
 
+/// Error Message: "expected network account target attachment scheme"
+pub const ERR_ATTACHMENT_SCHEME_MISMATCH: MasmError = MasmError::from_static_str("expected network account target attachment scheme");
+
 /// Error Message: "burn requires exactly 1 note asset"
 pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("burn requires exactly 1 note asset");
 
