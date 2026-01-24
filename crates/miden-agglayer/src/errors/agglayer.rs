@@ -37,5 +37,7 @@ pub const ERR_NOT_U32: MasmError = MasmError::from_static_str("address limb is n
 /// Error Message: "maximum scaling factor is 18"
 pub const ERR_SCALE_AMOUNT_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("maximum scaling factor is 18");
 
+/// Error Message: "UPDATE_GER note attachment target account does not match consuming account"
+pub const ERR_UPDATE_GER_TARGET_ACCOUNT_MISMATCH: MasmError = MasmError::from_static_str("UPDATE_GER note attachment target account does not match consuming account");
 /// Error Message: "UPDATE_GER script expects exactly 8 note storage items"
 pub const ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("UPDATE_GER script expects exactly 8 note storage items");
