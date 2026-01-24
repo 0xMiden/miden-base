@@ -66,6 +66,8 @@ begin
         exec.active_note::get_metadata
         # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 
+        # TODO simplify once https://github.com/0xMiden/miden-base/pull/2338 lands
+
         swapw dropw
         # => [NOTE_ATTACHMENT, pad(12)]
 
