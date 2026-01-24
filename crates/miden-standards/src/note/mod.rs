@@ -25,12 +25,12 @@ pub mod utils;
 mod network_account_target;
 pub use network_account_target::{NetworkAccountTarget, NetworkAccountTargetError};
 
-mod well_known_note_attachment;
-pub use well_known_note_attachment::WellKnownNoteAttachment;
+mod standard_note_attachment;
+pub use standard_note_attachment::StandardNoteAttachment;
 
-mod well_known_note;
+mod standard_note;
 pub use mint_storage::MintNoteStorage;
-pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
+pub use standard_note::{NoteConsumptionStatus, StandardNote};
 
 // STANDARDIZED SCRIPTS
 // ================================================================================================
@@ -121,7 +121,7 @@ pub fn create_swap_note<R: FeltRng>(
         return Err(NoteError::other("requested asset same as offered asset"));
     }
 
-    let note_script = WellKnownNote::SWAP.script();
+    let note_script = StandardNote::SWAP.script();
 
     let payback_serial_num = rng.draw_word();
     let payback_recipient = utils::build_p2id_recipient(sender, payback_serial_num)?;
@@ -192,7 +192,7 @@ pub fn create_mint_note<R: FeltRng>(
     attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
-    let note_script = WellKnownNote::MINT.script();
+    let note_script = StandardNote::MINT.script();
     let serial_num = rng.draw_word();
 
     // MINT notes are always public for network execution
@@ -238,7 +238,7 @@ pub fn create_burn_note<R: FeltRng>(
     attachment: NoteAttachment,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
-    let note_script = WellKnownNote::BURN.script();
+    let note_script = StandardNote::BURN.script();
     let serial_num = rng.draw_word();
 
     // BURN notes are always public
