@@ -46,3 +46,6 @@ pub const ERR_UNDERFLOW: MasmError = MasmError::from_static_str("x < y*10^s (und
 
 /// Error Message: "x must fit into 128 bits (x4..x7 must be 0)"
 pub const ERR_X_TOO_LARGE: MasmError = MasmError::from_static_str("x must fit into 128 bits (x4..x7 must be 0)");
+
+/// Error Message: "y exceeds max fungible token amount"
+pub const ERR_Y_TOO_LARGE: MasmError = MasmError::from_static_str("y exceeds max fungible token amount");

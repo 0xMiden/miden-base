@@ -292,7 +292,7 @@ proc build_p2id_output_note
     # => [AMOUNT[0], AMOUNT[1], amount, scale_exp, tag, note_type, RECIPIENT]
 
     # Check that provided bridge amount is valid conversion from EVM amount
-    exec.asset_conversion::scale_u256_to_native_amount
+    exec.asset_conversion::verify_u256_to_native_amount_conversion
     # => [amount, tag, note_type, RECIPIENT]
 
     exec.faucets::distribute
