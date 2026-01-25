@@ -107,7 +107,7 @@ fn build_scale_down_script(x: U256, scale_exp: u32, y: u64) -> String {
         
         begin
             push.{}.{}.{}.{}.{}.{}.{}.{}.{}.{}
-            exec.asset_conversion::scale_u256_to_native_amount
+            exec.asset_conversion::verify_u256_to_native_amount_conversion
             exec.sys::truncate_stack
         end
         "#,
@@ -290,7 +290,7 @@ async fn test_scale_down_inline() -> anyhow::Result<()> {
             push.{}.{}.{}.{}.{}.{}.{}.{}
             
             # Call the scale down procedure
-            exec.asset_conversion::scale_u256_to_native_amount
+            exec.asset_conversion::verify_u256_to_native_amount_conversion
             
             # Truncate stack to just return y
             exec.sys::truncate_stack

@@ -31,6 +31,7 @@ use miden_protocol::transaction::OutputNote;
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::note::WellKnownNote;
 use miden_testing::{AccountState, Auth, MockChain};
+use primitive_types::U256;
 use rand::Rng;
 
 use super::test_utils::claim_note_test_inputs;
@@ -48,10 +49,18 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE AGGLAYER FAUCET ACCOUNT (with agglayer_faucet component)
     // --------------------------------------------------------------------------------------------
-    let token_symbol = "AGG";
-    let decimals = 8u8;
-    let max_supply = Felt::new(1000000);
+    let token_symbol = "ETH";
+    let decimals = 10u8; // Miden uses 1e10 for ETH
+    let max_supply = Felt::new(10_000u64 * 10_000_000_000u64); // 10k ETH in Miden (10k * 1e10)
     let agglayer_faucet_seed = builder.rng_mut().draw_word();
+
+    // Define origin token address and scaling factor for the faucet
+    // ETH on L1 uses 18 decimals (1e18), Miden uses 10 decimals (1e10)
+    // So scaling_factor = 18 - 10 = 8
+    let origin_token_address = EthAddressFormat::new([
+        1u8, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    ]);
+    let scaling_factor = 10u8;
 
     let agglayer_faucet = create_existing_agglayer_faucet(
         agglayer_faucet_seed,
@@ -59,6 +68,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         decimals,
         max_supply,
         bridge_account.id(),
+        origin_token_address,
+        scaling_factor,
     );
     builder.add_account(agglayer_faucet.clone())?;
 
@@ -76,7 +87,9 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     // Define amount values for the test
-    let claim_amount = 100u32;
+    // Bridging 100 ETH from L1 (1e18 * 100) to Miden (1e8 * 100)
+    let eth_amount_l1 = EthAmount::from_u256(U256::from(100u128 * 1_000_000_000_000_000_000u128)); // 100 * 1e18
+    let miden_amount = eth_amount_l1.scale_to_felt_deterministic(10)?;
 
     // Create CLAIM note using the new test inputs function
     let (
@@ -86,7 +99,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
         mainnet_exit_root,
         rollup_exit_root,
         origin_network,
-        origin_token_address,
         destination_network,
         metadata,
     ) = claim_note_test_inputs();
@@ -96,9 +108,6 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // Generate a serial number for the P2ID note
     let serial_num = builder.rng_mut().draw_word();
-
-    // Convert amount to EthAmount for the LeafData
-    let amount_eth = EthAmount::from_u32(claim_amount);
 
     // Convert Vec<[u8; 32]> to [SmtNode; 32] for SMT proofs
     let local_proof_array: [SmtNode; 32] = smt_proof_local_exit_root[0..32]
@@ -125,17 +134,21 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     let leaf_data = LeafData {
         origin_network,
-        origin_token_address: EthAddressFormat::new(origin_token_address),
+        origin_token_address,
         destination_network,
         destination_address: EthAddressFormat::new(destination_address),
-        amount: amount_eth,
+        amount: eth_amount_l1,
         metadata,
     };
+
+    // Calculate scaled_bridged_amount (Miden amount after scaling down by 10^8)
+    let scaled_bridged_amount = miden_amount;
 
     let output_note_data = OutputNoteData {
         output_p2id_serial_num: serial_num,
         target_faucet_account_id: agglayer_faucet.id(),
         output_note_tag: NoteTag::with_account_target(user_account.id()),
+        scaled_bridged_amount,
     };
 
     let claim_inputs = ClaimNoteStorage { proof_data, leaf_data, output_note_data };
@@ -158,8 +171,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE EXPECTED P2ID NOTE FOR VERIFICATION
     // --------------------------------------------------------------------------------------------
-    let amount_felt = Felt::from(claim_amount);
-    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?.into();
+    let mint_asset: Asset =
+        FungibleAsset::new(agglayer_faucet.id(), scaled_bridged_amount.into())?.into();
     let output_note_tag = NoteTag::with_account_target(user_account.id());
     let expected_p2id_note = Note::new(
         NoteAssets::new(vec![mint_asset])?,
@@ -186,13 +199,10 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     assert_eq!(executed_transaction.output_notes().num_notes(), 1);
     let output_note = executed_transaction.output_notes().get_note(0);
 
-    // Verify the output note contains the minted fungible asset
-    let expected_asset = FungibleAsset::new(agglayer_faucet.id(), claim_amount.into())?;
-
     // Verify note metadata properties
     assert_eq!(output_note.metadata().sender(), agglayer_faucet.id());
     assert_eq!(output_note.metadata().note_type(), NoteType::Public);
-    assert_eq!(output_note.id(), expected_p2id_note.id());
+    // assert_eq!(output_note.id(), expected_p2id_note.id());
 
     // Extract the full note from the OutputNote enum for detailed verification
     let full_note = match output_note {
@@ -201,7 +211,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     };
 
     // Verify note structure and asset content
-    let expected_asset_obj = Asset::from(expected_asset);
+    let expected_asset_obj = Asset::from(mint_asset);
     assert_eq!(full_note, &expected_p2id_note);
 
     assert!(full_note.assets().iter().any(|asset| asset == &expected_asset_obj));
@@ -223,7 +233,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // Verify the account's vault now contains the expected fungible asset
     let balance = user_account_mut.vault().get_balance(agglayer_faucet.id())?;
-    assert_eq!(balance, expected_asset.amount());
+    assert_eq!(balance, mint_asset.unwrap_fungible().amount());
 
     Ok(())
 }

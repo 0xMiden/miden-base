@@ -180,7 +180,7 @@ impl SequentialCommit for LeafData {
 
 /// Output note data for CLAIM note creation.
 /// Contains note-specific data and can use Miden types.
-/// TODO: Remove all but target_faucet_account_id
+/// TODO: Remove target_faucet_account_id & output_p2id_serial_num
 pub struct OutputNoteData {
     /// P2ID note serial number (4 felts as Word)
     pub output_p2id_serial_num: Word,
@@ -188,12 +188,14 @@ pub struct OutputNoteData {
     pub target_faucet_account_id: AccountId,
     /// P2ID output note tag
     pub output_note_tag: NoteTag,
+    /// Scaled bridged amount (quotient from U256 / 10^scale_exp)
+    pub scaled_bridged_amount: Felt,
 }
 
 impl OutputNoteData {
     /// Converts the output note data to a vector of field elements for note storage
     pub fn to_elements(&self) -> Vec<Felt> {
-        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 8; // 4 + 2 + 1 + 1 (serial_num + account_id + tag + padding)
+        const OUTPUT_NOTE_DATA_ELEMENT_COUNT: usize = 8; // 4 + 2 + 1 + 1(serial_num + account_id + tag + scaled_amount)
         let mut elements = Vec::with_capacity(OUTPUT_NOTE_DATA_ELEMENT_COUNT);
 
         // P2ID note serial number (4 felts as Word)
@@ -206,8 +208,8 @@ impl OutputNoteData {
         // Output note tag
         elements.push(Felt::new(self.output_note_tag.as_u32() as u64));
 
-        // Padding
-        elements.extend(vec![Felt::ZERO; 1]);
+        // Scaled bridged amount
+        elements.push(self.scaled_bridged_amount);
 
         elements
     }
@@ -230,8 +232,8 @@ impl TryFrom<ClaimNoteStorage> for NoteStorage {
     type Error = NoteError;
 
     fn try_from(storage: ClaimNoteStorage) -> Result<Self, Self::Error> {
-        // proof_data + leaf_data + empty_word + output_note_data
-        // 536 + 32 + 8
+        // proof_data + leaf_data + output_note_data
+        // 536 + 32 + 8 = 576
         let mut claim_storage = Vec::with_capacity(576);
 
         claim_storage.extend(storage.proof_data.to_elements());
