@@ -14,6 +14,11 @@ const ERR_X_TOO_LARGE="x must fit into 128 bits (x4..x7 must be 0)"
 const ERR_UNDERFLOW="x < y*10^s (underflow detected)"
 const ERR_REMAINDER_TOO_LARGE="remainder z must be < 10^s"
 
+# Max fungible token amount = 2^63 - 2^31 = 0x7fffffff80000000
+const MAX_FUNGIBLE_AMOUNT_HI=2147483647
+const MAX_FUNGIBLE_AMOUNT_LO=2147483648
+const ERR_Y_TOO_LARGE="y exceeds max fungible token amount"
+
 #! Calculate 10^scale where scale is a u8 exponent.
 #!
 #! Inputs:  [scale]
@@ -109,7 +114,6 @@ pub proc scale_native_amount_to_u256
     # => [RESULT_U256[0], RESULT_U256[1]]
 end
 
-```masm
 #! Verify conversion from an AggLayer U256 amount to a Miden native amount (Felt)
 #!
 #! Specification:
@@ -288,7 +292,6 @@ pub proc verify_u256_to_native_amount_conversion
     assert.err=ERR_REMAINDER_TOO_LARGE
     # => [y]
 end
-
 
 # TODO: Rm & use verify_u256_to_native_amount_conversion
 pub proc verify_u256_to_native_amount_conversion_stubbed

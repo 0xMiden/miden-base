@@ -38,11 +38,14 @@ pub const ERR_REMAINDER_TOO_LARGE: MasmError = MasmError::from_static_str("remai
 /// Error Message: "maximum scaling factor is 18"
 pub const ERR_SCALE_AMOUNT_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("maximum scaling factor is 18");
 
-/// Error Message: "UPDATE_GER script expects exactly 8 note storage items"
-pub const ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("UPDATE_GER script expects exactly 8 note storage items");
-
 /// Error Message: "x < y*10^s (underflow detected)"
 pub const ERR_UNDERFLOW: MasmError = MasmError::from_static_str("x < y*10^s (underflow detected)");
 
+/// Error Message: "UPDATE_GER script expects exactly 8 note storage items"
+pub const ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("UPDATE_GER script expects exactly 8 note storage items");
+
 /// Error Message: "x must fit into 128 bits (x4..x7 must be 0)"
 pub const ERR_X_TOO_LARGE: MasmError = MasmError::from_static_str("x must fit into 128 bits (x4..x7 must be 0)");
+
+/// Error Message: "y exceeds max fungible token amount"
+pub const ERR_Y_TOO_LARGE: MasmError = MasmError::from_static_str("y exceeds max fungible token amount");
