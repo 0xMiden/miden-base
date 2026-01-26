@@ -3,11 +3,11 @@ use alloc::string::{String, ToString};
 use core::error::Error;
 
 use miden_protocol::account::AccountId;
+use miden_protocol::assembly::Library;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::note::{Note, NoteScript};
 use miden_protocol::utils::Deserializable;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::vm::Program;
 use miden_protocol::{Felt, Word};
 
 use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
@@ -19,37 +19,37 @@ use crate::account::wallets::BasicWallet;
 
 // Initialize the P2ID note script only once
 static P2ID_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2ID.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped P2ID script is well-formed");
-    NoteScript::new(program)
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/p2id.masl"));
+    let library = Library::read_from_bytes(bytes).expect("Shipped P2ID library is well-formed");
+    NoteScript::from_library(&library).expect("P2ID library contains note script procedure")
 });
 
 // Initialize the P2IDE note script only once
 static P2IDE_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDE.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped P2IDE script is well-formed");
-    NoteScript::new(program)
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/p2ide.masl"));
+    let library = Library::read_from_bytes(bytes).expect("Shipped P2IDE library is well-formed");
+    NoteScript::from_library(&library).expect("P2IDE library contains note script procedure")
 });
 
 // Initialize the SWAP note script only once
 static SWAP_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/SWAP.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped SWAP script is well-formed");
-    NoteScript::new(program)
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/swap.masl"));
+    let library = Library::read_from_bytes(bytes).expect("Shipped SWAP library is well-formed");
+    NoteScript::from_library(&library).expect("SWAP library contains note script procedure")
 });
 
 // Initialize the MINT note script only once
 static MINT_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/MINT.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped MINT script is well-formed");
-    NoteScript::new(program)
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/mint.masl"));
+    let library = Library::read_from_bytes(bytes).expect("Shipped MINT library is well-formed");
+    NoteScript::from_library(&library).expect("MINT library contains note script procedure")
 });
 
 // Initialize the BURN note script only once
 static BURN_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/BURN.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped BURN script is well-formed");
-    NoteScript::new(program)
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/burn.masl"));
+    let library = Library::read_from_bytes(bytes).expect("Shipped BURN library is well-formed");
+    NoteScript::from_library(&library).expect("BURN library contains note script procedure")
 });
 
 /// Returns the P2ID (Pay-to-ID) note script.
