@@ -33,12 +33,12 @@ const BECH32_SEPARATOR: &str = "1";
 
 /// The value to encode the absence of a note tag routing parameter (i.e. `None`).
 ///
-/// The note tag length occupies 5 bits (values 0..=31). Valid tag lengths are 0..=30,
-/// so we reserve the maximum 5-bit value (31) to represent `None`.
+/// The note tag length occupies 6 bits (values 0..=63). Valid tag lengths are 0..=32,
+/// so we reserve the maximum 6-bit value (63) to represent `None`.
 ///
 /// If the note tag length is absent from routing parameters, the note tag length for the address
 /// will be set to the default default tag length of the address' ID component.
-const ABSENT_NOTE_TAG_LEN: u8 = (1 << 5) - 1; // 31
+const ABSENT_NOTE_TAG_LEN: u8 = 63; // 31
 
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_PARAM_KEY: u8 = 0;
@@ -92,8 +92,7 @@ impl RoutingParameters {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The tag length exceeds the maximum of [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
-    ///   [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`].
+    /// - The tag length exceeds the maximum of [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH `].
     pub fn with_note_tag_len(mut self, note_tag_len: u8) -> Result<Self, AddressError> {
         if note_tag_len > NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH {
             return Err(AddressError::TagLengthTooLarge(note_tag_len));
@@ -109,7 +108,6 @@ impl RoutingParameters {
     /// Returns the note tag length preference.
     ///
     /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
-    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
     /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> Option<u8> {
         self.note_tag_len
@@ -271,7 +269,7 @@ fn encode_receiver_profile(interface: AddressInterface, note_tag_len: Option<u8>
     let interface = interface as u16;
     debug_assert_eq!(interface >> 10, 0, "address interface should fit into 10 bits");
 
-    // The interface takes up 11 bits and the tag length 5 bits, so we can merge them
+    // The interface takes up 10 bits and the tag length 6 bits, so we can merge them
     // together.
     let tag_len = (note_tag_len as u16) << 10;
     let receiver_profile: u16 = tag_len | interface;

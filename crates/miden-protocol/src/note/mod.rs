@@ -2,7 +2,7 @@ use miden_crypto::Word;
 use miden_crypto::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 
-use crate::account::{AccountId, AccountStorageMode};
+use crate::account::AccountId;
 use crate::errors::NoteError;
 use crate::{Felt, Hasher, WORD_SIZE, ZERO};
 

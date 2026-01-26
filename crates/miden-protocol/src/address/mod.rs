@@ -1,5 +1,4 @@
 mod r#type;
-use alloc::string::ToString;
 
 pub use r#type::AddressType;
 
@@ -78,21 +77,11 @@ impl Address {
         Self { id: id.into(), routing_params: None }
     }
 
-    /// For local (both public and private) accounts, up to 33 bits can be encoded into the tag.
-    /// For network accounts, the tag length must be set to 32 bits.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The tag length routing parameter is not
-    ///   [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`] for network accounts.
-    pub fn with_routing_parameters(
-        mut self,
-        routing_params: RoutingParameters,
-    ) -> Result<Self, AddressError> {
+    /// Sets the routing parameters of the address.
+    pub fn with_routing_parameters(mut self, routing_params: RoutingParameters) -> Self {
         // All validation should now live inside RoutingParameters itself.
         self.routing_params = Some(routing_params);
-        Ok(self)
+        self
     }
 
     // ACCESSORS
@@ -111,13 +100,12 @@ impl Address {
     /// Returns the preferred tag length.
     ///
     /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
-    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
-    /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
+    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH `]).
     pub fn note_tag_len(&self) -> u8 {
         self.routing_params
             .as_ref()
             .and_then(RoutingParameters::note_tag_len)
-            .unwrap_or(self.id.default_note_tag_len())
+            .unwrap_or(NoteTag::DEFAULT_ACCOUNT_TARGET_TAG_LENGTH)
     }
 
     /// Returns a note tag derived from this address.
@@ -128,7 +116,7 @@ impl Address {
             AddressId::AccountId(id) => NoteTag::with_custom_account_target(id, note_tag_len)
                 .expect(
                     "address should validate that tag len does not exceed \
-                     MAX_ACCOUNT_TARGET_TAG_LENGTH bits",
+                     MAX_ACCOUNT_TARGET_TAG_LENGTH  bits",
                 ),
         }
     }
@@ -182,7 +170,7 @@ impl Address {
 
         if let Some(encoded_routing_params) = split.next() {
             let routing_params = RoutingParameters::decode(encoded_routing_params.to_owned())?;
-            address = address.with_routing_parameters(routing_params)?;
+            address = address.with_routing_parameters(routing_params);
         }
 
         Ok((network_id, address))
@@ -206,9 +194,7 @@ impl Deserializable for Address {
         let mut address = Self::new(identifier);
 
         if let Some(routing_params) = routing_params {
-            address = address
-                .with_routing_parameters(routing_params)
-                .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
+            address = address.with_routing_parameters(routing_params);
         }
 
         Ok(address)
@@ -227,7 +213,7 @@ mod tests {
     use bech32::{Bech32, Bech32m, NoChecksum};
 
     use super::*;
-    use crate::account::{AccountId, AccountType};
+    use crate::account::{AccountId, AccountStorageMode, AccountType};
     use crate::address::CustomNetworkId;
     use crate::errors::{AccountIdError, Bech32Error};
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
@@ -284,7 +270,7 @@ mod tests {
                 address = address.with_routing_parameters(
                     RoutingParameters::new(AddressInterface::BasicWallet)
                         .with_note_tag_len(NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH)?,
-                )?;
+                );
 
                 let bech32_string = address.encode(network_id.clone());
                 assert!(
@@ -327,7 +313,7 @@ mod tests {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
         let address = Address::new(account_id).with_routing_parameters(
             RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(14)?,
-        )?;
+        );
 
         let bech32_string = address.encode(network_id);
         let mut invalid_bech32_1 = bech32_string.clone();
@@ -413,7 +399,7 @@ mod tests {
             let address = Address::new(account_id).with_routing_parameters(
                 RoutingParameters::new(AddressInterface::BasicWallet)
                     .with_note_tag_len(NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH)?,
-            )?;
+            );
 
             let serialized = address.to_bytes();
             let deserialized = Address::read_from_bytes(&serialized)?;
@@ -444,7 +430,7 @@ mod tests {
         let address = Address::new(account_id).with_routing_parameters(
             RoutingParameters::new(AddressInterface::BasicWallet)
                 .with_encryption_key(sealing_key.clone()),
-        )?;
+        );
 
         // Verify encryption key is present
         let retrieved_key =
@@ -472,6 +458,7 @@ mod tests {
         // (FungibleFaucet)
         let account_id = AccountIdBuilder::new()
             .account_type(AccountType::RegularAccountImmutableCode)
+            .storage_mode(AccountStorageMode::Public)
             .build_with_rng(rng);
 
         // Create keypair
@@ -483,7 +470,7 @@ mod tests {
         let address = Address::new(account_id).with_routing_parameters(
             RoutingParameters::new(AddressInterface::BasicWallet)
                 .with_encryption_key(sealing_key.clone()),
-        )?;
+        );
 
         // Encode and decode
         let encoded = address.encode(NetworkId::Mainnet);
@@ -510,7 +497,7 @@ mod tests {
 
         let address = Address::new(account_id).with_routing_parameters(
             RoutingParameters::new(AddressInterface::BasicWallet).with_note_tag_len(32)?,
-        )?;
+        );
 
         assert_eq!(address.note_tag_len(), 32);
 

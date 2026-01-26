@@ -7,7 +7,6 @@ use miden_processor::DeserializationError;
 use crate::account::AccountId;
 use crate::address::{AddressType, NetworkId};
 use crate::errors::{AddressError, Bech32Error};
-use crate::note::NoteTag;
 use crate::utils::serde::{ByteWriter, Deserializable, Serializable};
 
 /// The identifier of an [`Address`](super::Address).
@@ -25,15 +24,6 @@ impl AddressId {
         match self {
             AddressId::AccountId(_) => AddressType::AccountId,
         }
-    }
-
-    /// Returns the default tag length of the ID.
-    ///
-    /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
-    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`] and
-    /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
-    pub fn default_note_tag_len(&self) -> u8 {
-        NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH
     }
 
     /// Decodes a bech32 string into an identifier.
