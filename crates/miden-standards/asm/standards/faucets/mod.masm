@@ -30,6 +30,7 @@ const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS="burn requires exactly 1 no
 const METADATA_SLOT_LOCAL=0
 
 # The standard slot where fungible faucet metadata like token symbol or decimals are stored.
+# Layout: [token_supply, max_supply, decimals, token_symbol]
 const METADATA_SLOT=word("miden::standards::fungible_faucets::metadata")
 
 #! Distributes freshly minted fungible assets to the provided recipient by creating a note.
@@ -149,14 +150,13 @@ end
 
 #! Burns the fungible asset from the active note.
 #!
+#! Burning the asset removes it from circulation and reduces the token_supply by the asset's amount.
+#!
 #! This procedure retrieves the asset from the active note and burns it. The note must contain
 #! exactly one asset, which must be a fungible asset issued by this faucet.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-#!
-#! Where:
-#! - ASSET is the fungible asset that was burned.
 #!
 #! Panics if:
 #! - the procedure is not called from a note context (active_note::get_assets will fail).
@@ -166,7 +166,6 @@ end
 #! - the amount about to be burned is greater than the token_supply of the faucet.
 #!
 #! Invocation: call
-@locals(4)
 pub proc burn
     # Get the asset from the note.
     # ---------------------------------------------------------------------------------------------
@@ -183,44 +182,42 @@ pub proc burn
     # => [ASSET, pad(16)]
     # => [[faucet_id_prefix, faucet_id_suffix, 0, amount], pad(16)]
 
-    dup.3
-    # => [amount, ASSET, pad(16)]
-
-    # Get current token_supply to compute the new one.
-    # ---------------------------------------------------------------------------------------------
-
-    push.METADATA_SLOT[0..2] exec.active_account::get_item
-    # => [token_symbol, decimals, max_supply, token_supply, amount, ASSET, pad(16)]
-
-    # store a copy of the current slot content for the token_supply update later
-    loc_storew_be.METADATA_SLOT_LOCAL
-    drop drop drop
-    # => [token_supply, amount, ASSET, pad(16)]
-
-    dup.1 dup.1
-    # => [token_supply, amount, token_supply, amount, ASSET, pad(16)]
-
-    # assert that amount <= token_supply
-    lte assert.err=ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY
-    # => [token_supply, amount, ASSET, pad(16)]
-
-    # compute new_token_supply = token_supply - amount
-    swap sub
-    # => [new_token_supply, ASSET, pad(16)]
-
-    padw loc_loadw_be.METADATA_SLOT_LOCAL
-    # => [[token_symbol, decimals, max_supply, token_supply], new_token_supply, ASSET, pad(16)]
-
-    movup.4 swap.4 drop
-    # => [[token_symbol, decimals, max_supply, new_token_supply], ASSET, pad(16)]
-
-    # update the metadata slot with the new supply
-    push.METADATA_SLOT[0..2] exec.native_account::set_item dropw
-    # => [ASSET, pad(16)]
-
     # Burn the asset from the transaction vault
     # ---------------------------------------------------------------------------------------------
 
+    dup.3 movdn.4
+    # => [ASSET, amount, pad(16)]
+
+    # burn the asset
+    # this ensures we only burn assets that were issued by this faucet (which implies they are
+    # fungible)
     exec.faucet::burn dropw
+    # => [amount, pad(16)]
+
+    # Subtract burnt amount from current token_supply in storage.
+    # ---------------------------------------------------------------------------------------------
+
+    push.METADATA_SLOT[0..2] exec.active_account::get_item
+    # => [token_symbol, decimals, max_supply, token_supply, amount, pad(16)]
+
+    dup.4 dup.4
+    # => [token_supply, amount, token_symbol, decimals, max_supply, token_supply, amount, pad(16)]
+
+    # assert that amount <= token_supply
+    lte assert.err=ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY
+    # => [token_symbol, decimals, max_supply, token_supply, amount, pad(16)]
+
+    movup.3 movup.4
+    # => [amount, token_supply, token_symbol, decimals, max_supply, pad(16)]
+
+    # compute new_token_supply = token_supply - amount
+    sub
+    # => [new_token_supply, token_symbol, decimals, max_supply, pad(16)]
+
+    movdn.3
+    # => [token_symbol, decimals, max_supply, new_token_supply, pad(16)]
+
+    # update the metadata slot with the new supply
+    push.METADATA_SLOT[0..2] exec.native_account::set_item dropw
     # => [pad(16)]
 end

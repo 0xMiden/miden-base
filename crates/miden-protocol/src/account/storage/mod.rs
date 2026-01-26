@@ -95,6 +95,7 @@ impl AccountStorage {
     ///
     /// Returns an error if:
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
+    /// - There are multiple storage slots with the same [`StorageSlotName`].
     pub(super) fn from_components(
         components: Vec<AccountComponent>,
     ) -> Result<AccountStorage, AccountError> {
