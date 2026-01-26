@@ -155,7 +155,7 @@ mod tests {
     use miden_protocol::note::{NoteMetadata, NoteTag, NoteType};
     use miden_protocol::testing::account_id::AccountIdBuilder;
     use miden_protocol::vm::StackInputs;
-    use miden_protocol::{CoreLibrary, Felt};
+    use miden_protocol::{CoreLibrary, Felt, ProtocolLib};
 
     use super::*;
     use crate::standards_lib::StandardsLib;
@@ -180,6 +180,8 @@ mod tests {
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .with_dynamic_library(StandardsLib::default())
             .map_err(|err| anyhow::anyhow!(err.to_string()))?
+            .with_dynamic_library(ProtocolLib::default())
+            .map_err(|err| anyhow::anyhow!(err.to_string()))?
             .assemble_program(source)
             .map_err(|err| anyhow::anyhow!(err.to_string()))?;
 
@@ -196,6 +198,9 @@ mod tests {
 
         let standards_lib = StandardsLib::default();
         host.load_library(standards_lib.mast_forest()).unwrap();
+
+        let protocol_lib = ProtocolLib::default();
+        host.load_library(protocol_lib.mast_forest()).unwrap();
 
         let stack_inputs = StackInputs::new(vec![]).unwrap();
         let advice_inputs = AdviceInputs::default();
