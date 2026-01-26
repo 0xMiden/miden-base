@@ -15,7 +15,7 @@ const PRIVATE_NOTE=2
 
 const ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY="token supply exceeds max supply"
 
-const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY="max supply exceeds maximum representable supply"
+const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_FUNGIBLE_ASSET_MAX_AMOUNT="max supply exceeds maximum representable fungible asset amount"
 
 const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY="amount passed to distribute exceeds the maximum supply"
 
@@ -67,27 +67,31 @@ pub proc distribute
     # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
     # Assert that minting does not violate any supply constraints.
+    #
+    # To make sure we cannot mint more than intended, we need to check:
+    # 1) (max_supply - token_supply) <= max_supply, i.e. the subtraction does not wrap around
+    # 2) amount + token_supply does not exceed max_supply
+    # 3) amount + token_supply is less than FUNGIBLE_ASSET_MAX_AMOUNT
+    #
+    # This is done with the following concrete assertions:
+    # - assert token_supply <= max_supply which ensures 1)
+    # - assert max_supply <= FUNGIBLE_ASSET_MAX_AMOUNT to help ensure 3)
+    # - assert amount <= max_mint_amount to ensure 2) as well as 3)
+    #   - this ensures 3) because token_supply + max_mint_amount at most ends up being equal to
+    #     max_supply and we already asserted that max_supply does not exceed
+    #     FUNGIBLE_ASSET_MAX_AMOUNT
     # ---------------------------------------------------------------------------------------------
 
     dup.1 dup.1
     # => [max_supply, token_supply, max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
     # assert that token_supply <= max_supply
-    # if token_supply > max_supply, then computing max_supply - token_supply would wrap around,
-    # because `sub` has wrapping semantics, and this would allow minting larger amounts than
-    # intended
-    # this protects against misconfigurations but also ensures token_supply <= max_allowed_supply
-    # due to the remaining checks (see below).
     lte assert.err=ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY
     # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
-    # assert max_supply <= max_allowed_supply
-    # ensures the max supply never exceeds what can be represented and because of the previous
-    # assertion, this also implies token_supply <= max_supply <= max_allowed_supply
-    # this means adding the amount to the token_supply will not exceed the max representable
-    # amount either
+    # assert max_supply <= FUNGIBLE_ASSET_MAX_AMOUNT
     dup lte.FUNGIBLE_ASSET_MAX_AMOUNT
-    assert.err=ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY
+    assert.err=ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_FUNGIBLE_ASSET_MAX_AMOUNT
     # => [max_supply, token_supply, amount, tag, note_type, RECIPIENT]
 
     dup.2 swap dup.2
@@ -97,9 +101,7 @@ pub proc distribute
     sub
     # => [max_mint_amount, amount, token_supply, amount, tag, note_type, RECIPIENT]
 
-    # assert that amount <= max_mint_amount
-    # this ensures that max_supply is not exceeded and that token_supply at most ends up equal
-    # to max_supply
+    # assert amount <= max_mint_amount
     lte assert.err=ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY
     # => [token_supply, amount, tag, note_type, RECIPIENT]
 
@@ -127,6 +129,8 @@ pub proc distribute
     # => [ASSET, tag, note_type, RECIPIENT]
 
     # mint the asset; this is needed to satisfy asset preservation logic.
+    # this ensures that the asset's faucet ID matches the native account's ID.
+    # this is ensured because create_fungible_asset creates the asset with the native account's ID
     exec.faucet::mint
     # => [ASSET, tag, note_type, RECIPIENT]
 
