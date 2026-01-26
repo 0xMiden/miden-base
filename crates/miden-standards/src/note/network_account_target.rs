@@ -261,7 +261,7 @@ mod tests {
                 push.{target_id_suffix}
                 push.{target_id_prefix}
                 # => [target_id_prefix, target_id_suffix, exec_hint]
-                exec.network_account_target::new_attachment
+                exec.network_account_target::new
                 # cleanup stack
                 swapw dropw
             end
@@ -306,7 +306,7 @@ mod tests {
                 push.{target_id_suffix}
                 push.{target_id_prefix}
                 # => [target_id_prefix, target_id_suffix, exec_hint]
-                exec.network_account_target::new_attachment
+                exec.network_account_target::new
                 # => [ATTACHMENT, METADATA_HEADER]
                 exec.network_account_target::get_id
                 # => [target_id_prefix, target_id_suffix]

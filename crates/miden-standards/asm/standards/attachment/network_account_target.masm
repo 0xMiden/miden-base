@@ -63,7 +63,7 @@ end
 #! - exec_hint is the execution hint for the note.
 #!
 #! Invocation: exec
-pub proc new_attachment
+pub proc new
     movup.2
     push.0
 end
