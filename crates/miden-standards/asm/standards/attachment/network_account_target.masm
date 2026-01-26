@@ -15,16 +15,22 @@ pub const NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME = 1
 # ================================================================================================
 const ERR_ATTACHMENT_SCHEME_MISMATCH = "expected network account target attachment scheme"
 
-#! Returns the ID encoded in the attachment.
+#! Returns the account ID encoded in the attachment.
 #!
 #! The attachment is expected to have the following layout:
 #! [0, exec_hint_tag, account_id_prefix, account_id_suffix]
+#!
+#! WARNING: This procedure does not validate that the returned account ID is well-formed.
+#! The caller should validate the account ID if needed using `account_id::validate`.
 #!
 #! Inputs:  [NOTE_ATTACHMENT, NOTE_METADATA_HEADER]
 #! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of an account ID.
+#!
+#! Panics if:
+#! - the attachment scheme does not match NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME.
 #!
 #! Invocation: exec
 pub proc get_id
