@@ -14,9 +14,16 @@ version.workspace      = true
 
 [features]
 concurrent = ["miden-prover/concurrent", "std"]
-default    = ["std"]
-std        = ["miden-processor/std", "miden-protocol/std", "miden-prover/std", "miden-standards/std", "miden-verifier/std"]
-testing    = ["miden-processor/testing", "miden-protocol/testing", "miden-standards/testing"]
+default = ["std"]
+std = [
+  "miden-air/std",
+  "miden-processor/std",
+  "miden-protocol/std",
+  "miden-prover/std",
+  "miden-standards/std",
+  "miden-verifier/std",
+]
+testing = ["miden-processor/testing", "miden-protocol/testing", "miden-standards/testing"]
 
 [dependencies]
 # Workspace dependencies
@@ -24,16 +31,19 @@ miden-protocol  = { workspace = true }
 miden-standards = { workspace = true }
 
 # Miden dependencies
+miden-air       = { workspace = true }
 miden-processor = { workspace = true }
 miden-prover    = { workspace = true }
 miden-verifier  = { workspace = true }
 
 # External dependencies
-thiserror = { workspace = true }
+bincode         = "1.3"
+p3-miden-prover = { branch = "main", git = "https://github.com/0xMiden/p3-miden" }
+thiserror       = { workspace = true }
 
 [dev-dependencies]
 anyhow         = { features = ["backtrace", "std"], workspace = true }
 assert_matches = { workspace = true }
-miden-assembly = { workspace = true }
-miden-tx       = { features = ["testing"], path = "." }
+miden-assembly = { default-features = false, workspace = true }
+miden-tx       = { default-features = false, features = ["testing"], path = "." }
 rstest         = { workspace = true }

@@ -1284,7 +1284,7 @@ async fn test_prove_fpi_two_foreign_accounts_chain() -> anyhow::Result<()> {
         .await?;
 
     // Prove the executed transaction which uses FPI across two foreign accounts.
-    LocalTransactionProver::default().prove(executed_transaction)?;
+    LocalTransactionProver::default().prove_async(executed_transaction).await?;
 
     Ok(())
 }

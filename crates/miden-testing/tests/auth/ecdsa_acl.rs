@@ -153,7 +153,7 @@ async fn test_ecdsa_acl() -> anyhow::Result<()> {
         .execute()
         .await
         .expect("trigger 1 with auth should succeed");
-    prove_and_verify_transaction(executed_tx_with_auth_1)?;
+    prove_and_verify_transaction(executed_tx_with_auth_1).await?;
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
