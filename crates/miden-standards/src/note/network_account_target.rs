@@ -225,10 +225,13 @@ mod tests {
         let source = format!(
             r#"
             use miden::standards::attachment::network_account_target
+            use miden::protocol::note
 
             begin
-                push.{metadata_header}
                 push.{attachment_word}
+                push.{metadata_header}
+                exec.note::extract_attachment_info_from_metadata
+                # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT]
                 exec.network_account_target::get_id
                 # cleanup stack
                 movup.2 drop movup.2 drop
@@ -268,6 +271,8 @@ mod tests {
                 push.{target_id_prefix}
                 # => [target_id_prefix, target_id_suffix, exec_hint]
                 exec.network_account_target::new
+                # => [attachment_scheme, attachment_kind, ATTACHMENT, pad(16)]
+
                 # cleanup stack
                 swapdw dropw dropw
             end
@@ -299,31 +304,22 @@ mod tests {
             .build_with_rng(&mut rand::rng());
         let exec_hint = NoteExecutionHint::Always;
 
-        let attachment = NoteAttachment::from(NetworkAccountTarget::new(target_id, exec_hint)?);
-        let metadata =
-            NoteMetadata::new(target_id, NoteType::Public, NoteTag::with_account_target(target_id))
-                .with_attachment(attachment.clone());
-        let metadata_header = metadata.to_header_word();
-
         let source = format!(
             r#"
             use miden::standards::attachment::network_account_target
 
             begin
-                push.{metadata_header}
                 push.{exec_hint}
                 push.{target_id_suffix}
                 push.{target_id_prefix}
                 # => [target_id_prefix, target_id_suffix, exec_hint]
                 exec.network_account_target::new
                 # => [attachment_scheme, attachment_kind, ATTACHMENT]
-                drop drop
                 exec.network_account_target::get_id
                 # => [target_id_prefix, target_id_suffix]
                 movup.2 drop movup.2 drop
             end
             "#,
-            metadata_header = metadata_header,
             target_id_prefix = target_id.prefix().as_felt(),
             target_id_suffix = target_id.suffix(),
             exec_hint = Felt::from(exec_hint),
