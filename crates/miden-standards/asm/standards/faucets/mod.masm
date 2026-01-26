@@ -111,7 +111,7 @@ pub proc distribute
     padw loc_loadw_be.METADATA_SLOT_LOCAL
     # => [[token_symbol, decimals, max_supply, token_supply], new_token_supply, amount, tag, note_type, RECIPIENT]
 
-    movup.4 swap.4 drop
+    movup.3 drop
     # => [[token_symbol, decimals, max_supply, new_token_supply], amount, tag, note_type, RECIPIENT]
 
     # update the metadata slot with the new supply
