@@ -14,6 +14,7 @@
 - [BREAKING] refactored `TransactionAuthenticator::get_public_key()` method to return `Arc<PublicKey> `instead of `&PublicKey` ([#2304](https://github.com/0xMiden/miden-base/pull/2304)).
 - [BREAKING] Renamed `NoteInputs` to `NoteStorage` to better reflect that values are stored data associated with a note rather than inputs ([#1662](https://github.com/0xMiden/miden-base/issues/1662), [#2316](https://github.com/0xMiden/miden-base/issues/2316)).
 - Removed `NoteType::Encrypted` ([#2315](https://github.com/0xMiden/miden-base/pull/2315)).
+- [BREAKING] Changed note scripts to be compiled as libraries with `@note_script` annotation for marking the entrypoint procedure ([#2339](https://github.com/0xMiden/miden-base/issues/2339)).
 
 ## 0.13.2 (2026-01-21)
 
