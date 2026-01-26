@@ -3,6 +3,7 @@
 # Provides a standardized way to work with network account targets.
 
 use miden::protocol::active_note
+use miden::protocol::note
 
 # CONSTANTS
 # ================================================================================================
@@ -39,17 +40,13 @@ const ERR_ATTACHMENT_SCHEME_MISMATCH = "expected network account target attachme
 #! Invocation: exec
 pub proc get_id
     swapw
-    # verify that the attachment scheme is correct
-    # => [attachment_kind_scheme, METADATA_HEADER[1..4], NOTE_ATTACHMENT]
 
-    # deconstruct the attachment_kind_scheme to extract the attachment_scheme
-    # attachment_kind_scheme = [30 zero bits | attachment_kind (2 bits) | attachment_scheme (32 bits)]
-    # u32split splits into [high, low] where low is attachment_scheme
-    u32split drop
-    # => [attachment_scheme, METADATA_HEADER[1..4], NOTE_ATTACHMENT]
+    # verify that the attachment scheme is correct
+    exec.note::extract_attachment_info_from_metadata
+    # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT]
+    drop
 
     eq.NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME assert.err=ERR_ATTACHMENT_SCHEME_MISMATCH
-    drop drop drop
     # => [NOTE_ATTACHMENT]
 
     drop drop
