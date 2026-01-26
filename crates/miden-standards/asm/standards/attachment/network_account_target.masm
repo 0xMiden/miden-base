@@ -35,7 +35,7 @@ pub proc get_id
     u32split drop
     # => [attachment_scheme, METADATA_HEADER[1..4], NOTE_ATTACHMENT]
 
-    push.NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME eq assert.err=ERR_ATTACHMENT_SCHEME_MISMATCH
+    eq.NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME assert.err=ERR_ATTACHMENT_SCHEME_MISMATCH
     drop drop drop
     # => [NOTE_ATTACHMENT]
 
