@@ -26,7 +26,7 @@ use miden_protocol::transaction::{InputNote, OutputNote, TransactionKernel};
 use miden_protocol::{Felt, StarkField, Word};
 use miden_standards::note::{
     NoteConsumptionStatus,
-    WellKnownNote,
+    StandardNote,
     create_p2id_note,
     create_p2ide_note,
 };
@@ -47,7 +47,7 @@ use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
-async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
+async fn check_note_consumability_standard_notes_success() -> anyhow::Result<()> {
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -536,7 +536,7 @@ async fn test_check_note_consumability_static_analysis_invalid_inputs() -> anyho
     assert_matches!(consumability_info, NoteConsumptionStatus::NeverConsumable(reason) => {
         assert_eq!(reason.to_string(), format!(
                         "P2IDE note should have {} storage items, but {} was provided",
-                        WellKnownNote::P2IDE.expected_num_storage_items(),
+                        StandardNote::P2IDE.expected_num_storage_items(),
                         p2ide_wrong_inputs_number.recipient().storage().num_items()
                     ));
     });
@@ -788,7 +788,7 @@ fn create_p2ide_note_with_storage(
     sender: AccountId,
 ) -> Note {
     let serial_num = RpoRandomCoin::new(Default::default()).draw_word();
-    let note_script = WellKnownNote::P2IDE.script();
+    let note_script = StandardNote::P2IDE.script();
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,

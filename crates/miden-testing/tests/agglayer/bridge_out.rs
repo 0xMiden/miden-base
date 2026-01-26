@@ -24,7 +24,7 @@ use miden_protocol::note::{
 use miden_protocol::transaction::OutputNote;
 use miden_protocol::{Felt, Word};
 use miden_standards::account::faucets::NetworkFungibleFaucet;
-use miden_standards::note::WellKnownNote;
+use miden_standards::note::StandardNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 
@@ -102,7 +102,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let mut mock_chain = builder.build()?;
 
     // Get BURN note script to add to the transaction context
-    let burn_note_script: NoteScript = WellKnownNote::BURN.script();
+    let burn_note_script: NoteScript = StandardNote::BURN.script();
 
     // EXECUTE B2AGG NOTE AGAINST BRIDGE ACCOUNT (NETWORK TRANSACTION)
     // --------------------------------------------------------------------------------------------

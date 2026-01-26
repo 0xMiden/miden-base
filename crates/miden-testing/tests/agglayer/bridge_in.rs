@@ -24,7 +24,7 @@ use miden_protocol::note::{
 };
 use miden_protocol::transaction::OutputNote;
 use miden_standards::account::wallets::BasicWallet;
-use miden_standards::note::WellKnownNote;
+use miden_standards::note::StandardNote;
 use miden_testing::{AccountState, Auth, MockChain};
 use rand::Rng;
 
@@ -110,7 +110,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     };
 
     // Create P2ID note for the user account (similar to network faucet test)
-    let p2id_script = WellKnownNote::P2ID.script();
+    let p2id_script = StandardNote::P2ID.script();
     let p2id_inputs = vec![user_account.id().suffix(), user_account.id().prefix().as_felt()];
     let note_inputs = NoteStorage::new(p2id_inputs)?;
     let p2id_recipient = NoteRecipient::new(serial_num, p2id_script.clone(), note_inputs);

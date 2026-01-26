@@ -34,7 +34,7 @@ use miden_standards::errors::standards::{
     ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY,
     ERR_SENDER_NOT_OWNER,
 };
-use miden_standards::note::{MintNoteStorage, WellKnownNote, create_burn_note, create_mint_note};
+use miden_standards::note::{MintNoteStorage, StandardNote, create_burn_note, create_mint_note};
 use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
@@ -1216,7 +1216,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         },
         NoteType::Public => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
-            let p2id_script = WellKnownNote::P2ID.script();
+            let p2id_script = StandardNote::P2ID.script();
             let p2id_storage =
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
             let note_storage = NoteStorage::new(p2id_storage)?;
@@ -1241,7 +1241,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         mock_chain.build_tx_context(faucet.id(), &[mint_note.id()], &[])?;
 
     if note_type == NoteType::Public {
-        let p2id_script = WellKnownNote::P2ID.script();
+        let p2id_script = StandardNote::P2ID.script();
         tx_context_builder = tx_context_builder.add_note_script(p2id_script);
     }
 
