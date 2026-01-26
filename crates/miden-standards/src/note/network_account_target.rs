@@ -286,7 +286,10 @@ mod tests {
         let exec_output = execute_program_with_default_host(program).await?;
 
         assert_eq!(exec_output.stack[0], expected_attachment_kind);
-        assert_eq!(exec_output.stack[1], Felt::from(NetworkAccountTarget::ATTACHMENT_SCHEME.as_u32()));
+        assert_eq!(
+            exec_output.stack[1],
+            Felt::from(NetworkAccountTarget::ATTACHMENT_SCHEME.as_u32())
+        );
 
         // TODO check why the attachment word is in reverse order
         assert_eq!(exec_output.stack[2], attachment_word[3]);
