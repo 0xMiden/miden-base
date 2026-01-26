@@ -21,6 +21,9 @@ use crate::{PrettyPrint, Word};
 /// The attribute name used to mark the entrypoint procedure in a note script library.
 const NOTE_SCRIPT_ATTRIBUTE: &str = "note_script";
 
+/// The expected procedure name for note script entrypoints.
+const NOTE_SCRIPT_MAIN_PROC: &str = "main";
+
 // NOTE SCRIPT
 // ================================================================================================
 
@@ -66,28 +69,38 @@ impl NoteScript {
     /// Returns a new [NoteScript] instantiated from the provided library.
     ///
     /// The library must contain exactly one procedure with the `@note_script` attribute,
-    /// which will be used as the entrypoint.
+    /// or a procedure named `main` which will be used as the entrypoint.
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The library does not contain a procedure with the `@note_script` attribute.
+    /// - The library does not contain a procedure with the `@note_script` attribute or named
+    ///   `main`.
     /// - The library contains multiple procedures with the `@note_script` attribute.
     pub fn from_library(library: &Library) -> Result<Self, NoteError> {
-        let mut entrypoint = None;
+        let mut entrypoint_by_attr = None;
+        let mut entrypoint_by_name = None;
 
         for export in library.exports() {
             if let Some(proc_export) = export.as_procedure() {
                 // Check for @note_script attribute
                 if proc_export.attributes.has(NOTE_SCRIPT_ATTRIBUTE) {
-                    if entrypoint.is_some() {
+                    if entrypoint_by_attr.is_some() {
                         return Err(NoteError::NoteScriptMultipleProceduresWithAttribute);
                     }
-                    entrypoint = Some(proc_export.node);
+                    entrypoint_by_attr = Some(proc_export.node);
+                }
+
+                // Check for procedure named "main" as fallback
+                if proc_export.path.last() == Some(NOTE_SCRIPT_MAIN_PROC) {
+                    entrypoint_by_name = Some(proc_export.node);
                 }
             }
         }
 
-        let entrypoint = entrypoint.ok_or(NoteError::NoteScriptNoProcedureWithAttribute)?;
+        // Prefer @note_script attribute, fallback to "main" procedure
+        let entrypoint = entrypoint_by_attr
+            .or(entrypoint_by_name)
+            .ok_or(NoteError::NoteScriptNoProcedureWithAttribute)?;
 
         Ok(Self {
             mast: library.mast_forest().clone(),
