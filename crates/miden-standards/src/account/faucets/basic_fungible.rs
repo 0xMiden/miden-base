@@ -203,11 +203,16 @@ impl BasicFungibleFaucet {
     }
 
     /// Returns the max supply (in base units) of the faucet.
+    ///
+    /// This is the highest amount of tokens that can be minted from this faucet.
     pub fn max_supply(&self) -> Felt {
         self.max_supply
     }
 
     /// Returns the token supply (in base units) of the faucet.
+    ///
+    /// This is the amount of tokens that were minted from the faucet so far. Its value can never
+    /// exceed [`Self::max_supply`].
     pub fn token_supply(&self) -> Felt {
         self.token_supply
     }

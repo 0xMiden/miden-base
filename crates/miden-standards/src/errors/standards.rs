@@ -15,10 +15,10 @@ pub const ERR_BASIC_FUNGIBLE_BURN_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError:
 /// Error Message: "asset amount to burn exceeds the existing token supply"
 pub const ERR_FAUCET_BURN_AMOUNT_EXCEEDS_TOKEN_SUPPLY: MasmError = MasmError::from_static_str("asset amount to burn exceeds the existing token supply");
 
-/// Error Message: "amount passed to distribute exceeds the maximum supply"
-pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("amount passed to distribute exceeds the maximum supply");
-/// Error Message: "max supply exceeds maximum representable supply"
-pub const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_MAX_ALLOWED_SUPPLY: MasmError = MasmError::from_static_str("max supply exceeds maximum representable supply");
+/// Error Message: "token_supply plus the amount passed to distribute would exceed the maximum supply"
+pub const ERR_FUNGIBLE_ASSET_DISTRIBUTE_AMOUNT_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("token_supply plus the amount passed to distribute would exceed the maximum supply");
+/// Error Message: "max supply exceeds maximum representable fungible asset amount"
+pub const ERR_FUNGIBLE_ASSET_MAX_SUPPLY_EXCEEDS_FUNGIBLE_ASSET_MAX_AMOUNT: MasmError = MasmError::from_static_str("max supply exceeds maximum representable fungible asset amount");
 /// Error Message: "token supply exceeds max supply"
 pub const ERR_FUNGIBLE_ASSET_TOKEN_SUPPLY_EXCEEDS_MAX_SUPPLY: MasmError = MasmError::from_static_str("token supply exceeds max supply");
 
