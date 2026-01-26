@@ -216,6 +216,29 @@ pub proc extract_sender_from_metadata
     # => [sender_id_prefix, sender_id_suffix]
 end
 
+#! Extracts the attachment kind and scheme from the provided metadata header.
+#!
+#! Inputs:  [METADATA_HEADER]
+#! Outputs: [attachment_kind, attachment_scheme]
+#!
+#! Where:
+#! - METADATA_HEADER is the metadata of a note.
+#! - attachment_kind is the attachment kind of the note.
+#! - attachment_scheme is the attachment scheme of the note.
+#!
+#! Invocation: exec
+pub proc extract_attachment_info_from_metadata
+    # => [attachment_kind_scheme, METADATA_HEADER[1..4]]
+    movdn.3 drop drop drop
+    # => [attachment_kind_scheme]
+
+    # deconstruct the attachment_kind_scheme to extract the attachment_scheme
+    # attachment_kind_scheme = [30 zero bits | attachment_kind (2 bits) | attachment_scheme (32 bits)]
+    # u32split splits into [high, low] where low is attachment_scheme
+    u32split
+    # => [attachment_kind, attachment_scheme]
+end
+
 #! Computes the tag for a network note for a given network account such that it is
 #! picked up by the network transaction builder.
 #!
