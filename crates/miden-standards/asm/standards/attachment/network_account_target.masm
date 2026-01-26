@@ -11,6 +11,10 @@ use miden::protocol::active_note
 #! This is a valid u32 that can be compared against an extracted attachment scheme.
 pub const NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME = 1
 
+#! The attachment kind for NetworkAccountTarget attachments (Word = 1).
+#! This is a valid u32 that can be compared against an extracted attachment kind.
+pub const NETWORK_ACCOUNT_TARGET_ATTACHMENT_KIND = 1
+
 # ERRORS
 # ================================================================================================
 const ERR_ATTACHMENT_SCHEME_MISMATCH = "expected network account target attachment scheme"
@@ -56,14 +60,19 @@ end
 #! [0, exec_hint_tag, account_id_prefix, account_id_suffix]
 #!
 #! Inputs:  [account_id_prefix, account_id_suffix, exec_hint]
-#! Outputs: [NOTE_ATTACHMENT]
+#! Outputs: [attachment_scheme, attachment_kind, NOTE_ATTACHMENT]
 #!
 #! Where:
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of an account ID.
 #! - exec_hint is the execution hint for the note.
+#! - attachment_kind is the attachment kind (Word = 1) for use with `output_note::set_attachment`.
+#! - attachment_scheme is the attachment scheme (1) for use with `output_note::set_attachment`.
 #!
 #! Invocation: exec
 pub proc new
     movup.2
     push.0
+    push.NETWORK_ACCOUNT_TARGET_ATTACHMENT_KIND
+    push.NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME
+    # => [attachment_scheme, attachment_kind, ATTACHMENT]
 end

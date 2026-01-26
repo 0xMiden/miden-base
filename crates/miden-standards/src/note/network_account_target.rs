@@ -251,6 +251,7 @@ mod tests {
 
         let attachment = NoteAttachment::from(NetworkAccountTarget::new(target_id, exec_hint)?);
         let attachment_word = attachment.content().to_word();
+        let expected_attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
 
         let source = format!(
             r#"
@@ -263,7 +264,7 @@ mod tests {
                 # => [target_id_prefix, target_id_suffix, exec_hint]
                 exec.network_account_target::new
                 # cleanup stack
-                swapw dropw
+                swapdw dropw dropw
             end
             "#,
             target_id_prefix = target_id.prefix().as_felt(),
@@ -274,11 +275,14 @@ mod tests {
         let program = assemble_program(&source)?;
         let exec_output = execute_program_with_default_host(program).await?;
 
+        assert_eq!(exec_output.stack[0], expected_attachment_kind);
+        assert_eq!(exec_output.stack[1], Felt::from(NetworkAccountTarget::ATTACHMENT_SCHEME.as_u32()));
+
         // TODO check why the attachment word is in reverse order
-        assert_eq!(exec_output.stack[0], attachment_word[3]);
-        assert_eq!(exec_output.stack[1], attachment_word[2]);
-        assert_eq!(exec_output.stack[2], attachment_word[1]);
-        assert_eq!(exec_output.stack[3], attachment_word[0]);
+        assert_eq!(exec_output.stack[2], attachment_word[3]);
+        assert_eq!(exec_output.stack[3], attachment_word[2]);
+        assert_eq!(exec_output.stack[4], attachment_word[1]);
+        assert_eq!(exec_output.stack[5], attachment_word[0]);
 
         Ok(())
     }
@@ -307,7 +311,8 @@ mod tests {
                 push.{target_id_prefix}
                 # => [target_id_prefix, target_id_suffix, exec_hint]
                 exec.network_account_target::new
-                # => [ATTACHMENT, METADATA_HEADER]
+                # => [attachment_scheme, attachment_kind, ATTACHMENT]
+                drop drop
                 exec.network_account_target::get_id
                 # => [target_id_prefix, target_id_suffix]
                 movup.2 drop movup.2 drop
