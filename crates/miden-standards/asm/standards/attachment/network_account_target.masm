@@ -19,6 +19,7 @@ pub const NETWORK_ACCOUNT_TARGET_ATTACHMENT_KIND = 1
 # ERRORS
 # ================================================================================================
 const ERR_ATTACHMENT_SCHEME_MISMATCH = "expected network account target attachment scheme"
+const ERR_ATTACHMENT_KIND_MISMATCH = "expected attachment kind to be Word for network account target"
 
 #! Returns the account ID encoded in the attachment.
 #!
@@ -44,7 +45,7 @@ pub proc get_id
     # verify that the attachment scheme is correct
     exec.note::extract_attachment_info_from_metadata
     # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT]
-    drop
+    eq.NETWORK_ACCOUNT_TARGET_ATTACHMENT_KIND assert.err=ERR_ATTACHMENT_KIND_MISMATCH
 
     eq.NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME assert.err=ERR_ATTACHMENT_SCHEME_MISMATCH
     # => [NOTE_ATTACHMENT]

@@ -9,6 +9,8 @@ use miden_protocol::errors::MasmError;
 // STANDARDS ERRORS
 // ================================================================================================
 
+/// Error Message: "expected attachment kind to be Word for network account target"
+pub const ERR_ATTACHMENT_KIND_MISMATCH: MasmError = MasmError::from_static_str("expected attachment kind to be Word for network account target");
 /// Error Message: "expected network account target attachment scheme"
 pub const ERR_ATTACHMENT_SCHEME_MISMATCH: MasmError = MasmError::from_static_str("expected network account target attachment scheme");
 
