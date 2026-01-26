@@ -6,7 +6,10 @@ use miden::protocol::active_note
 
 # CONSTANTS
 # ================================================================================================
-const NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME = 1
+
+#! The attachment scheme for NetworkAccountTarget attachments.
+#! This is a valid u32 that can be compared against an extracted attachment scheme.
+pub const NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME = 1
 
 # ERRORS
 # ================================================================================================
