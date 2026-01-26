@@ -224,7 +224,7 @@ mod tests {
 
         let source = format!(
             r#"
-            use miden::standards::attachment::network_account_target
+            use miden::standards::attachments::network_account_target
             use miden::protocol::note
 
             begin
@@ -263,7 +263,7 @@ mod tests {
 
         let source = format!(
             r#"
-            use miden::standards::attachment::network_account_target
+            use miden::standards::attachments::network_account_target
 
             begin
                 push.{exec_hint}
@@ -309,7 +309,7 @@ mod tests {
 
         let source = format!(
             r#"
-            use miden::standards::attachment::network_account_target
+            use miden::standards::attachments::network_account_target
 
             begin
                 push.{exec_hint}
