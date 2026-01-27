@@ -19,7 +19,8 @@ pub use mock_chain::{
 mod tx_context;
 pub use tx_context::{ExecError, TransactionContext, TransactionContextBuilder};
 
-pub mod executor;
+mod executor;
+pub use executor::CodeExecutor;
 
 mod mock_host;
 
