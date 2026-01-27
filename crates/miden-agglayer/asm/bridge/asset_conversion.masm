@@ -284,7 +284,6 @@ pub proc verify_u256_to_native_amount_conversion
     #   z := x - y_scaled
     #   Constraint: y_scaled <= x
     # =============================================================================================
-
     movup.9
     movup.9
     movup.9
