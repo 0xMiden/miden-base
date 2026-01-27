@@ -88,12 +88,20 @@ impl<H: AsyncHost> CodeExecutor<H> {
 #[cfg(test)]
 impl CodeExecutor<DefaultHost> {
     pub fn with_default_host() -> Self {
+        use miden_protocol::ProtocolLib;
         use miden_protocol::transaction::TransactionKernel;
+        use miden_standards::StandardsLib;
 
         let mut host = DefaultHost::default();
 
-        let test_lib = TransactionKernel::library();
-        host.load_library(test_lib.mast_forest()).unwrap();
+        let standards_lib = StandardsLib::default();
+        host.load_library(standards_lib.mast_forest()).unwrap();
+
+        let protocol_lib = ProtocolLib::default();
+        host.load_library(protocol_lib.mast_forest()).unwrap();
+
+        let kernel_lib = TransactionKernel::library();
+        host.load_library(kernel_lib.mast_forest()).unwrap();
 
         CodeExecutor::new(host)
     }
