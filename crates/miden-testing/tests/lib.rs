@@ -3,6 +3,7 @@ extern crate alloc;
 mod agglayer;
 mod auth;
 mod scripts;
+mod standards;
 mod wallet;
 
 use miden_processor::utils::Deserializable;
