@@ -574,11 +574,9 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let actual_tag = exec_output.stack[0].as_int();
 
     assert_eq!(
-        actual_tag,
-        expected_tag,
+        actual_tag, expected_tag,
         "Expected tag {:#010x}, got {:#010x}",
-        expected_tag,
-        actual_tag
+        expected_tag, actual_tag
     );
 
     Ok(())
