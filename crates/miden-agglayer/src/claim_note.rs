@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -9,12 +10,14 @@ use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteExecutionHint,
     NoteMetadata,
     NoteRecipient,
     NoteStorage,
     NoteTag,
     NoteType,
 };
+use miden_standards::note::NetworkAccountTarget;
 
 use crate::utils::bytes32_to_felts;
 use crate::{EthAddressFormat, EthAmount, claim_script};
@@ -78,6 +81,7 @@ impl From<[u8; 32]> for ExitRoot {
 
 /// Proof data for CLAIM note creation.
 /// Contains SMT proofs and root hashes using typed representations.
+#[derive(Clone)]
 pub struct ProofData {
     /// SMT proof for local exit root (32 SMT nodes)
     pub smt_proof_local_exit_root: [SmtNode; 32],
@@ -126,6 +130,7 @@ impl SequentialCommit for ProofData {
 
 /// Leaf data for CLAIM note creation.
 /// Contains network, address, amount, and metadata using typed representations.
+#[derive(Clone)]
 pub struct LeafData {
     /// Origin network identifier (uint32)
     pub origin_network: u32,
@@ -181,6 +186,7 @@ impl SequentialCommit for LeafData {
 /// Output note data for CLAIM note creation.
 /// Contains note-specific data and can use Miden types.
 /// TODO: Remove all but target_faucet_account_id
+#[derive(Clone)]
 pub struct OutputNoteData {
     /// P2ID note serial number (4 felts as Word)
     pub output_p2id_serial_num: Word,
@@ -217,6 +223,7 @@ impl OutputNoteData {
 ///
 /// This struct groups the core data needed to create a CLAIM note that exactly
 /// matches the agglayer claimAsset function signature.
+#[derive(Clone)]
 pub struct ClaimNoteStorage {
     /// Proof data containing SMT proofs and root hashes
     pub proof_data: ProofData,
@@ -259,12 +266,19 @@ pub fn create_claim_note<R: FeltRng>(
     sender_account_id: AccountId,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
-    let note_storage = NoteStorage::try_from(storage)?;
+    let note_storage = NoteStorage::try_from(storage.clone())?;
 
-    // TODO: Make CLAIM note a Network Note once NoteAttachment PR lands
-    let tag = NoteTag::new(0);
+    let tag = NoteTag::with_account_target(storage.output_note_data.target_faucet_account_id);
 
-    let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, tag);
+    let attachment = NetworkAccountTarget::new(
+        storage.output_note_data.target_faucet_account_id,
+        NoteExecutionHint::Always,
+    )
+    .map_err(|e| NoteError::other(e.to_string()))?
+    .into();
+
+    let metadata =
+        NoteMetadata::new(sender_account_id, NoteType::Public, tag).with_attachment(attachment);
 
     let recipient = NoteRecipient::new(rng.draw_word(), claim_script(), note_storage);
     let assets = NoteAssets::new(vec![])?;
