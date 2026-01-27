@@ -88,11 +88,7 @@ async fn network_account_target_new_attachment() -> anyhow::Result<()> {
         Felt::from(NetworkAccountTarget::ATTACHMENT_SCHEME.as_u32())
     );
 
-    // TODO check why the attachment word is in reverse order
-    assert_eq!(exec_output.stack[2], attachment_word[3]);
-    assert_eq!(exec_output.stack[3], attachment_word[2]);
-    assert_eq!(exec_output.stack[4], attachment_word[1]);
-    assert_eq!(exec_output.stack[5], attachment_word[0]);
+    assert_eq!(exec_output.stack.get_stack_word_be(2).unwrap(), attachment_word);
 
     Ok(())
 }
