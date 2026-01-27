@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.3 (TBD)
+
+- Fixed `CLAIM` note creation to use `NetworkAccountTarget` attachment ([#2352](https://github.com/0xMiden/miden-base/pull/2352)).
+
 ## 0.13.2 (2026-01-21)
 
 - Make transaction executor respect debug mode settings ([#2327](https://github.com/0xMiden/miden-base/pull/2327)).
