@@ -1,20 +1,15 @@
-use alloc::borrow::ToOwned;
-use alloc::sync::Arc;
-
+#[cfg(test)]
+use miden_processor::DefaultHost;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, AsyncHost, DefaultHost, ExecutionError, Program, StackInputs};
-use miden_protocol::ProtocolLib;
-use miden_protocol::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_protocol::assembly::{Assembler, DefaultSourceManager, SourceManagerSync};
-use miden_protocol::transaction::TransactionKernel;
-use miden_standards::StandardsLib;
-use miden_standards::code_builder::CodeBuilder;
+use miden_processor::{AdviceInputs, AsyncHost, ExecutionError, Program, StackInputs};
+#[cfg(test)]
+use miden_protocol::assembly::Assembler;
 
 // CODE EXECUTOR
 // ================================================================================================
 
 /// Helper for executing arbitrary code within arbitrary hosts.
-pub struct CodeExecutor<H> {
+pub(crate) struct CodeExecutor<H> {
     host: H,
     stack_inputs: Option<StackInputs>,
     advice_inputs: AdviceInputs,
@@ -45,7 +40,15 @@ impl<H: AsyncHost> CodeExecutor<H> {
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_protocol::assembly::diagnostics::Report).
+    #[cfg(test)]
     pub async fn run(self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
+        use alloc::borrow::ToOwned;
+        use alloc::sync::Arc;
+
+        use miden_protocol::assembly::debuginfo::{SourceLanguage, Uri};
+        use miden_protocol::assembly::{DefaultSourceManager, SourceManagerSync};
+        use miden_standards::code_builder::CodeBuilder;
+
         let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
         let assembler: Assembler = CodeBuilder::with_kernel_library(source_manager.clone()).into();
 
@@ -57,7 +60,7 @@ impl<H: AsyncHost> CodeExecutor<H> {
         self.execute_program(program).await
     }
 
-    /// Executes the provided [`Program`] and returns the [`ExecutionOutput`].
+    /// Executes the provided [`Program`] and returns the [`Process`] state.
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_protocol::assembly::diagnostics::Report).
@@ -82,8 +85,13 @@ impl<H: AsyncHost> CodeExecutor<H> {
     }
 }
 
+#[cfg(test)]
 impl CodeExecutor<DefaultHost> {
     pub fn with_default_host() -> Self {
+        use miden_protocol::ProtocolLib;
+        use miden_protocol::transaction::TransactionKernel;
+        use miden_standards::StandardsLib;
+
         let mut host = DefaultHost::default();
 
         let standards_lib = StandardsLib::default();
