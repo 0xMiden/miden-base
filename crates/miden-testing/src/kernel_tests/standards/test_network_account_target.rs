@@ -5,7 +5,8 @@ use miden_protocol::account::AccountStorageMode;
 use miden_protocol::note::{NoteAttachment, NoteExecutionHint, NoteMetadata, NoteTag, NoteType};
 use miden_protocol::testing::account_id::AccountIdBuilder;
 use miden_standards::note::NetworkAccountTarget;
-use miden_testing::CodeExecutor;
+
+use crate::executor::CodeExecutor;
 
 #[tokio::test]
 async fn network_account_target_get_id() -> anyhow::Result<()> {
