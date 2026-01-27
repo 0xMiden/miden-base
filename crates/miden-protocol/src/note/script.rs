@@ -14,7 +14,7 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::vm::Program;
+use crate::vm::{AdviceMap, Program};
 use crate::{PrettyPrint, Word};
 
 // NOTE SCRIPT
@@ -77,13 +77,22 @@ impl NoteScript {
         self.entrypoint
     }
 
-    /// Removes all decorators from this MAST forest.
+    /// Returns a new [NoteScript] with the provided advice map entries merged into the
+    /// underlying [MastForest].
     ///
-    /// See [`MastForest::strip_decorators`] for more details.
-    pub fn strip_decorators(&mut self) {
-        let mut mast = self.mast.clone();
-        Arc::make_mut(&mut mast).strip_decorators();
-        self.mast = mast;
+    /// This allows adding advice map entries to an already-compiled note script,
+    /// which is useful when the entries are determined after script compilation.
+    pub fn with_advice_map(self, advice_map: AdviceMap) -> Self {
+        if advice_map.is_empty() {
+            return self;
+        }
+
+        let mut mast = (*self.mast).clone();
+        mast.advice_map_mut().extend(advice_map);
+        Self {
+            mast: Arc::new(mast),
+            entrypoint: self.entrypoint,
+        }
     }
 }
 
@@ -240,26 +249,30 @@ mod tests {
     }
 
     #[test]
-    fn test_note_script_strip_decorators() {
+    fn test_note_script_with_advice_map() {
+        use miden_core::{AdviceMap, Word};
+
         let assembler = Assembler::default();
-        let script_src = "
-        begin
-          push.4 push.2 add
-          debug.stack.4
-          mul.8
-          dropw
-        end
-        ";
-        let program = assembler.assemble_program(script_src).unwrap();
-        let mut note_script = NoteScript::new(program);
+        let program = assembler.assemble_program("begin nop end").unwrap();
+        let script = NoteScript::new(program);
 
-        let size_before = note_script.get_size_hint();
-        note_script.strip_decorators();
-        let size_after = note_script.get_size_hint();
+        assert!(script.mast().advice_map().is_empty());
 
-        assert!(
-            size_after < size_before,
-            "debug decorator should have been stripped and serialized size should be smaller"
-        );
+        // Empty advice map should be a no-op
+        let original_root = script.root();
+        let script = script.with_advice_map(AdviceMap::default());
+        assert_eq!(original_root, script.root());
+
+        // Non-empty advice map should add entries
+        let key = Word::from([5u32, 6, 7, 8]);
+        let value = vec![Felt::new(100)];
+        let mut advice_map = AdviceMap::default();
+        advice_map.insert(key, value.clone());
+
+        let script = script.with_advice_map(advice_map);
+
+        let mast = script.mast();
+        let stored = mast.advice_map().get(&key).expect("entry should be present");
+        assert_eq!(stored.as_ref(), value.as_slice());
     }
 }
