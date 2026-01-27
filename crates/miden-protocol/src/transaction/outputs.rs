@@ -477,8 +477,8 @@ impl ProvenOutputNote {
 
     /// Returns a commitment to the note and its metadata.
     ///
-    /// > hash(NOTE_ID || NOTE_METADATA)
-    pub fn commitment(&self) -> Word {
+    /// > hash(NOTE_ID || NOTE_METADATA_COMMITMENT)
+    pub fn to_commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
     }
 
