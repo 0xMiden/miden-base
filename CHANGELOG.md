@@ -6,6 +6,7 @@
 
 - Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](https://github.com/0xMiden/miden-base/pull/2275)).
 - Added `BlockNumber::MAX` constant to represent the maximum block number ([#2324](https://github.com/0xMiden/miden-base/pull/2324)).
+- Added single-word `Array` standard ([#2203](https://github.com/0xMiden/miden-base/pull/2203)).
 
 ### Changes
 
@@ -39,7 +40,6 @@
 - Added an `AccountBuilder` extension trait to help build the schema commitment; added `AccountComponentMetadata` to `AccountComponent` ([#2269](https://github.com/0xMiden/miden-base/pull/2269)).
 - Added `miden::standards::access::ownable` standard module for component ownership management, and integrated it into the `network_fungible` faucet (including new tests). ([#2228](https://github.com/0xMiden/miden-base/pull/2228)).
 - [BREAKING] Add `leaf_value` to `CLAIM` note inputs ([#2290](https://github.com/0xMiden/miden-base/pull/2290)).
-- Added single-word `Array` data structure utility ([#2203](https://github.com/0xMiden/miden-base/pull/2203)).
 
 ### Changes
 
