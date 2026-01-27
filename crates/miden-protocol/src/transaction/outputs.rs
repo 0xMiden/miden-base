@@ -340,10 +340,10 @@ impl OutputNote {
             OutputNote::Full(note) if note.metadata().is_private() => {
                 Ok(ProvenOutputNote::Header(note.header().clone()))
             },
-            OutputNote::Partial(note) => Ok(ProvenOutputNote::Header(note.header().clone())),
             OutputNote::Full(note) => {
                 Ok(ProvenOutputNote::Public(PublicOutputNote::new(note.clone())?))
             },
+            OutputNote::Partial(note) => Ok(ProvenOutputNote::Header(note.header().clone())),
             OutputNote::Header(header) => Ok(ProvenOutputNote::Header(header.clone())),
         }
     }
