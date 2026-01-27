@@ -2,6 +2,7 @@
 
 ## 0.13.3 (2026-01-27)
 
+- Fixed `CLAIM` note creation to use `NetworkAccountTarget` attachment ([#2352](https://github.com/0xMiden/miden-base/pull/2352)).
 - Added standards for working with `NetworkAccountTarget` attachments ([#2338](https://github.com/0xMiden/miden-base/pull/2338)).
 - Fixed `PartialBlockchain::add_block()` not adding block headers to the `blocks` map when `track=true`, which caused `prune_to()` to never untrack old blocks, leading to unbounded memory growth ([#2353](https://github.com/0xMiden/miden-base/pull/2353)).
 

@@ -2,6 +2,7 @@
 
 extern crate alloc;
 
+use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -24,6 +25,7 @@ use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
@@ -33,6 +35,7 @@ use miden_protocol::note::{
 };
 use miden_standards::account::auth::NoAuth;
 use miden_standards::account::faucets::NetworkFungibleFaucet;
+use miden_standards::note::NetworkAccountTarget;
 use miden_utils_sync::LazyLock;
 
 pub mod errors;
@@ -474,8 +477,13 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
 
     let note_type = NoteType::Public;
 
+    let attachment =
+        NetworkAccountTarget::new(params.agglayer_faucet_account_id, NoteExecutionHint::Always)
+            .map_err(|e| NoteError::other(e.to_string()))?
+            .into();
     // Use a default sender since we don't have sender anymore - create from destination address
-    let metadata = NoteMetadata::new(params.claim_note_creator_account_id, note_type, tag);
+    let metadata = NoteMetadata::new(params.claim_note_creator_account_id, note_type, tag)
+        .with_attachment(attachment);
     let assets = NoteAssets::new(vec![])?;
     let recipient = NoteRecipient::new(serial_num, claim_script, inputs);
 
