@@ -68,6 +68,11 @@ impl ProvenBlock {
     pub fn proof(&self) -> &BlockProof {
         &self.proof
     }
+
+    /// Destructures this proven block into individual parts.
+    pub fn into_parts(self) -> (BlockHeader, BlockBody, Signature, BlockProof) {
+        (self.header, self.body, self.signature, self.proof)
+    }
 }
 
 // SERIALIZATION

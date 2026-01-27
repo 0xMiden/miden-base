@@ -46,6 +46,11 @@ impl SignedBlock {
     pub fn signature(&self) -> &Signature {
         &self.signature
     }
+
+    /// Destructures this signed block into individual parts.
+    pub fn into_parts(self) -> (BlockHeader, BlockBody, Signature) {
+        (self.header, self.body, self.signature)
+    }
 }
 
 // SERIALIZATION
