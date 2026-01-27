@@ -1,6 +1,6 @@
-# miden::standards::attachment::network_account_target
-#
-# Provides a standardized way to work with network account targets.
+#! miden::standards::attachments::network_account_target
+#!
+#! Provides a standardized way to work with network account targets.
 
 use miden::protocol::active_note
 use miden::protocol::note
