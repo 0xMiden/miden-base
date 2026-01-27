@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.3 (2026-01-27)
+
+- Fixed `PartialBlockchain::add_block()` not adding block headers to the `blocks` map when `track=true`, which caused `prune_to()` to never untrack old blocks, leading to unbounded memory growth ([#2353](https://github.com/0xMiden/miden-base/pull/2353)).
+
 ## 0.13.2 (2026-01-21)
 
 - Make transaction executor respect debug mode settings ([#2327](https://github.com/0xMiden/miden-base/pull/2327)).
