@@ -1,5 +1,6 @@
 use miden::core::math::u64
 use miden::core::word
+use miden::protocol::asset
 
 # CONSTANTS
 # =================================================================================================
@@ -14,9 +15,6 @@ const ERR_X_TOO_LARGE="x must fit into 128 bits (x4..x7 must be 0)"
 const ERR_UNDERFLOW="x < y*10^s (underflow detected)"
 const ERR_REMAINDER_TOO_LARGE="remainder z must be < 10^s"
 
-# Max fungible token amount = 2^63 - 2^31 = 0x7fffffff80000000
-const MAX_FUNGIBLE_AMOUNT_HI=2147483647
-const MAX_FUNGIBLE_AMOUNT_LO=2147483648
 const ERR_Y_TOO_LARGE="y exceeds max fungible token amount"
 
 #! Calculate 10^scale where scale is a u8 exponent.
@@ -173,28 +171,18 @@ pub proc verify_u256_to_native_amount_conversion
     # Step 0: Enforce x < 2^128
     #   Constraint: x4 == x5 == x6 == x7 == 0
     # =============================================================================================
-    dup.4 assertz.err=ERR_X_TOO_LARGE
-    dup.5 assertz.err=ERR_X_TOO_LARGE
-    dup.6 assertz.err=ERR_X_TOO_LARGE
-    dup.7 assertz.err=ERR_X_TOO_LARGE
-    # => [x0, x1, x2, x3, x4, x5, x6, x7, scale_exp, y]
-
-    # Drop the upper 128 bits of x (x4..x7), keep scale_exp and y.
-    swapw dropw
+    swapw
+    exec.word::eqz
+    assert.err=ERR_X_TOO_LARGE
     # => [x0, x1, x2, x3, scale_exp, y]
 
     # =============================================================================================
     # Step 1: Enforce y <= MAX_FUNGIBLE_TOKEN_AMOUNT
     #   Constraint: y <= MAX_FUNGIBLE_TOKEN_AMOUNT
     # =============================================================================================
-    dup.5 u32split
-    # => [y_hi, y_lo, x0, x1, x2, x3, scale_exp, y]
-
-    push.MAX_FUNGIBLE_AMOUNT_LO
-    push.MAX_FUNGIBLE_AMOUNT_HI
-    # => [MAX_hi, MAX_lo, y_hi, y_lo, x0, x1, x2, x3, scale_exp, y]
-
-    exec.u64::lte
+    dup.5
+    exec.asset::get_fungible_asset_max_amount
+    lte
     # => [is_lte, x0, x1, x2, x3, scale_exp, y]
 
     assert.err=ERR_Y_TOO_LARGE
@@ -216,15 +204,10 @@ pub proc verify_u256_to_native_amount_conversion
     exec.scale_native_amount_to_u256
     # => [y_scaled0..y_scaled7, y, scale_exp, x0, x1, x2, x3]
 
-    # Because x < 2^128, require y_scaled < 2^128 as well:
-    #   Constraint: y_scaled4 == y_scaled5 == y_scaled6 == y_scaled7 == 0
-    dup.4 assertz.err=ERR_UNDERFLOW
-    dup.5 assertz.err=ERR_UNDERFLOW
-    dup.6 assertz.err=ERR_UNDERFLOW
-    dup.7 assertz.err=ERR_UNDERFLOW
-
-    # Drop the upper 128 bits of y_scaled (y_scaled4..y_scaled7), keep only y_scaled0..y_scaled3.
-    swapw dropw
+    # Because x < 2^128, require y_scaled < 2^128 as well by ensuring the upper word is zero.
+    swapw
+    exec.word::eqz
+    assert.err=ERR_UNDERFLOW
     # => [y_scaled0, y_scaled1, y_scaled2, y_scaled3, y, scale_exp, x0, x1, x2, x3]
 
     # =============================================================================================
