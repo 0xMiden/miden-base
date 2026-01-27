@@ -535,9 +535,12 @@ mod tests {
         assert_eq!(blockchain.num_tracked_blocks(), 4);
         for i in 0u32..6 {
             assert!(!blockchain.contains_block(i.into()));
+            // Verify the underlying MMR also untracked the block
+            assert!(!blockchain.mmr().is_tracked(i as usize));
         }
         for i in 6u32..10 {
             assert!(blockchain.contains_block(i.into()));
+            assert!(blockchain.mmr().is_tracked(i as usize));
         }
     }
 }
