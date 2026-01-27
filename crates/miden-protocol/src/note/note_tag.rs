@@ -80,14 +80,15 @@ impl NoteTag {
 
     /// Constructs a note tag that targets the given `account_id`.
     ///
-    /// The tag is constructed as follows:
+    /// The tag is a 32-bit value constructed as follows:
     ///
-    /// - For local execution ([`AccountStorageMode::Private`] or [`AccountStorageMode::Public`]),
-    ///   the two most significant bits are set to `0b00`. The following 14 bits are set to the most
-    ///   significant bits of the account ID, and the remaining 16 bits are set to 0.
-    /// - For network execution ([`AccountStorageMode::Network`]), the most significant bits are set
-    ///   to `0b00` and the remaining bits are set to the 30 most significant bits of the account
-    ///   ID.
+    /// - The tag is derived from the account ID *prefix*.
+    /// - The most significant `DEFAULT_ACCOUNT_TARGET_TAG_LENGTH` bits of the 32-bit prefix are
+    ///   preserved.
+    /// - All remaining least significant bits are set to `0`.
+    ///
+    /// The number of account-prefix bits included in the tag is determined by
+    /// `DEFAULT_ACCOUNT_TARGET_TAG_LENGTH`.
     pub fn with_account_target(account_id: AccountId) -> Self {
         Self::with_custom_account_target(account_id, Self::DEFAULT_ACCOUNT_TARGET_TAG_LENGTH)
             .expect("default account target tag length must be valid")
