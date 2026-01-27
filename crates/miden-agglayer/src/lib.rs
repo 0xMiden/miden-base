@@ -25,7 +25,6 @@ use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
-    NoteAttachment,
     NoteExecutionHint,
     NoteInputs,
     NoteMetadata,
