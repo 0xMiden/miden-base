@@ -1718,7 +1718,6 @@ dependencies = [
  "rand",
  "regex",
  "thiserror",
- "tokio",
  "walkdir",
 ]
 
