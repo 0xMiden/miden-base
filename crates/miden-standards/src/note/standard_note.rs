@@ -14,7 +14,7 @@ use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
 use crate::account::wallets::BasicWallet;
 
-// WELL KNOWN NOTE SCRIPTS
+// STANDARD NOTE SCRIPTS
 // ================================================================================================
 
 // Initialize the P2ID note script only once
@@ -102,11 +102,11 @@ fn burn_root() -> Word {
     BURN_SCRIPT.root()
 }
 
-// WELL KNOWN NOTE
+// STANDARD NOTE
 // ================================================================================================
 
-/// The enum holding the types of basic well-known notes provided by the `miden-lib`.
-pub enum WellKnownNote {
+/// The enum holding the types of standard notes provided by the `miden-lib`.
+pub enum StandardNote {
     P2ID,
     P2IDE,
     SWAP,
@@ -114,7 +114,7 @@ pub enum WellKnownNote {
     BURN,
 }
 
-impl WellKnownNote {
+impl StandardNote {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
@@ -136,8 +136,8 @@ impl WellKnownNote {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a [WellKnownNote] instance based on the note script of the provided [Note]. Returns
-    /// `None` if the provided note is not a basic well-known note.
+    /// Returns a [StandardNote] instance based on the note script of the provided [Note]. Returns
+    /// `None` if the provided note is not a standard note.
     pub fn from_note(note: &Note) -> Option<Self> {
         let note_script_root = note.script().root();
 
@@ -174,7 +174,7 @@ impl WellKnownNote {
         }
     }
 
-    /// Returns the note script of the current [WellKnownNote] instance.
+    /// Returns the note script of the current [StandardNote] instance.
     pub fn script(&self) -> NoteScript {
         match self {
             Self::P2ID => p2id(),
@@ -185,7 +185,7 @@ impl WellKnownNote {
         }
     }
 
-    /// Returns the script root of the current [WellKnownNote] instance.
+    /// Returns the script root of the current [StandardNote] instance.
     pub fn script_root(&self) -> Word {
         match self {
             Self::P2ID => p2id_root(),
@@ -196,7 +196,7 @@ impl WellKnownNote {
         }
     }
 
-    /// Returns a boolean value indicating whether this [WellKnownNote] is compatible with the
+    /// Returns a boolean value indicating whether this [StandardNote] is compatible with the
     /// provided [AccountInterface].
     pub fn is_compatible_with(&self, account_interface: &AccountInterface) -> bool {
         if account_interface.components().contains(&AccountComponentInterface::BasicWallet) {
@@ -233,7 +233,7 @@ impl WellKnownNote {
         }
     }
 
-    /// Performs the inputs check of the provided well-known note against the target account and the
+    /// Performs the inputs check of the provided standard note against the target account and the
     /// block number.
     ///
     /// This function returns:
@@ -276,7 +276,7 @@ impl WellKnownNote {
         block_ref: BlockNumber,
     ) -> Result<Option<NoteConsumptionStatus>, StaticAnalysisError> {
         match self {
-            WellKnownNote::P2ID => {
+            StandardNote::P2ID => {
                 let input_account_id = parse_p2id_storage(note.storage().items())?;
 
                 if input_account_id == target_account_id {
@@ -285,7 +285,7 @@ impl WellKnownNote {
                     Ok(Some(NoteConsumptionStatus::NeverConsumable("account ID provided to the P2ID note storage doesn't match the target account ID".into())))
                 }
             },
-            WellKnownNote::P2IDE => {
+            StandardNote::P2IDE => {
                 let (receiver_account_id, reclaim_height, timelock_height) =
                     parse_p2ide_storage(note.storage().items())?;
 
@@ -345,10 +345,10 @@ impl WellKnownNote {
 ///   items of the P2ID note.
 /// - first two elements of the note storage array does not form the valid account ID.
 fn parse_p2id_storage(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysisError> {
-    if note_storage.len() != WellKnownNote::P2ID.expected_num_storage_items() {
+    if note_storage.len() != StandardNote::P2ID.expected_num_storage_items() {
         return Err(StaticAnalysisError::new(format!(
             "P2ID note should have {} storage items, but {} was provided",
-            WellKnownNote::P2ID.expected_num_storage_items(),
+            StandardNote::P2ID.expected_num_storage_items(),
             note_storage.len()
         )));
     }
@@ -370,10 +370,10 @@ fn parse_p2id_storage(note_storage: &[Felt]) -> Result<AccountId, StaticAnalysis
 fn parse_p2ide_storage(
     note_storage: &[Felt],
 ) -> Result<(AccountId, u32, u32), StaticAnalysisError> {
-    if note_storage.len() != WellKnownNote::P2IDE.expected_num_storage_items() {
+    if note_storage.len() != StandardNote::P2IDE.expected_num_storage_items() {
         return Err(StaticAnalysisError::new(format!(
             "P2IDE note should have {} storage items, but {} was provided",
-            WellKnownNote::P2IDE.expected_num_storage_items(),
+            StandardNote::P2IDE.expected_num_storage_items(),
             note_storage.len()
         )));
     }
