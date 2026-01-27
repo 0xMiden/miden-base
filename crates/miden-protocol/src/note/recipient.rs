@@ -62,8 +62,8 @@ impl NoteRecipient {
     }
 
     /// Consumes self and returns the underlying parts of the [`NoteRecipient`].
-    pub fn into_parts(self) -> (Word, NoteScript, NoteInputs) {
-        (self.serial_num, self.script, self.inputs)
+    pub fn into_parts(self) -> (Word, NoteScript, NoteStorage) {
+        (self.serial_num, self.script, self.storage)
     }
 }
 
@@ -94,7 +94,7 @@ impl Serializable for NoteRecipient {
     }
 
     fn get_size_hint(&self) -> usize {
-        self.script.get_size_hint() + self.inputs.get_size_hint() + Word::SERIALIZED_SIZE
+        self.script.get_size_hint() + self.storage.get_size_hint() + Word::SERIALIZED_SIZE
     }
 }
 

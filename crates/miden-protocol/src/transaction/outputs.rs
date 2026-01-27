@@ -576,7 +576,17 @@ impl PublicOutputNote {
             return Err(PublicOutputNoteError::NoteIsPrivate(note.id()));
         }
 
-        // Check the size limit
+        // Strip decorators from the note script.
+        let previous_note_id = note.id();
+        let (assets, metadata, recipient) = note.into_parts();
+        let (serial_num, mut script, storage) = recipient.into_parts();
+
+        script.strip_decorators();
+        let recipient = NoteRecipient::new(serial_num, script, storage);
+        let note = Note::new(assets, metadata, recipient);
+        debug_assert_eq!(previous_note_id, note.id());
+
+        // Check the size limit after stripping decorators
         let note_size = note.get_size_hint();
         if note_size > NOTE_MAX_SIZE as usize {
             return Err(PublicOutputNoteError::NoteSizeLimitExceeded {
@@ -584,16 +594,6 @@ impl PublicOutputNote {
                 note_size,
             });
         }
-
-        // Strip decorators from the note script.
-        let previous_note_id = note.id();
-        let (assets, metadata, recipient) = note.into_parts();
-        let (serial_num, mut script, inputs) = recipient.into_parts();
-
-        script.strip_decorators();
-        let recipient = NoteRecipient::new(serial_num, script, inputs);
-        let note = Note::new(assets, metadata, recipient);
-        debug_assert_eq!(previous_note_id, note.id());
 
         Ok(Self { note })
     }
@@ -670,10 +670,10 @@ mod output_notes_tests {
     use crate::note::{
         Note,
         NoteAssets,
-        NoteInputs,
         NoteMetadata,
         NoteRecipient,
         NoteScript,
+        NoteStorage,
         NoteTag,
         NoteType,
     };
@@ -720,12 +720,12 @@ mod output_notes_tests {
             NoteTag::with_account_target(sender_id),
         );
 
-        // Build inputs with at least two values.
-        let inputs = NoteInputs::new(vec![Felt::new(1), Felt::new(2)])?;
+        // Build storage with at least two values.
+        let storage = NoteStorage::new(vec![Felt::new(1), Felt::new(2)])?;
 
         let serial_num = Word::empty();
         let script = NoteScript::mock();
-        let recipient = NoteRecipient::new(serial_num, script, inputs);
+        let recipient = NoteRecipient::new(serial_num, script, storage);
 
         let note = Note::new(assets, metadata, recipient);
         let output_note = OutputNote::Full(note);
@@ -748,7 +748,8 @@ mod output_notes_tests {
         // Build a large MASM program with many `nop` instructions.
         let mut src = alloc::string::String::from("begin\n");
         // The exact threshold is not critical as long as we clearly exceed NOTE_MAX_SIZE.
-        for _ in 0..5000 {
+        // After strip_decorators(), the size is reduced, so we need more nops.
+        for _ in 0..50000 {
             src.push_str("    nop\n");
         }
         src.push_str("end\n");
@@ -758,7 +759,7 @@ mod output_notes_tests {
         let script = NoteScript::new(program);
 
         let serial_num = Word::empty();
-        let inputs = NoteInputs::new(alloc::vec::Vec::new())?;
+        let storage = NoteStorage::new(alloc::vec::Vec::new())?;
 
         // Create a public note (NoteType::Public is required for PublicOutputNote)
         let faucet_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap();
@@ -768,7 +769,7 @@ mod output_notes_tests {
         let metadata =
             NoteMetadata::new(sender_id, NoteType::Public, NoteTag::with_account_target(sender_id));
 
-        let recipient = NoteRecipient::new(serial_num, script, inputs);
+        let recipient = NoteRecipient::new(serial_num, script, storage);
         let oversized_note = Note::new(assets, metadata, recipient);
 
         // Sanity-check that our constructed note is indeed larger than the configured
@@ -795,8 +796,9 @@ mod output_notes_tests {
         let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
 
         // Build a large MASM program
+        // After strip_decorators(), the size is reduced, so we need more nops.
         let mut src = alloc::string::String::from("begin\n");
-        for _ in 0..5000 {
+        for _ in 0..50000 {
             src.push_str("    nop\n");
         }
         src.push_str("end\n");
@@ -806,7 +808,7 @@ mod output_notes_tests {
         let script = NoteScript::new(program);
 
         let serial_num = Word::empty();
-        let inputs = NoteInputs::new(alloc::vec::Vec::new())?;
+        let storage = NoteStorage::new(alloc::vec::Vec::new())?;
 
         let faucet_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap();
         let asset = FungibleAsset::new(faucet_id, 100)?.into();
@@ -816,7 +818,7 @@ mod output_notes_tests {
         let metadata =
             NoteMetadata::new(sender_id, NoteType::Public, NoteTag::with_account_target(sender_id));
 
-        let recipient = NoteRecipient::new(serial_num, script, inputs);
+        let recipient = NoteRecipient::new(serial_num, script, storage);
         let oversized_note = Note::new(assets, metadata, recipient);
         let output_note = OutputNote::Full(oversized_note);
 

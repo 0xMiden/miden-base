@@ -309,14 +309,14 @@ async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()>
         block1
             .body()
             .output_notes()
-            .any(|(_, note)| note.commitment() == note1.commitment()),
+            .any(|(_, note)| note.to_commitment() == note1.commitment()),
         "block 1 should contain note1"
     );
     assert!(
         block1
             .body()
             .output_notes()
-            .any(|(_, note)| note.commitment() == note2.commitment()),
+            .any(|(_, note)| note.to_commitment() == note2.commitment()),
         "block 1 should contain note2"
     );
 

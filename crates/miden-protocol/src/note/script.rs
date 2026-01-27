@@ -77,6 +77,15 @@ impl NoteScript {
         self.entrypoint
     }
 
+    /// Removes all decorators from this MAST forest.
+    ///
+    /// See [`MastForest::strip_decorators`] for more details.
+    pub fn strip_decorators(&mut self) {
+        let mut mast = self.mast.clone();
+        Arc::make_mut(&mut mast).strip_decorators();
+        self.mast = mast;
+    }
+
     /// Returns a new [NoteScript] with the provided advice map entries merged into the
     /// underlying [MastForest].
     ///
@@ -229,8 +238,6 @@ impl Display for NoteScript {
 
 #[cfg(test)]
 mod tests {
-    use miden_core::utils::Serializable;
-
     use super::{Felt, NoteScript, Vec};
     use crate::assembly::Assembler;
     use crate::testing::note::DEFAULT_NOTE_CODE;
