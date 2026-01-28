@@ -7,6 +7,7 @@
 - Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](https://github.com/0xMiden/miden-base/pull/2275)).
 - Added `BlockNumber::MAX` constant to represent the maximum block number ([#2324](https://github.com/0xMiden/miden-base/pull/2324)).
 - Added single-word `Array` standard ([#2203](https://github.com/0xMiden/miden-base/pull/2203)).
+- Added `SignedBlock` struct ([#2355](https://github.com/0xMiden/miden-base/pull/2235)).
 
 ### Changes
 
@@ -15,6 +16,12 @@
 - [BREAKING] refactored `TransactionAuthenticator::get_public_key()` method to return `Arc<PublicKey> `instead of `&PublicKey` ([#2304](https://github.com/0xMiden/miden-base/pull/2304)).
 - [BREAKING] Renamed `NoteInputs` to `NoteStorage` to better reflect that values are stored data associated with a note rather than inputs ([#1662](https://github.com/0xMiden/miden-base/issues/1662), [#2316](https://github.com/0xMiden/miden-base/issues/2316)).
 - Removed `NoteType::Encrypted` ([#2315](https://github.com/0xMiden/miden-base/pull/2315)).
+
+## 0.13.3 (2026-01-27)
+
+- Fixed `CLAIM` note creation to use `NetworkAccountTarget` attachment ([#2352](https://github.com/0xMiden/miden-base/pull/2352)).
+- Added standards for working with `NetworkAccountTarget` attachments ([#2338](https://github.com/0xMiden/miden-base/pull/2338)).
+- Fixed `PartialBlockchain::add_block()` not adding block headers to the `blocks` map when `track=true`, which caused `prune_to()` to never untrack old blocks, leading to unbounded memory growth ([#2353](https://github.com/0xMiden/miden-base/pull/2353)).
 
 ## 0.13.2 (2026-01-21)
 
