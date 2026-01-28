@@ -64,22 +64,7 @@ begin
         # => [pad(16)]
     else
         # Ensure note attachment targets the consuming bridge account.
-        exec.active_note::get_metadata
-        # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
-
-        exec.note::extract_attachment_info_from_metadata
-        # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT, pad(8)]
-
-        swap
-        # => [attachment_scheme, attachment_kind, NOTE_ATTACHMENT, pad(8)]
-
-        exec.network_account_target::get_id
-        # => [target_id_prefix, target_id_suffix, pad(14)]
-
-        exec.active_account::get_id
-        # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix, pad(14)]
-
-        exec.account_id::is_equal
+        exec.network_account_target::active_account_matches_target_account
         assert.err=ERR_B2AGG_TARGET_ACCOUNT_MISMATCH
         # => [pad(16)]
 
