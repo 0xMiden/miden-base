@@ -2,6 +2,7 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use core::fmt;
 
+use miden_core::FieldElement;
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
