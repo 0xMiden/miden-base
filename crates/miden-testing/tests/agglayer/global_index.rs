@@ -25,7 +25,8 @@ fn assemble_verify_leaf_bridge_program(
         Felt::new(2),
         Felt::new(3),
         Felt::new(4),
-    ];
+    ]
+    .into();
     let leaf_value = [11u32, 12, 13, 14, 15, 16, 17, 18];
     let leaf_value_push = leaf_value
         .iter()
