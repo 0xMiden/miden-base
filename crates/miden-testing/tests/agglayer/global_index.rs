@@ -1,6 +1,5 @@
 extern crate alloc;
 
-use alloc::string::String;
 use alloc::sync::Arc;
 
 use miden_agglayer::agglayer_library;
@@ -16,17 +15,21 @@ use miden_testing::assert_execution_error;
 
 use crate::agglayer::test_utils::execute_program_with_default_host;
 
-const BRIDGE_IN_SOURCE: &str = include_str!("../../../miden-agglayer/asm/bridge/bridge_in.masm");
-
 fn assemble_process_global_index_program(global_index_be_u32_limbs: [u32; 8]) -> Program {
     let [g0, g1, g2, g3, g4, g5, g6, g7] = global_index_be_u32_limbs;
 
-    let mut script_code = String::new();
-    script_code.push_str("use miden::core::sys\n\n");
-    script_code.push_str(BRIDGE_IN_SOURCE);
-    script_code.push_str("\n\nbegin\n    push.");
-    script_code.push_str(&format!("{g7}.{g6}.{g5}.{g4}.{g3}.{g2}.{g1}.{g0}"));
-    script_code.push_str("\n    exec.process_global_index_mainnet\n    exec.sys::truncate_stack\nend\n");
+    let script_code = format!(
+        r#"
+        use miden::core::sys
+        use miden::agglayer::bridge_in
+
+        begin
+            push.{g7}.{g6}.{g5}.{g4}.{g3}.{g2}.{g1}.{g0}
+            exec.bridge_in::process_global_index_mainnet
+            exec.sys::truncate_stack
+        end
+        "#
+    );
 
     Assembler::new(Arc::new(DefaultSourceManager::default()))
         .with_dynamic_library(CoreLibrary::default())
