@@ -27,6 +27,7 @@ miden-tx-batch-prover = { features = ["testing"], workspace = true }
 # Miden dependencies
 miden-assembly  = { workspace = true }
 miden-core-lib  = { workspace = true }
+miden-crypto    = { workspace = true }
 miden-processor = { workspace = true }
 
 # External dependencies
@@ -34,6 +35,7 @@ anyhow      = { workspace = true }
 itertools   = { default-features = false, features = ["use_alloc"], version = "0.14" }
 rand        = { features = ["os_rng", "small_rng"], workspace = true }
 rand_chacha = { workspace = true }
+thiserror   = { workspace = true }
 winterfell  = { version = "0.13" }
 
 [dev-dependencies]
@@ -44,5 +46,7 @@ miden-crypto      = { workspace = true }
 miden-protocol    = { features = ["std"], workspace = true }
 primitive-types   = { workspace = true }
 rstest            = { workspace = true }
+serde             = { features = ["derive"], workspace = true }
+serde_json        = { version = "1.0" }
 tokio             = { features = ["macros", "rt"], workspace = true }
 winter-rand-utils = { version = "0.13" }

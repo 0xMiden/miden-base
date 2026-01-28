@@ -10,24 +10,24 @@ use miden_protocol::note::{Note, NoteScript};
 
 use crate::AuthScheme;
 use crate::account::components::{
-    WellKnownComponent,
+    StandardAccountComponent,
     basic_fungible_faucet_library,
     basic_wallet_library,
     ecdsa_k256_keccak_acl_library,
     ecdsa_k256_keccak_library,
     ecdsa_k256_keccak_multisig_library,
+    falcon_512_rpo_acl_library,
+    falcon_512_rpo_library,
+    falcon_512_rpo_multisig_library,
     network_fungible_faucet_library,
     no_auth_library,
-    rpo_falcon_512_acl_library,
-    rpo_falcon_512_library,
-    rpo_falcon_512_multisig_library,
 };
 use crate::account::interface::{
     AccountComponentInterface,
     AccountInterface,
     NoteAccountCompatibility,
 };
-use crate::note::WellKnownNote;
+use crate::note::StandardNote;
 
 // ACCOUNT INTERFACE EXTENSION TRAIT
 // ================================================================================================
@@ -75,8 +75,8 @@ impl AccountInterfaceExt for AccountInterface {
     /// Returns [NoteAccountCompatibility::Maybe] if the provided note is compatible with the
     /// current [AccountInterface], and [NoteAccountCompatibility::No] otherwise.
     fn is_compatible_with(&self, note: &Note) -> NoteAccountCompatibility {
-        if let Some(well_known_note) = WellKnownNote::from_note(note) {
-            if well_known_note.is_compatible_with(self) {
+        if let Some(standard_note) = StandardNote::from_note(note) {
+            if standard_note.is_compatible_with(self) {
                 NoteAccountCompatibility::Maybe
             } else {
                 NoteAccountCompatibility::No
@@ -116,17 +116,17 @@ impl AccountInterfaceExt for AccountInterface {
                         ecdsa_k256_keccak_multisig_library().mast_forest().procedure_digests(),
                     );
                 },
-                AccountComponentInterface::AuthRpoFalcon512 => {
+                AccountComponentInterface::AuthFalcon512Rpo => {
                     component_proc_digests
-                        .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
+                        .extend(falcon_512_rpo_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Acl => {
+                AccountComponentInterface::AuthFalcon512RpoAcl => {
                     component_proc_digests
-                        .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
+                        .extend(falcon_512_rpo_acl_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalcon512Multisig => {
+                AccountComponentInterface::AuthFalcon512RpoMultisig => {
                     component_proc_digests.extend(
-                        rpo_falcon_512_multisig_library().mast_forest().procedure_digests(),
+                        falcon_512_rpo_multisig_library().mast_forest().procedure_digests(),
                     );
                 },
                 AccountComponentInterface::AuthNoAuth => {
@@ -158,12 +158,12 @@ impl AccountComponentInterfaceExt for AccountComponentInterface {
 
         let mut procedures = BTreeSet::from_iter(procedures.iter().copied());
 
-        // Well known component interfaces
+        // Standard component interfaces
         // ----------------------------------------------------------------------------------------
 
-        // Get all available well known components which could be constructed from the
+        // Get all available standard components which could be constructed from the
         // `procedures` map and push them to the `component_interface_vec`
-        WellKnownComponent::extract_well_known_components(
+        StandardAccountComponent::extract_standard_components(
             &mut procedures,
             &mut component_interface_vec,
         );

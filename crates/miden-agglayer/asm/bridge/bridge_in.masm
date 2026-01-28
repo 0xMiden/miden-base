@@ -78,6 +78,7 @@ end
 #!       rollupExitRoot[8],               // Rollup exit root hash (8 felts, bytes32 as 8 u32 felts)
 #!     ],
 #!     LEAF_DATA_KEY => [
+#!       leafType[1],                     // Leaf type (1 felt, uint32)
 #!       originNetwork[1],                // Origin network identifier (1 felt, uint32)
 #!       originTokenAddress[5],           // Origin token address (5 felts, address as 5 u32 felts)
 #!       destinationNetwork[1],           // Destination network identifier (1 felt, uint32)

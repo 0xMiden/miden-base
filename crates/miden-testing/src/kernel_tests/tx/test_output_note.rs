@@ -15,9 +15,9 @@ use miden_protocol::note::{
     NoteAttachment,
     NoteAttachmentScheme,
     NoteExecutionHint,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -252,7 +252,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata =
         NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_1);
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
 
@@ -267,7 +267,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let metadata =
         NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_2)
             .with_attachment(attachment);
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NoteStorage::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
 
@@ -616,10 +616,10 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
     let output_serial_no = Word::from([0, 1, 2, 3u32]);
     let tag = NoteTag::new(42 << 16 | 42);
     let single_input = 2;
-    let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
-    let input_commitment = inputs.commitment();
+    let storage = NoteStorage::new(vec![Felt::new(single_input)]).unwrap();
+    let storage_commitment = storage.commitment();
 
-    let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
+    let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), storage);
     let code = format!(
         "
         use $kernel::prologue
@@ -630,13 +630,13 @@ async fn test_build_recipient_hash() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # input
-            push.{input_commitment}
+            # storage
+            push.{storage_commitment}
             # SCRIPT_ROOT
             push.{script_root}
             # SERIAL_NUM
             push.{output_serial_no}
-            # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
+            # => [SERIAL_NUM, SCRIPT_ROOT, STORAGE_COMMITMENT]
 
             exec.note::build_recipient_hash
             # => [RECIPIENT, pad(12)]
@@ -1194,8 +1194,7 @@ async fn test_set_network_target_account_attachment() -> anyhow::Result<()> {
     assert_eq!(actual_note.assets().unwrap(), output_note.assets());
 
     // Make sure we can deserialize the attachment back into its original type.
-    let actual_attachment =
-        NetworkAccountTarget::try_from(actual_note.metadata().attachment().clone())?;
+    let actual_attachment = NetworkAccountTarget::try_from(actual_note.metadata().attachment())?;
     assert_eq!(actual_attachment, attachment);
 
     Ok(())

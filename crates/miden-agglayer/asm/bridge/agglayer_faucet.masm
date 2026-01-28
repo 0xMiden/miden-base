@@ -1,11 +1,13 @@
 use miden::agglayer::bridge_in
 use miden::agglayer::asset_conversion
+use miden::agglayer::eth_address
 use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::standards::faucets
 use miden::protocol::note
 use miden::protocol::tx
 use miden::core::mem
+use miden::core::word
 
 
 # CONSTANTS
@@ -15,7 +17,7 @@ use miden::core::mem
 const BRIDGE_ID_SLOT = word("miden::agglayer::faucet")
 
 const PROOF_DATA_WORD_LEN = 134
-const LEAF_DATA_WORD_LEN = 6
+const LEAF_DATA_WORD_LEN = 8
 const OUTPUT_NOTE_DATA_WORD_LEN = 2
 
 const PROOF_DATA_START_PTR = 0
@@ -31,12 +33,18 @@ const CLAIM_NOTE_DATA_MEM_ADDR = 712
 const OUTPUT_NOTE_INPUTS_MEM_ADDR = 0
 const OUTPUT_NOTE_TAG_MEM_ADDR = 574
 const OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR = 568
-const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 548
-const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 552
+const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_0 = 552
+const OUTPUT_NOTE_ASSET_AMOUNT_MEM_ADDR_1 = 556
+
+const DESTINATION_ADDRESS_0 = 547
+const DESTINATION_ADDRESS_1 = 548
+const DESTINATION_ADDRESS_2 = 549
+const DESTINATION_ADDRESS_3 = 550
+const DESTINATION_ADDRESS_4 = 551
 
 # P2ID output note constants
 const P2ID_SCRIPT_ROOT = [13362761878458161062, 15090726097241769395, 444910447169617901, 3558201871398422326]
-const P2ID_NOTE_NUM_INPUTS = 2
+const P2ID_NOTE_NUM_STORAGE_ITEMS = 2
 const OUTPUT_NOTE_TYPE_PUBLIC = 1
 const EXECUTION_HINT_ALWAYS = 1
 const OUTPUT_NOTE_AUX = 0
@@ -89,12 +97,6 @@ proc scale_down_amount
     repeat.7 drop end
 end
 
-# Inputs: []
-# Outputs: [prefix, suffix]
-proc get_destination_account_id
-    mem_load.543 mem_load.544
-end
-
 # Inputs: [PROOF_DATA_KEY, LEAF_DATA_KEY, OUTPUT_NOTE_DATA_KEY]
 # Outputs: []
 proc batch_pipe_double_words
@@ -123,6 +125,27 @@ proc batch_pipe_double_words
     exec.mem::pipe_double_words_preimage_to_memory drop
 end
 
+#! Extracts the destination account ID as address[5] from memory.
+#!
+#! This procedure reads the destination address from the leaf data and converts it from
+#! Ethereum address format to AccountId format (prefix, suffix).
+#!
+#! Inputs:  []
+#! Outputs: [prefix, suffix]
+#!
+#! Invocation: exec
+proc get_destination_account_id_data
+    mem_load.DESTINATION_ADDRESS_4
+    mem_load.DESTINATION_ADDRESS_3
+    mem_load.DESTINATION_ADDRESS_2
+    mem_load.DESTINATION_ADDRESS_1
+    mem_load.DESTINATION_ADDRESS_0
+    # => [address[5]]
+
+    exec.eth_address::to_account_id
+    # => [prefix, suffix]
+end
+
 #! Builds a P2ID output note for the claim recipient.
 #!
 #! This procedure expects the claim data to be already written to memory via batch_pipe_double_words.
@@ -141,17 +164,18 @@ proc build_p2id_output_note
     swapw mem_loadw_be.OUTPUT_NOTE_SERIAL_NUM_MEM_ADDR
     # => [SERIAL_NUM, SCRIPT_ROOT]
 
-    push.P2ID_NOTE_NUM_INPUTS
-    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
-
-    exec.get_destination_account_id
-    # => [account_id_prefix, account_id_suffix, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
-
-    mem_store.0 mem_store.1
-    # => [num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
+    push.P2ID_NOTE_NUM_STORAGE_ITEMS
+    # => [note_num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
 
     push.OUTPUT_NOTE_INPUTS_MEM_ADDR
-    # => [inputs_ptr = 0, num_output_note_inputs, SERIAL_NUM, SCRIPT_ROOT]
+    # => [storage_ptr = 0, note_num_storage_items, SERIAL_NUM, SCRIPT_ROOT]
+
+    exec.get_destination_account_id_data
+    # => [prefix, suffix]
+
+    # Write destination account id into memory
+    mem_store.1 mem_store.0
+    # => []
 
     exec.note::build_recipient
     # => [RECIPIENT]
@@ -203,7 +227,6 @@ end
 #!     destinationAddress[5],           // Destination address (5 felts, address as 5 u32 felts)
 #!     amount[8],                       // Amount of tokens (8 felts, uint256 as 8 u32 felts)
 #!     metadata[8],                     // ABI encoded metadata (8 felts, fixed size)
-#!     EMPTY_WORD                       // padding
 #!   ],
 #!   OUTPUT_NOTE_DATA_KEY => [
 #!     output_p2id_serial_num[4],       // P2ID note serial number (4 felts, Word)

@@ -1,24 +1,55 @@
 # Changelog
 
-## 0.13.0 (TBD)
+## 0.14.0 (TBD)
+
+### Features
+
+- Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](https://github.com/0xMiden/miden-base/pull/2275)).
+- Added `BlockNumber::MAX` constant to represent the maximum block number ([#2324](https://github.com/0xMiden/miden-base/pull/2324)).
+- Added single-word `Array` standard ([#2203](https://github.com/0xMiden/miden-base/pull/2203)).
+
+### Changes
+
+- [BREAKING] Renamed `WellKnownComponent` to `StandardAccountComponent`, `WellKnownNote` to `StandardNote`, and `WellKnownNoteAttachment` to `StandardNoteAttachment` ([#2332](https://github.com/0xMiden/miden-base/pull/2332)).
+- Skip requests to the `DataStore` for asset vault witnesses which are already in transaction inputs ([#2298](https://github.com/0xMiden/miden-base/pull/2298)).
+- [BREAKING] refactored `TransactionAuthenticator::get_public_key()` method to return `Arc<PublicKey> `instead of `&PublicKey` ([#2304](https://github.com/0xMiden/miden-base/pull/2304)).
+- [BREAKING] Renamed `NoteInputs` to `NoteStorage` to better reflect that values are stored data associated with a note rather than inputs ([#1662](https://github.com/0xMiden/miden-base/issues/1662), [#2316](https://github.com/0xMiden/miden-base/issues/2316)).
+- Removed `NoteType::Encrypted` ([#2315](https://github.com/0xMiden/miden-base/pull/2315)).
+
+## 0.13.3 (2026-01-27)
+
+- Fixed `CLAIM` note creation to use `NetworkAccountTarget` attachment ([#2352](https://github.com/0xMiden/miden-base/pull/2352)).
+- Added standards for working with `NetworkAccountTarget` attachments ([#2338](https://github.com/0xMiden/miden-base/pull/2338)).
+- Fixed `PartialBlockchain::add_block()` not adding block headers to the `blocks` map when `track=true`, which caused `prune_to()` to never untrack old blocks, leading to unbounded memory growth ([#2353](https://github.com/0xMiden/miden-base/pull/2353)).
+
+## 0.13.2 (2026-01-21)
+
+- Make transaction executor respect debug mode settings ([#2327](https://github.com/0xMiden/miden-base/pull/2327)).
+
+## 0.13.1 (2026-01-20)
+
+- Make `NetworkAccountTargetError` public ([#2319](https://github.com/0xMiden/miden-base/pull/2319)).
+
+## 0.13.0 (2026-01-16)
 
 ### Features
 
 - [BREAKING] Refactored storage slots to be accessed by names instead of indices ([#1987](https://github.com/0xMiden/miden-base/pull/1987), [#2025](https://github.com/0xMiden/miden-base/pull/2025), [#2149](https://github.com/0xMiden/miden-base/pull/2149), [#2150](https://github.com/0xMiden/miden-base/pull/2150), [#2153](https://github.com/0xMiden/miden-base/pull/2153), [#2154](https://github.com/0xMiden/miden-base/pull/2154), [#2160](https://github.com/0xMiden/miden-base/pull/2160), [#2161](https://github.com/0xMiden/miden-base/pull/2161), [#2170](https://github.com/0xMiden/miden-base/pull/2170)).
 - [BREAKING] Allowed account components to share identical account code procedures ([#2164](https://github.com/0xMiden/miden-base/pull/2164)).
-- Add `From<&ExecutedTransaction> for TransactionHeader` implementation ([#2178](https://github.com/0xMiden/miden-base/pull/2178)).
 - Add `AccountId::parse()` helper function to parse both hex and bech32 formats ([#2223](https://github.com/0xMiden/miden-base/pull/2223)).
+- Add Keccak-based MMR frontier structure to the Agglayer library ([#2245](https://github.com/0xMiden/miden-base/pull/2245)).
 - Add `read_foreign_account_inputs()`, `read_vault_asset_witnesses()`, and `read_storage_map_witness()` for `TransactionInputs` ([#2246](https://github.com/0xMiden/miden-base/pull/2246)).
-- [BREAKING] Introduce `NoteAttachment` as part of `NoteMetadata` and remove `aux` and `execution_hint` ([#2249](https://github.com/0xMiden/miden-base/pull/2249)).
-- [BREAKING] Introduce `NoteAttachment` as part of `NoteMetadata` and remove `aux` and `execution_hint` ([#2249](https://github.com/0xMiden/miden-base/pull/2249), [#2252](https://github.com/0xMiden/miden-base/pull/2252)).
-- [BREAKING] Introduce `NoteAttachment` as part of `NoteMetadata` and remove `aux` and `execution_hint` ([#2249](https://github.com/0xMiden/miden-base/pull/2249), [#2252](https://github.com/0xMiden/miden-base/pull/2252), [#2260](https://github.com/0xMiden/miden-base/pull/2260)).
 - [BREAKING] Introduce `NoteAttachment` as part of `NoteMetadata` and remove `aux` and `execution_hint` ([#2249](https://github.com/0xMiden/miden-base/pull/2249), [#2252](https://github.com/0xMiden/miden-base/pull/2252), [#2260](https://github.com/0xMiden/miden-base/pull/2260), [#2268](https://github.com/0xMiden/miden-base/pull/2268), [#2279](https://github.com/0xMiden/miden-base/pull/2279)).
 - Introduce standard `NetworkAccountTarget` attachment for use in network transactions which replaces `NoteTag::NetworkAccount` ([#2257](https://github.com/0xMiden/miden-base/pull/2257)).
 - Implemented verification of AggLayer deposits (claims) against GER ([#2295](https://github.com/0xMiden/miden-base/pull/2295), [#2288](https://github.com/0xMiden/miden-base/pull/2288)).
+- Add a foundry test suite for verifying AggLayer contracts compatibility ([#2312](https://github.com/0xMiden/miden-base/pull/2312)).
+- Added `AccountSchemaCommitment` component to expose account storage schema commitments ([#2253](https://github.com/0xMiden/miden-base/pull/2253)).
+- Added an `AccountBuilder` extension trait to help build the schema commitment; added `AccountComponentMetadata` to `AccountComponent` ([#2269](https://github.com/0xMiden/miden-base/pull/2269)).
+- Added `miden::standards::access::ownable` standard module for component ownership management, and integrated it into the `network_fungible` faucet (including new tests). ([#2228](https://github.com/0xMiden/miden-base/pull/2228)).
+- [BREAKING] Add `leaf_value` to `CLAIM` note inputs ([#2290](https://github.com/0xMiden/miden-base/pull/2290)).
 
 ### Changes
 
-- No longer pad the note inputs on insertion into advice map ([#2232](https://github.com/0xMiden/miden-base/pull/2232)).
 - Added proc-macro `WordWrapper` to ease implementation of `Word`-wrapping types ([#2071](https://github.com/0xMiden/miden-base/pull/2108)).
 - [BREAKING] Added `BlockBody` and `BlockProof` structs in preparation for validator signatures and deferred block proving ([#2012](https://github.com/0xMiden/miden-base/pull/2012)).
 - [BREAKING] Renamed `TransactionEvent` into `TransactionEventId` and split event handling into data extraction and handling logic ([#2071](https://github.com/0xMiden/miden-base/pull/2071)).
@@ -28,19 +59,26 @@
 - [BREAKING] Removed `AccountComponentTemplate` in favor of instantiating components via `AccountComponent::from_package` ([#2127](https://github.com/0xMiden/miden-base/pull/2127)).
 - [BREAKING] Added public key to, remove proof commitment from, `BlockHeader`, and add signing functionality through `BlockSigner` trait ([#2128](https://github.com/0xMiden/miden-base/pull/2128)).
 - [BREAKING] Added fee to `TransactionHeader` ([#2131](https://github.com/0xMiden/miden-base/pull/2131)).
-- Create `NullifierLeafValue` newtype wrapper ([#2136](https://github.com/0xMiden/miden-base/pull/2136)).
+- Created `NullifierLeafValue` newtype wrapper ([#2136](https://github.com/0xMiden/miden-base/pull/2136)).
 - [BREAKING] Increased `MAX_INPUTS_PER_NOTE` from 128 to 1024 ([#2139](https://github.com/0xMiden/miden-base/pull/2139)).
 - Added the ability to get full public key from `TransactionAuthenticator` ([#2145](https://github.com/0xMiden/miden-base/pull/2145)).
 - Added `TokenSymbol::from_static_str` const function for compile-time token symbol validation ([#2148](https://github.com/0xMiden/miden-base/pull/2148)).
+- [BREAKING] Migrated to `miden-vm` v0.20 and `miden-crypto` v0.19 ([#2158](https://github.com/0xMiden/miden-base/pull/2158)).
 - [BREAKING] Renamed `AccountProcedureInfo` into `AccountProcedureRoot` and remove storage offset and size ([#2162](https://github.com/0xMiden/miden-base/pull/2162)).
 - [BREAKING] Made `AccountProcedureIndexMap` construction infallible ([#2163](https://github.com/0xMiden/miden-base/pull/2163)).
 - [BREAKING] Renamed `tracked_procedure_roots_slot` to `trigger_procedure_roots_slot` in ACL auth components for naming consistency ([#2166](https://github.com/0xMiden/miden-base/pull/2166)).
-- [BREAKING] Refactor `miden-objects` and `miden-lib` into `miden-protocol` and `miden-standards` ([#2184](https://github.com/0xMiden/miden-base/pull/2184), [#2191](https://github.com/0xMiden/miden-base/pull/2191), [#2197](https://github.com/0xMiden/miden-base/pull/2197), [#2255](https://github.com/0xMiden/miden-base/pull/2255)).
-- [BREAKING] Migrated to `miden-vm` v0.20 and `miden-crypto` v0.19 ([#2158](https://github.com/0xMiden/miden-base/pull/2158)).
+- [BREAKING] Refactored `miden-objects` and `miden-lib` into `miden-protocol` and `miden-standards` ([#2184](https://github.com/0xMiden/miden-base/pull/2184), [#2191](https://github.com/0xMiden/miden-base/pull/2191), [#2197](https://github.com/0xMiden/miden-base/pull/2197), [#2255](https://github.com/0xMiden/miden-base/pull/2255)).
+- Added `From<&ExecutedTransaction> for TransactionHeader` implementation ([#2178](https://github.com/0xMiden/miden-base/pull/2178)).
 - [BREAKING] Refactored `AccountStorageDelta` to use a new `StorageSlotDelta` type ([#2182](https://github.com/0xMiden/miden-base/pull/2182)).
 - [BREAKING] Removed OLD_MAP_ROOT from being returned when calling [`native_account::set_map_item`](crates/miden-lib/asm/miden/native_account.masm) ([#2194](https://github.com/0xMiden/miden-base/pull/2194)).
+- [BREAKING] Refactored account component templates into `StorageSchema` ([#2193](https://github.com/0xMiden/miden-base/pull/2193)).
 - [BREAKING] Refactored account component templates into `AccountStorageSchema` ([#2193](https://github.com/0xMiden/miden-base/pull/2193)).
 - [BREAKING] Refactor note tags to be arbitrary `u32` values and drop previous validation ([#2219](https://github.com/0xMiden/miden-base/pull/2219)).
+- [BREAKING] Refactored `InitStorageData` to support native types ([#2230](https://github.com/0xMiden/miden-base/pull/2230)).
+- Refactored to no longer pad the note inputs on insertion into advice map ([#2232](https://github.com/0xMiden/miden-base/pull/2232)).
+- Added `StorageSchema::commitment()` ([#2244](https://github.com/0xMiden/miden-base/pull/2244)).
+- [BREAKING] `RpoFalcon512` was renamed to `Falcon512Rpo` everywhere, including procedure and file names ([#2264](https://github.com/0xMiden/miden-base/pull/2264)).
+- [BREAKING] Removed top-level error exports from `miden-protocol` crate (the are still accessible under `miden_protocol::errors`).
 
 ## 0.12.4 (2025-11-26)
 

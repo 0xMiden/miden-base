@@ -1,9 +1,9 @@
 use rand::Rng;
 use rand::distr::StandardUniform;
 
-use crate::AssetError;
 use crate::account::{AccountId, AccountIdPrefix, AccountType};
 use crate::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use crate::errors::AssetError;
 use crate::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,

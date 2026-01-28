@@ -53,31 +53,31 @@ static ECDSA_K256_KECCAK_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| 
         .expect("Shipped Multisig Ecdsa K256 Keccak library is well-formed")
 });
 
-// Initialize the Rpo Falcon 512 library only once.
-static RPO_FALCON_512_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+// Initialize the Falcon 512 RPO library only once.
+static FALCON_512_RPO_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/auth/rpo_falcon_512.masl"
+        "/assets/account_components/auth/falcon_512_rpo.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Falcon 512 RPO library is well-formed")
 });
 
-// Initialize the Rpo Falcon 512 ACL library only once.
-static RPO_FALCON_512_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+// Initialize the Falcon 512 RPO ACL library only once.
+static FALCON_512_RPO_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/auth/rpo_falcon_512_acl.masl"
+        "/assets/account_components/auth/falcon_512_rpo_acl.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 ACL library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Falcon 512 RPO ACL library is well-formed")
 });
 
-// Initialize the Multisig Rpo Falcon 512 library only once.
-static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+// Initialize the Multisig Falcon 512 RPO library only once.
+static FALCON_512_RPO_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/auth/rpo_falcon_512_multisig.masl"
+        "/assets/account_components/auth/falcon_512_rpo_multisig.masl"
     ));
-    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Multisig Falcon 512 RPO library is well-formed")
 });
 
 // Initialize the NoAuth library only once.
@@ -108,6 +108,18 @@ static NETWORK_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Network Fungible Faucet library is well-formed")
 });
 
+// METADATA LIBRARIES
+// ================================================================================================
+
+// Initialize the Storage Schema library only once.
+static STORAGE_SCHEMA_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/metadata/schema_commitment.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Storage Schema library is well-formed")
+});
+
 /// Returns the Basic Wallet Library.
 pub fn basic_wallet_library() -> Library {
     BASIC_WALLET_LIBRARY.clone()
@@ -121,6 +133,11 @@ pub fn basic_fungible_faucet_library() -> Library {
 /// Returns the Network Fungible Faucet Library.
 pub fn network_fungible_faucet_library() -> Library {
     NETWORK_FUNGIBLE_FAUCET_LIBRARY.clone()
+}
+
+/// Returns the Storage Schema Library.
+pub fn storage_schema_library() -> Library {
+    STORAGE_SCHEMA_LIBRARY.clone()
 }
 
 /// Returns the ECDSA K256 Keccak Library.
@@ -138,14 +155,14 @@ pub fn ecdsa_k256_keccak_multisig_library() -> Library {
     ECDSA_K256_KECCAK_MULTISIG_LIBRARY.clone()
 }
 
-/// Returns the Rpo Falcon 512 Library.
-pub fn rpo_falcon_512_library() -> Library {
-    RPO_FALCON_512_LIBRARY.clone()
+/// Returns the Falcon 512 RPO Library.
+pub fn falcon_512_rpo_library() -> Library {
+    FALCON_512_RPO_LIBRARY.clone()
 }
 
-/// Returns the Rpo Falcon 512 ACL Library.
-pub fn rpo_falcon_512_acl_library() -> Library {
-    RPO_FALCON_512_ACL_LIBRARY.clone()
+/// Returns the Falcon 512 RPO ACL Library.
+pub fn falcon_512_rpo_acl_library() -> Library {
+    FALCON_512_RPO_ACL_LIBRARY.clone()
 }
 
 /// Returns the NoAuth Library.
@@ -153,29 +170,30 @@ pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
 }
 
-/// Returns the RPO Falcon 512 Multisig Library.
-pub fn rpo_falcon_512_multisig_library() -> Library {
-    RPO_FALCON_512_MULTISIG_LIBRARY.clone()
+/// Returns the Falcon 512 RPO Multisig Library.
+pub fn falcon_512_rpo_multisig_library() -> Library {
+    FALCON_512_RPO_MULTISIG_LIBRARY.clone()
 }
 
-// WELL KNOWN COMPONENTS
+// STANDARD ACCOUNT COMPONENTS
 // ================================================================================================
 
-/// The enum holding the types of basic well-known account components provided by the `miden-lib`.
-pub enum WellKnownComponent {
+/// The enum holding the types of standard account components defined in the `miden-standards`
+/// crate.
+pub enum StandardAccountComponent {
     BasicWallet,
     BasicFungibleFaucet,
     NetworkFungibleFaucet,
     AuthEcdsaK256Keccak,
     AuthEcdsaK256KeccakAcl,
     AuthEcdsaK256KeccakMultisig,
-    AuthRpoFalcon512,
-    AuthRpoFalcon512Acl,
-    AuthRpoFalcon512Multisig,
+    AuthFalcon512Rpo,
+    AuthFalcon512RpoAcl,
+    AuthFalcon512RpoMultisig,
     AuthNoAuth,
 }
 
-impl WellKnownComponent {
+impl StandardAccountComponent {
     /// Returns the iterator over digests of all procedures exported from the component.
     pub fn procedure_digests(&self) -> impl Iterator<Item = Word> {
         let library = match self {
@@ -185,9 +203,9 @@ impl WellKnownComponent {
             Self::AuthEcdsaK256Keccak => ECDSA_K256_KECCAK_LIBRARY.as_ref(),
             Self::AuthEcdsaK256KeccakAcl => ECDSA_K256_KECCAK_ACL_LIBRARY.as_ref(),
             Self::AuthEcdsaK256KeccakMultisig => ECDSA_K256_KECCAK_MULTISIG_LIBRARY.as_ref(),
-            Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.as_ref(),
-            Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.as_ref(),
-            Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.as_ref(),
+            Self::AuthFalcon512Rpo => FALCON_512_RPO_LIBRARY.as_ref(),
+            Self::AuthFalcon512RpoAcl => FALCON_512_RPO_ACL_LIBRARY.as_ref(),
+            Self::AuthFalcon512RpoMultisig => FALCON_512_RPO_MULTISIG_LIBRARY.as_ref(),
             Self::AuthNoAuth => NO_AUTH_LIBRARY.as_ref(),
         };
 
@@ -239,14 +257,14 @@ impl WellKnownComponent {
                 },
                 Self::AuthEcdsaK256KeccakMultisig => component_interface_vec
                     .push(AccountComponentInterface::AuthEcdsaK256KeccakMultisig),
-                Self::AuthRpoFalcon512 => {
-                    component_interface_vec.push(AccountComponentInterface::AuthRpoFalcon512)
+                Self::AuthFalcon512Rpo => {
+                    component_interface_vec.push(AccountComponentInterface::AuthFalcon512Rpo)
                 },
-                Self::AuthRpoFalcon512Acl => {
-                    component_interface_vec.push(AccountComponentInterface::AuthRpoFalcon512Acl)
+                Self::AuthFalcon512RpoAcl => {
+                    component_interface_vec.push(AccountComponentInterface::AuthFalcon512RpoAcl)
                 },
-                Self::AuthRpoFalcon512Multisig => component_interface_vec
-                    .push(AccountComponentInterface::AuthRpoFalcon512Multisig),
+                Self::AuthFalcon512RpoMultisig => component_interface_vec
+                    .push(AccountComponentInterface::AuthFalcon512RpoMultisig),
                 Self::AuthNoAuth => {
                     component_interface_vec.push(AccountComponentInterface::AuthNoAuth)
                 },
@@ -254,9 +272,9 @@ impl WellKnownComponent {
         }
     }
 
-    /// Gets all well known components which could be constructed from the provided procedures map
+    /// Gets all standard components which could be constructed from the provided procedures map
     /// and pushes them to the `component_interface_vec`.
-    pub fn extract_well_known_components(
+    pub fn extract_standard_components(
         procedures_set: &mut BTreeSet<AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
@@ -267,9 +285,9 @@ impl WellKnownComponent {
         Self::AuthEcdsaK256KeccakAcl.extract_component(procedures_set, component_interface_vec);
         Self::AuthEcdsaK256KeccakMultisig
             .extract_component(procedures_set, component_interface_vec);
-        Self::AuthRpoFalcon512.extract_component(procedures_set, component_interface_vec);
-        Self::AuthRpoFalcon512Acl.extract_component(procedures_set, component_interface_vec);
-        Self::AuthRpoFalcon512Multisig.extract_component(procedures_set, component_interface_vec);
+        Self::AuthFalcon512Rpo.extract_component(procedures_set, component_interface_vec);
+        Self::AuthFalcon512RpoAcl.extract_component(procedures_set, component_interface_vec);
+        Self::AuthFalcon512RpoMultisig.extract_component(procedures_set, component_interface_vec);
         Self::AuthNoAuth.extract_component(procedures_set, component_interface_vec);
     }
 }

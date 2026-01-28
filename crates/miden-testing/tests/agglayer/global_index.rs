@@ -11,7 +11,7 @@ use miden_agglayer::errors::{
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_processor::Program;
-use miden_testing::assert_execution_error;
+use miden_testing::{ExecError, assert_execution_error};
 
 use crate::agglayer::test_utils::execute_program_with_default_host;
 
@@ -58,7 +58,7 @@ async fn test_process_global_index_mainnet_rejects_non_zero_leading_bits() {
     let global_index = [1, 0, 0, 0, 0, 1, 0, 2];
     let program = assemble_process_global_index_program(global_index);
 
-    let err = execute_program_with_default_host(program, None).await;
+    let err = execute_program_with_default_host(program, None).await.map_err(ExecError::new);
     assert_execution_error!(err, ERR_LEADING_BITS_NON_ZERO);
 }
 
@@ -68,7 +68,7 @@ async fn test_process_global_index_mainnet_rejects_flag_limb_upper_bits() {
     let global_index = [0, 0, 0, 0, 0, 3, 0, 2];
     let program = assemble_process_global_index_program(global_index);
 
-    let err = execute_program_with_default_host(program, None).await;
+    let err = execute_program_with_default_host(program, None).await.map_err(ExecError::new);
     assert_execution_error!(err, ERR_BRIDGE_NOT_MAINNET);
 }
 
@@ -77,6 +77,6 @@ async fn test_process_global_index_mainnet_rejects_non_zero_rollup_index() {
     let global_index = [0, 0, 0, 0, 0, 1, 7, 2];
     let program = assemble_process_global_index_program(global_index);
 
-    let err = execute_program_with_default_host(program, None).await;
+    let err = execute_program_with_default_host(program, None).await.map_err(ExecError::new);
     assert_execution_error!(err, ERR_ROLLUP_INDEX_NON_ZERO);
 }

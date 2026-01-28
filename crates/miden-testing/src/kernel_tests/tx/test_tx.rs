@@ -26,9 +26,9 @@ use miden_protocol::note::{
     NoteAttachmentScheme,
     NoteHeader,
     NoteId,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -222,7 +222,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
     let note_script_2 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
-    let inputs_2 = NoteInputs::new(vec![ONE])?;
+    let inputs_2 = NoteStorage::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2).with_attachment(attachment2.clone());
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
@@ -232,7 +232,7 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 = CodeBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
-    let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
+    let inputs_3 = NoteStorage::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 =
         NoteMetadata::new(account_id, note_type3, tag3).with_attachment(attachment3.clone());
     let vault_3 = NoteAssets::new(vec![])?;
@@ -387,19 +387,19 @@ async fn executed_transaction_output_notes() -> anyhow::Result<()> {
     assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
     assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
 
-    // make sure that the number of note inputs remains the same
+    // make sure that the number of note storage items remains the same
     let resulting_note_2_recipient =
         resulting_output_note_2.recipient().expect("output note 2 is not full");
     assert_eq!(
-        resulting_note_2_recipient.inputs().num_values(),
-        expected_output_note_2.inputs().num_values()
+        resulting_note_2_recipient.storage().num_items(),
+        expected_output_note_2.storage().num_items()
     );
 
     let resulting_note_3_recipient =
         resulting_output_note_3.recipient().expect("output note 3 is not full");
     assert_eq!(
-        resulting_note_3_recipient.inputs().num_values(),
-        expected_output_note_3.inputs().num_values()
+        resulting_note_3_recipient.storage().num_items(),
+        expected_output_note_3.storage().num_items()
     );
 
     Ok(())
@@ -527,17 +527,17 @@ async fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> 
 
     let account_interface = AccountInterface::from_account(&account);
     let pub_key = match account_interface.auth().first().unwrap() {
-        AuthScheme::RpoFalcon512 { pub_key } => pub_key,
-        AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got RpoFalcon512Multisig")
+        AuthScheme::Falcon512Rpo { pub_key } => pub_key,
+        AuthScheme::NoAuth => panic!("Expected Falcon512Rpo auth scheme, got NoAuth"),
+        AuthScheme::Falcon512RpoMultisig { .. } => {
+            panic!("Expected Falcon512Rpo auth scheme, got Falcon512RpoMultisig")
         },
-        AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
+        AuthScheme::Unknown => panic!("Expected Falcon512Rpo auth scheme, got Unknown"),
         AuthScheme::EcdsaK256Keccak { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256Keccak")
+            panic!("Expected Falcon512Rpo auth scheme, got EcdsaK256Keccak")
         },
         AuthScheme::EcdsaK256KeccakMultisig { .. } => {
-            panic!("Expected RpoFalcon512 auth scheme, got EcdsaK256KeccakMultisig")
+            panic!("Expected Falcon512Rpo auth scheme, got EcdsaK256KeccakMultisig")
         },
     };
 
@@ -596,12 +596,12 @@ async fn tx_summary_commitment_is_signed_by_ecdsa_auth() -> anyhow::Result<()> {
             panic!("Expected EcdsaK256Keccak auth scheme, got EcdsaK256KeccakMultisig")
         },
         AuthScheme::NoAuth => panic!("Expected EcdsaK256Keccak auth scheme, got NoAuth"),
-        AuthScheme::RpoFalcon512Multisig { .. } => {
-            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512Multisig")
+        AuthScheme::Falcon512RpoMultisig { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got Falcon512RpoMultisig")
         },
         AuthScheme::Unknown => panic!("Expected EcdsaK256Keccak auth scheme, got Unknown"),
-        AuthScheme::RpoFalcon512 { .. } => {
-            panic!("Expected EcdsaK256Keccak auth scheme, got RpoFalcon512")
+        AuthScheme::Falcon512Rpo { .. } => {
+            panic!("Expected EcdsaK256Keccak auth scheme, got Falcon512Rpo")
         },
     };
 
