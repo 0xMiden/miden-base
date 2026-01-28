@@ -16,6 +16,9 @@ const ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="B2AGG script expects exactly
 const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account does not match consuming account"
 
 
+# NOTE SCRIPT
+# =================================================================================================
+
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!
 #! This note can be consumed in two ways:
