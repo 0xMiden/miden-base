@@ -23,7 +23,7 @@ use miden_protocol::note::{
 };
 use miden_standards::note::NetworkAccountTarget;
 
-use crate::{EthAddressFormat, b2agg_script};
+use crate::{EthAddress, b2agg_script};
 
 // B2AGG NOTE STRUCTURES
 // ================================================================================================
@@ -37,12 +37,12 @@ pub struct B2AggNoteStorage {
     /// Destination network identifier (AggLayer-assigned network ID)
     pub destination_network: u32,
     /// Destination Ethereum address (20 bytes)
-    pub destination_address: EthAddressFormat,
+    pub destination_address: EthAddress,
 }
 
 impl B2AggNoteStorage {
     /// Creates a new B2AGG note storage with the specified destination.
-    pub fn new(destination_network: u32, destination_address: EthAddressFormat) -> Self {
+    pub fn new(destination_network: u32, destination_address: EthAddress) -> Self {
         Self { destination_network, destination_address }
     }
 

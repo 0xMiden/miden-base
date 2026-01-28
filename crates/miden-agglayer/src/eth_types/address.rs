@@ -2,7 +2,6 @@ use alloc::format;
 use alloc::string::{String, ToString};
 use core::fmt;
 
-use miden_core::FieldElement;
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
@@ -11,37 +10,20 @@ use miden_protocol::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
 // ETHEREUM ADDRESS
 // ================================================================================================
 
-/// Represents an Ethereum address format (20 bytes).
-///
-/// # Representations used in this module
-///
-/// - Raw bytes: `[u8; 20]` in the conventional Ethereum big-endian byte order (`bytes[0]` is the
-///   most-significant byte).
-/// - MASM "address\[5\]" limbs: 5 x u32 limbs in *little-endian limb order*:
-///   - addr0 = bytes[16..19] (least-significant 4 bytes)
-///   - addr1 = bytes[12..15]
-///   - addr2 = bytes[ 8..11]
-///   - addr3 = bytes[ 4.. 7]
-///   - addr4 = bytes[ 0.. 3] (most-significant 4 bytes)
-/// - Embedded AccountId format: `0x00000000 || prefix(8) || suffix(8)`, where:
-///   - prefix = (addr3 << 32) | addr2 = bytes[4..11] as a big-endian u64
-///   - suffix = (addr1 << 32) | addr0 = bytes[12..19] as a big-endian u64
-///
-/// Note: prefix/suffix are *conceptual* 64-bit words; when converting to [`Felt`], we must ensure
-/// `Felt::new(u64)` does not reduce mod p (checked explicitly in `to_account_id`).
+/// Represents a raw Ethereum address (20 bytes).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EthAddressFormat([u8; 20]);
+pub struct EthAddress([u8; 20]);
 
-impl EthAddressFormat {
+impl EthAddress {
     // EXTERNAL API - For integrators (Gateway, claim managers, etc.)
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`EthAddressFormat`] from a 20-byte array.
+    /// Creates a new [`EthAddress`] from a 20-byte array.
     pub const fn new(bytes: [u8; 20]) -> Self {
         Self(bytes)
     }
 
-    /// Creates an [`EthAddressFormat`] from a hex string (with or without "0x" prefix).
+    /// Creates an [`EthAddress`] from a hex string (with or without "0x" prefix).
     ///
     /// # Errors
     ///
@@ -60,6 +42,84 @@ impl EthAddressFormat {
 
         let bytes: [u8; 20] = hex_to_bytes(&prefixed_hex)?;
         Ok(Self(bytes))
+    }
+
+    /// Returns the raw 20-byte array.
+    pub const fn as_bytes(&self) -> &[u8; 20] {
+        &self.0
+    }
+
+    /// Converts the address into a 20-byte array.
+    pub const fn into_bytes(self) -> [u8; 20] {
+        self.0
+    }
+
+    /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
+    pub fn to_hex(&self) -> String {
+        bytes_to_hex_string(self.0)
+    }
+
+    /// Converts the Ethereum address into an array of 5 [`Felt`] values for MASM processing.
+    ///
+    /// The returned order matches the MASM `address[5]` convention (*little-endian limb order*):
+    /// - addr0 = bytes[16..19] (least-significant 4 bytes)
+    /// - addr1 = bytes[12..15]
+    /// - addr2 = bytes[ 8..11]
+    /// - addr3 = bytes[ 4.. 7]
+    /// - addr4 = bytes[ 0.. 3] (most-significant 4 bytes)
+    ///
+    /// Each limb is interpreted as a big-endian `u32` and stored in a [`Felt`].
+    pub fn to_elements(&self) -> [Felt; 5] {
+        let mut result = [Felt::ZERO; 5];
+
+        // i=0 -> bytes[16..20], i=4 -> bytes[0..4]
+        for (felt, chunk) in result.iter_mut().zip(self.0.chunks(4).skip(1).rev()) {
+            let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
+            // u32 values always fit in Felt, so this conversion is safe
+            *felt = Felt::try_from(value as u64).expect("u32 value should always fit in Felt");
+        }
+
+        result
+    }
+}
+
+/// Represents an Ethereum address format compatible with Miden account ID encoding (20 bytes).
+///
+/// # Representations used in this module
+///
+/// - Raw bytes: `[u8; 20]` in the conventional Ethereum big-endian byte order (`bytes[0]` is the
+///   most-significant byte).
+/// - MASM "address\[5\]" limbs: 5 x u32 limbs in *little-endian limb order*:
+///   - addr0 = bytes[16..19] (least-significant 4 bytes)
+///   - addr1 = bytes[12..15]
+///   - addr2 = bytes[ 8..11]
+///   - addr3 = bytes[ 4.. 7]
+///   - addr4 = bytes[ 0.. 3] (most-significant 4 bytes)
+/// - Embedded AccountId format: `0x00000000 || prefix(8) || suffix(8)`, where:
+///   - prefix = (addr3 << 32) | addr2 = bytes[4..11] as a big-endian u64
+///   - suffix = (addr1 << 32) | addr0 = bytes[12..19] as a big-endian u64
+///
+/// Note: prefix/suffix are *conceptual* 64-bit words; when converting to [`Felt`], we must ensure
+/// `Felt::new(u64)` does not reduce mod p (checked explicitly in `to_account_id`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EthAddressFormat(EthAddress);
+
+impl EthAddressFormat {
+    // EXTERNAL API - For integrators (Gateway, claim managers, etc.)
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`EthAddressFormat`] from a 20-byte array.
+    pub const fn new(bytes: [u8; 20]) -> Self {
+        Self(EthAddress::new(bytes))
+    }
+
+    /// Creates an [`EthAddressFormat`] from a hex string (with or without "0x" prefix).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the hex string is invalid or the hex part is not exactly 40 characters.
+    pub fn from_hex(hex_str: &str) -> Result<Self, AddressConversionError> {
+        Ok(Self(EthAddress::from_hex(hex_str)?))
     }
 
     /// Creates an [`EthAddressFormat`] from an [`AccountId`].
@@ -83,22 +143,22 @@ impl EthAddressFormat {
         out[4..12].copy_from_slice(&felts[0].as_int().to_be_bytes());
         out[12..20].copy_from_slice(&felts[1].as_int().to_be_bytes());
 
-        Self(out)
+        Self(EthAddress::new(out))
     }
 
     /// Returns the raw 20-byte array.
     pub const fn as_bytes(&self) -> &[u8; 20] {
-        &self.0
+        self.0.as_bytes()
     }
 
     /// Converts the address into a 20-byte array.
     pub const fn into_bytes(self) -> [u8; 20] {
-        self.0
+        self.0.into_bytes()
     }
 
     /// Converts the Ethereum address to a hex string (lowercase, 0x-prefixed).
     pub fn to_hex(&self) -> String {
-        bytes_to_hex_string(self.0)
+        self.0.to_hex()
     }
 
     // INTERNAL API - For CLAIM note processing
@@ -119,16 +179,7 @@ impl EthAddressFormat {
     ///
     /// Each limb is interpreted as a big-endian `u32` and stored in a [`Felt`].
     pub fn to_elements(&self) -> [Felt; 5] {
-        let mut result = [Felt::ZERO; 5];
-
-        // i=0 -> bytes[16..20], i=4 -> bytes[0..4]
-        for (felt, chunk) in result.iter_mut().zip(self.0.chunks(4).skip(1).rev()) {
-            let value = u32::from_be_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            // u32 values always fit in Felt, so this conversion is safe
-            *felt = Felt::try_from(value as u64).expect("u32 value should always fit in Felt");
-        }
-
-        result
+        self.0.to_elements()
     }
 
     /// Converts the Ethereum address format back to an [`AccountId`].
@@ -144,7 +195,7 @@ impl EthAddressFormat {
     /// - packing the 8-byte prefix/suffix into [`Felt`] would reduce mod p,
     /// - or the resulting felts do not form a valid [`AccountId`].
     pub fn to_account_id(&self) -> Result<AccountId, AddressConversionError> {
-        let (prefix, suffix) = Self::bytes20_to_prefix_suffix(self.0)?;
+        let (prefix, suffix) = Self::bytes20_to_prefix_suffix(self.0.into_bytes())?;
 
         // Use `Felt::try_from(u64)` to avoid potential truncating conversion
         let prefix_felt =
@@ -177,15 +228,45 @@ impl EthAddressFormat {
     }
 }
 
+impl fmt::Display for EthAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.to_hex())
+    }
+}
+
 impl fmt::Display for EthAddressFormat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.to_hex())
     }
 }
 
+impl From<[u8; 20]> for EthAddress {
+    fn from(bytes: [u8; 20]) -> Self {
+        Self::new(bytes)
+    }
+}
+
+impl From<EthAddress> for [u8; 20] {
+    fn from(addr: EthAddress) -> Self {
+        addr.0
+    }
+}
+
 impl From<[u8; 20]> for EthAddressFormat {
     fn from(bytes: [u8; 20]) -> Self {
-        Self(bytes)
+        Self(EthAddress::from(bytes))
+    }
+}
+
+impl From<EthAddress> for EthAddressFormat {
+    fn from(address: EthAddress) -> Self {
+        Self(address)
+    }
+}
+
+impl From<EthAddressFormat> for EthAddress {
+    fn from(address: EthAddressFormat) -> Self {
+        address.0
     }
 }
 
@@ -197,7 +278,7 @@ impl From<AccountId> for EthAddressFormat {
 
 impl From<EthAddressFormat> for [u8; 20] {
     fn from(addr: EthAddressFormat) -> Self {
-        addr.0
+        addr.0.into_bytes()
     }
 }
 

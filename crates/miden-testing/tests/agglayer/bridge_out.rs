@@ -3,7 +3,7 @@ extern crate alloc;
 use miden_agglayer::errors::ERR_B2AGG_TARGET_ACCOUNT_MISMATCH;
 use miden_agglayer::{
     B2AggNoteStorage,
-    EthAddressFormat,
+    EthAddress,
     create_b2agg_note,
     create_existing_bridge_account,
 };
@@ -54,8 +54,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     // Create note storage with destination network and address
     let destination_network = 1u32; // Example network ID
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let eth_address =
-        EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
+    let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
 
     let storage = B2AggNoteStorage::new(destination_network, eth_address);
     let assets = NoteAssets::new(vec![bridge_asset])?;
@@ -207,8 +206,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     // Create note storage with destination network and address
     let destination_network = 1u32;
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let eth_address =
-        EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
+    let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
 
     let storage = B2AggNoteStorage::new(destination_network, eth_address);
     let assets = NoteAssets::new(vec![bridge_asset])?;
@@ -316,8 +314,7 @@ async fn test_b2agg_note_non_target_account_cannot_consume() -> anyhow::Result<(
     // Create note storage with destination network and address
     let destination_network = 1u32;
     let destination_address = "0x1234567890abcdef1122334455667788990011aa";
-    let eth_address =
-        EthAddressFormat::from_hex(destination_address).expect("Valid Ethereum address");
+    let eth_address = EthAddress::from_hex(destination_address).expect("Valid Ethereum address");
 
     let storage = B2AggNoteStorage::new(destination_network, eth_address);
     let assets = NoteAssets::new(vec![bridge_asset])?;
