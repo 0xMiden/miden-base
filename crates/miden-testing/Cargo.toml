@@ -26,24 +26,22 @@ miden-tx-batch-prover = { features = ["testing"], workspace = true }
 
 # Miden dependencies
 miden-assembly  = { workspace = true }
+miden-core      = { workspace = true }
 miden-core-lib  = { workspace = true }
 miden-processor = { workspace = true }
 
 # External dependencies
-anyhow      = { workspace = true }
-itertools   = { default-features = false, features = ["use_alloc"], version = "0.14" }
-rand        = { features = ["os_rng", "small_rng"], workspace = true }
-rand_chacha = { workspace = true }
-thiserror   = { workspace = true }
-winterfell  = { version = "0.13" }
+anyhow          = { workspace = true }
+itertools       = { default-features = false, features = ["use_alloc"], version = "0.14" }
+primitive-types = { workspace = true }
+rand            = { features = ["os_rng", "small_rng"], workspace = true }
+rand_chacha     = { workspace = true }
+thiserror       = { workspace = true }
 
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], workspace = true }
 assert_matches    = { workspace = true }
-hex               = { version = "0.4" }
-miden-crypto      = { workspace = true }
-miden-protocol    = { features = ["std"], workspace = true }
-primitive-types   = { workspace = true }
+miden-prover      = { workspace = true }
 rstest            = { workspace = true }
 tokio             = { features = ["macros", "rt"], workspace = true }
 winter-rand-utils = { version = "0.13" }

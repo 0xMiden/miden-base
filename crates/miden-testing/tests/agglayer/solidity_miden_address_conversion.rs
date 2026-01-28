@@ -6,7 +6,14 @@ use miden_agglayer::{EthAddressFormat, agglayer_library};
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
+use miden_processor::{
+    AdviceInputs,
+    DefaultHost,
+    ExecutionError,
+    PrimeField64,
+    Program,
+    StackInputs,
+};
 use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::address::NetworkId;
@@ -36,10 +43,10 @@ async fn execute_program_with_default_host(
     let asset_conversion_lib = agglayer_library();
     host.load_library(asset_conversion_lib.mast_forest()).unwrap();
 
-    let stack_inputs = StackInputs::new(vec![]).unwrap();
+    let stack_inputs = StackInputs::new(&[]).unwrap();
     let advice_inputs = AdviceInputs::default();
 
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    let processor = FastProcessor::new_debug(stack_inputs, advice_inputs);
     processor.execute(&program, &mut host).await
 }
 
@@ -112,7 +119,7 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
         let le: Vec<u32> = address_felts
             .iter()
             .map(|f| {
-                let val = f.as_int();
+                let val = f.as_canonical_u64();
                 assert!(val <= u32::MAX as u64, "felt value {} exceeds u32::MAX", val);
                 val as u32
             })
@@ -127,8 +134,8 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
         let addr4 = le[4];
 
         let account_id_felts: [Felt; 2] = (*original_account_id).into();
-        let expected_prefix = account_id_felts[0].as_int();
-        let expected_suffix = account_id_felts[1].as_int();
+        let expected_prefix = account_id_felts[0].as_canonical_u64();
+        let expected_suffix = account_id_felts[1].as_canonical_u64();
 
         let script_code = format!(
             r#"
@@ -154,8 +161,8 @@ async fn test_ethereum_address_to_account_id_in_masm() -> anyhow::Result<()> {
 
         let exec_output = execute_program_with_default_host(program).await?;
 
-        let actual_prefix = exec_output.stack[0].as_int();
-        let actual_suffix = exec_output.stack[1].as_int();
+        let actual_prefix = exec_output.stack[0].as_canonical_u64();
+        let actual_suffix = exec_output.stack[1].as_canonical_u64();
 
         assert_eq!(actual_prefix, expected_prefix, "test {}: prefix mismatch", idx);
         assert_eq!(actual_suffix, expected_suffix, "test {}: suffix mismatch", idx);

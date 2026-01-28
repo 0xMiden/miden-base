@@ -1,4 +1,5 @@
 use assert_matches::assert_matches;
+use miden_processor::PrimeField64;
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
 use miden_protocol::errors::AssetVaultError;
@@ -50,7 +51,7 @@ async fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_element(0).as_int(),
+        exec_output.get_stack_element(0).as_canonical_u64(),
         tx_context.account().vault().get_balance(faucet_id).unwrap()
     );
 
@@ -95,7 +96,7 @@ async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_element(0).as_int(),
+        exec_output.get_stack_element(0).as_canonical_u64(),
         tx_context.account().vault().get_balance(faucet_id).unwrap()
     );
 

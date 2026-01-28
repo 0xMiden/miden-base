@@ -90,8 +90,8 @@ impl From<MintNoteStorage> for NoteStorage {
                 tag,
                 attachment,
             } => {
-                let attachment_scheme = Felt::from(attachment.attachment_scheme().as_u32());
-                let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
+                let attachment_scheme = Felt::new(attachment.attachment_scheme().as_u32() as u64);
+                let attachment_kind = Felt::new(attachment.attachment_kind().as_u8() as u64);
                 let attachment = attachment.content().to_word();
 
                 let mut storage_values = Vec::with_capacity(12);
@@ -107,8 +107,8 @@ impl From<MintNoteStorage> for NoteStorage {
                     .expect("number of storage items should not exceed max storage items")
             },
             MintNoteStorage::Public { recipient, amount, tag, attachment } => {
-                let attachment_scheme = Felt::from(attachment.attachment_scheme().as_u32());
-                let attachment_kind = Felt::from(attachment.attachment_kind().as_u8());
+                let attachment_scheme = Felt::new(attachment.attachment_scheme().as_u32() as u64);
+                let attachment_kind = Felt::new(attachment.attachment_kind().as_u8() as u64);
                 let attachment = attachment.content().to_word();
 
                 let mut storage_values = vec![tag, amount, attachment_kind, attachment_scheme];

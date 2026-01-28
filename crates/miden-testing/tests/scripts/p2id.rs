@@ -128,7 +128,7 @@ async fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
         executed_transaction.final_account().commitment(),
         target_account_after.commitment()
     );
-    prove_and_verify_transaction(executed_transaction)?;
+    prove_and_verify_transaction(executed_transaction).await?;
     Ok(())
 }
 
@@ -170,7 +170,8 @@ async fn prove_consume_multiple_notes() -> anyhow::Result<()> {
         panic!("Resulting asset should be fungible");
     }
 
-    Ok(prove_and_verify_transaction(executed_transaction)?)
+    prove_and_verify_transaction(executed_transaction).await?;
+    Ok(())
 }
 
 /// Consumes two existing notes and creates two other notes in the same transaction
@@ -245,11 +246,11 @@ async fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
             ",
         recipient_1 = output_note_1.recipient().digest(),
         note_type_1 = NoteType::Public as u8,
-        tag_1 = Felt::from(output_note_1.metadata().tag()),
+        tag_1 = Felt::new(output_note_1.metadata().tag().as_u32() as u64),
         asset_1 = Word::from(FungibleAsset::mock(10)),
         recipient_2 = output_note_2.recipient().digest(),
         note_type_2 = NoteType::Public as u8,
-        tag_2 = Felt::from(output_note_2.metadata().tag()),
+        tag_2 = Felt::new(output_note_2.metadata().tag().as_u32() as u64),
         asset_2 = Word::from(FungibleAsset::mock(5)),
     );
 

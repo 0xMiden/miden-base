@@ -2,7 +2,7 @@ use std::env;
 use std::path::Path;
 
 use fs_err as fs;
-use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
+use miden_assembly::diagnostics::{Result, WrapErr, miette};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{Assembler, Library, Report};
 use miden_protocol::transaction::TransactionKernel;
@@ -86,7 +86,7 @@ fn compile_agglayer_lib(
     let agglayer_lib = assembler.assemble_library_from_dir(source_dir, "miden::agglayer")?;
 
     let output_file = target_dir.join("agglayer").with_extension(Library::LIBRARY_EXTENSION);
-    agglayer_lib.write_to_file(output_file).into_diagnostic()?;
+    agglayer_lib.write_to_file(output_file).unwrap();
 
     Ok(agglayer_lib)
 }
@@ -103,9 +103,7 @@ fn compile_note_scripts(
     target_dir: &Path,
     mut assembler: Assembler,
 ) -> Result<()> {
-    fs::create_dir_all(target_dir)
-        .into_diagnostic()
-        .wrap_err("failed to create note_scripts directory")?;
+    fs::create_dir_all(target_dir).unwrap();
 
     // Add the miden-standards library to the assembler so note scripts can use it
     let standards_lib = miden_standards::StandardsLib::default();
@@ -158,7 +156,7 @@ fn _compile_bridge_components(
 
     // Write the combined library
     let library_path = target_dir.join("agglayer").with_extension(Library::LIBRARY_EXTENSION);
-    agglayer_library.write_to_file(library_path).into_diagnostic()?;
+    agglayer_library.write_to_file(library_path).unwrap();
 
     // Also write individual component files for reference
     let masm_files = shared::get_masm_files(source_dir).unwrap();
@@ -174,7 +172,7 @@ fn _compile_bridge_components(
             .expect("reading the component's MASM source code should succeed");
 
         let individual_file_path = target_dir.join(&component_name).with_extension("masm");
-        fs::write(individual_file_path, component_source_code).into_diagnostic()?;
+        fs::write(individual_file_path, component_source_code).unwrap();
     }
 
     Ok(agglayer_library)
@@ -240,7 +238,7 @@ mod shared {
 
     use fs_err as fs;
     use miden_assembly::Report;
-    use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
+    use miden_assembly::diagnostics::{Result, WrapErr, miette};
     use regex::Regex;
     use walkdir::WalkDir;
 
@@ -259,15 +257,11 @@ mod shared {
         let target_dir = dst.as_ref().join(asm_dir);
         if target_dir.exists() {
             // Clear existing asm files that were copied earlier which may no longer exist.
-            fs::remove_dir_all(&target_dir)
-                .into_diagnostic()
-                .wrap_err("failed to remove ASM directory")?;
+            fs::remove_dir_all(&target_dir).unwrap();
         }
 
         // Recreate the directory structure.
-        fs::create_dir_all(&target_dir)
-            .into_diagnostic()
-            .wrap_err("failed to create ASM directory")?;
+        fs::create_dir_all(&target_dir).unwrap();
 
         let dst = dst.as_ref();
         let mut todo = vec![src.as_ref().to_path_buf()];
@@ -300,13 +294,11 @@ mod shared {
 
         let path = dir_path.as_ref();
         if path.is_dir() {
-            let entries = fs::read_dir(path)
-                .into_diagnostic()
-                .wrap_err_with(|| format!("failed to read directory {}", path.display()))?;
+            let entries = fs::read_dir(path).unwrap();
             for entry in entries {
-                let file = entry.into_diagnostic().wrap_err("failed to read directory entry")?;
+                let file = entry.unwrap();
                 let file_path = file.path();
-                if is_masm_file(&file_path).into_diagnostic()? {
+                if is_masm_file(&file_path).unwrap() {
                     files.push(file_path);
                 }
             }
@@ -342,11 +334,11 @@ mod shared {
 
         // Walk all files of the kernel source directory.
         for entry in WalkDir::new(asm_source_dir) {
-            let entry = entry.into_diagnostic()?;
-            if !is_masm_file(entry.path()).into_diagnostic()? {
+            let entry = entry.unwrap();
+            if !is_masm_file(entry.path()).unwrap() {
                 continue;
             }
-            let file_contents = std::fs::read_to_string(entry.path()).into_diagnostic()?;
+            let file_contents = std::fs::read_to_string(entry.path()).unwrap();
             extract_masm_errors(&mut errors, &file_contents)?;
         }
 
@@ -459,18 +451,18 @@ mod shared {
 
             // Group errors into blocks separate by newlines.
             if is_new_error_category(&mut last_error, name) {
-                writeln!(output).into_diagnostic()?;
+                writeln!(output).unwrap();
             }
 
-            writeln!(output, "/// Error Message: \"{message}\"").into_diagnostic()?;
+            writeln!(output, "/// Error Message: \"{message}\"").unwrap();
             writeln!(
                 output,
                 r#"pub const ERR_{name}: MasmError = MasmError::from_static_str("{message}");"#
             )
-            .into_diagnostic()?;
+            .unwrap();
         }
 
-        std::fs::write(module.file_name, output).into_diagnostic()?;
+        std::fs::write(module.file_name, output).unwrap();
 
         Ok(())
     }

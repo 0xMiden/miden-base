@@ -59,7 +59,7 @@ async fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
         BTreeMap::default(),
     );
 
-    let error = ProposedBlock::new(block_inputs, batches).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs, batches, 0).unwrap_err();
 
     assert_matches!(error, ProposedBlockError::TooManyBatches);
 
@@ -90,7 +90,7 @@ async fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
         BTreeMap::default(),
     );
 
-    let error = ProposedBlock::new(block_inputs, batches).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs, batches, 0).unwrap_err();
 
     assert_matches!(error, ProposedBlockError::DuplicateBatch { batch_id } if batch_id == batch0.id());
 
@@ -121,7 +121,7 @@ async fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
     // This block's number is 3 (the previous block is block 2), which means batch 1, which expires
     // at block 2 (due to tx1), will be flagged as expired.
     let block_inputs = chain.get_block_inputs(&batches).expect("failed to get block inputs");
-    let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0).unwrap_err();
 
     assert_matches!(
         error,
@@ -195,7 +195,7 @@ async fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency
         BTreeMap::default(),
     );
 
-    let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0).unwrap_err();
     assert_matches!(
         error,
         ProposedBlockError::ChainLengthNotEqualToPreviousBlockNumber {
@@ -217,7 +217,7 @@ async fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency
         BTreeMap::default(),
     );
 
-    let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0).unwrap_err();
     assert_matches!(
         error,
         ProposedBlockError::ChainRootNotEqualToPreviousBlockChainCommitment { .. }
@@ -256,7 +256,7 @@ async fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Resu
         BTreeMap::default(),
     );
 
-    let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0).unwrap_err();
     assert_matches!(
         error,
         ProposedBlockError::BatchReferenceBlockMissingFromChain {
@@ -298,7 +298,7 @@ async fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
 
     let block_inputs = chain.get_block_inputs(&batches).expect("failed to get block inputs");
 
-    let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::DuplicateInputNote { .. });
 
     Ok(())
@@ -333,7 +333,7 @@ async fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 
     let block_inputs = chain.get_block_inputs(&batches)?;
 
-    let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::DuplicateOutputNote { .. });
 
     Ok(())
@@ -402,7 +402,7 @@ async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_referen
         .remove(&block2.header().block_num())
         .expect("block2 should have been fetched");
 
-    let error = ProposedBlock::new(invalid_block_inputs, batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(invalid_block_inputs, batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::UnauthenticatedInputNoteBlockNotInPartialBlockchain {
       block_number, note_id
     } => {
@@ -433,7 +433,7 @@ async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_referen
         .unauthenticated_note_proofs_mut()
         .insert(p2id_note.id(), invalid_note_proof);
 
-    let error = ProposedBlock::new(invalid_block_inputs, batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(invalid_block_inputs, batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::UnauthenticatedNoteAuthenticationFailed { block_num, note_id, .. } if block_num == block2.header().block_num() && note_id == p2id_note.id());
 
     Ok(())
@@ -461,7 +461,7 @@ async fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Resul
     // to the chain.
     let block_inputs = chain.get_block_inputs(&batches)?;
 
-    let error = ProposedBlock::new(block_inputs, batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs, batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::UnauthenticatedNoteConsumed { nullifier } if nullifier == note0.nullifier());
 
     Ok(())
@@ -498,7 +498,7 @@ async fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<(
         .remove(&p2id_note.nullifier())
         .expect("nullifier should have been fetched");
 
-    let error = ProposedBlock::new(invalid_block_inputs, batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(invalid_block_inputs, batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::NullifierProofMissing(nullifier) => {
         assert_eq!(nullifier, p2id_note.nullifier());
     });
@@ -535,7 +535,7 @@ async fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()>
     // The block inputs should contain a nullifier witness for the P2ANY note.
     assert!(block_inputs.nullifier_witnesses().contains_key(&p2any_note.nullifier()));
 
-    let error = ProposedBlock::new(block_inputs, batches).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs, batches, 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::NullifierSpent(nullifier) => {
         assert_eq!(nullifier, p2any_note.nullifier())
     });
@@ -570,7 +570,7 @@ async fn proposed_block_fails_on_conflicting_transactions_updating_same_account(
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches).expect("failed to get block inputs");
 
-    let error = ProposedBlock::new(block_inputs.clone(), batches).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs.clone(), batches, 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::ConflictingBatchesUpdateSameAccount {
       account_id,
       initial_state_commitment,
@@ -605,7 +605,7 @@ async fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()>
         .remove(&account.id())
         .expect("account witness should have been fetched");
 
-    let error = ProposedBlock::new(block_inputs, batches.clone()).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs, batches.clone(), 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::MissingAccountWitness(account_id) if account_id == account.id());
 
     Ok(())
@@ -646,7 +646,7 @@ async fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyh
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches)?;
 
-    let error = ProposedBlock::new(block_inputs, batches).unwrap_err();
+    let error = ProposedBlock::new_at(block_inputs, batches, 0).unwrap_err();
     assert_matches!(error, ProposedBlockError::InconsistentAccountStateTransition {
       account_id,
       state_commitment,

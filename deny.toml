@@ -22,6 +22,7 @@ allow = [
   "Apache-2.0",
   "BSD-2-Clause",
   "BSD-3-Clause",
+  "CC0-1.0",
   "ISC",
   "MIT",
   "Unicode-3.0",
@@ -62,11 +63,17 @@ skip-tree = [
   # Allow syn v1.x and v2.x - our derive macros need v1.x while ecosystem uses v2.x
   { name = "syn", version = "=1.0.109" },
   { name = "syn", version = "=2.0.111" },
+  # Allow itertools v0.12/v0.13/v0.14 - Plonky3 and miden-vm use different versions
+  { name = "itertools", version = "=0.12.*" },
+  { name = "itertools", version = "=0.13.*" },
+  # Allow spin v0.9.x - legacy version used by some dependencies
+  { name = "spin", version = "=0.9.*" },
 ]
 wildcards = "allow"
 
 # Sources configuration
 [sources]
+allow-git        = ["https://github.com/0xPolygonMiden/miden-vm"]
 allow-registry   = ["https://github.com/rust-lang/crates.io-index"]
 unknown-git      = "deny"
 unknown-registry = "deny"

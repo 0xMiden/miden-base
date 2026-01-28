@@ -516,7 +516,8 @@ fn generate_event_file_content(
     // want to error out as early as possible:
     // TODO: make the error out at build-time to be able to present better error hints
     for (event_path, event_name) in events {
-        let value = miden_core::EventId::from_name(event_path).as_felt().as_int();
+        let felt = miden_core::EventId::from_name(event_path).as_felt();
+        let value: u64 = format!("{:?}", felt).parse().unwrap();
         debug_assert!(!event_name.is_empty());
         writeln!(&mut output, "const {}: u64 = {};", event_name, value)?;
     }

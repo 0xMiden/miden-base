@@ -1,6 +1,7 @@
 extern crate alloc;
 
 use miden_agglayer::{EthAddressFormat, b2agg_script, bridge_out_component};
+use miden_processor::PrimeField64;
 use miden_protocol::account::{
     Account,
     AccountId,
@@ -67,7 +68,8 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let amount = Felt::new(100);
-    let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
+    let bridge_asset: Asset =
+        FungibleAsset::new(faucet.id(), amount.as_canonical_u64()).unwrap().into();
     let tag = NoteTag::new(0);
     let note_type = NoteType::Public; // Use Public note type for network transaction
 
@@ -133,7 +135,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     assert_eq!(burn_note.metadata().note_type(), NoteType::Public, "BURN note should be public");
 
     // Verify the BURN note contains the bridged asset
-    let expected_asset = FungibleAsset::new(faucet.id(), amount.into())?;
+    let expected_asset = FungibleAsset::new(faucet.id(), amount.as_canonical_u64())?;
     let expected_asset_obj = Asset::from(expected_asset);
     assert!(
         burn_note.assets().iter().any(|asset| asset == &expected_asset_obj),
@@ -184,7 +186,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let final_issuance = faucet.get_token_issuance().unwrap();
     assert_eq!(
         final_issuance,
-        Felt::new(initial_issuance.as_int() - amount.as_int()),
+        Felt::new(initial_issuance.as_canonical_u64() - amount.as_canonical_u64()),
         "Token issuance should decrease by the burned amount"
     );
 
@@ -225,7 +227,8 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let amount = Felt::new(50);
-    let bridge_asset: Asset = FungibleAsset::new(faucet.id(), amount.into()).unwrap().into();
+    let bridge_asset: Asset =
+        FungibleAsset::new(faucet.id(), amount.as_canonical_u64()).unwrap().into();
     let tag = NoteTag::new(0);
     let note_type = NoteType::Public;
 
@@ -283,7 +286,7 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
     // VERIFY ASSETS WERE ADDED BACK TO THE ACCOUNT
     // --------------------------------------------------------------------------------------------
     let final_balance = user_account.vault().get_balance(faucet.id()).unwrap_or(0u64);
-    let expected_balance = initial_balance + amount.as_int();
+    let expected_balance = initial_balance + amount.as_canonical_u64();
 
     assert_eq!(
         final_balance, expected_balance,

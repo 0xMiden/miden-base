@@ -1,13 +1,15 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use miden_processor::PrimeField64;
+
 use crate::block::BlockNumber;
 use crate::crypto::merkle::MerkleError;
 use crate::crypto::merkle::smt::{MutationSet, SMT_DEPTH, Smt};
 use crate::errors::NullifierTreeError;
 use crate::note::Nullifier;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{Felt, FieldElement, Word};
+use crate::{Felt, Word};
 
 mod backend;
 pub use backend::NullifierTreeBackend;
@@ -273,11 +275,11 @@ impl NullifierBlock {
     /// - The 0th element in the word is not a valid [BlockNumber].
     /// - Any of the remaining elements is non-zero.
     pub fn new(word: Word) -> Result<Self, NullifierTreeError> {
-        let block_num = u32::try_from(word[0].as_int())
+        let block_num = u32::try_from(word[0].as_canonical_u64())
             .map(BlockNumber::from)
             .map_err(|_| NullifierTreeError::InvalidNullifierBlockNumber(word))?;
 
-        if word[1..4].iter().any(|felt| *felt != Felt::ZERO) {
+        if word[1..4].iter().any(|felt| *felt != Felt::new(0)) {
             return Err(NullifierTreeError::InvalidNullifierBlockNumber(word));
         }
 
@@ -309,7 +311,7 @@ impl From<NullifierBlock> for BlockNumber {
 
 impl From<NullifierBlock> for Word {
     fn from(value: NullifierBlock) -> Word {
-        Word::from([Felt::from(value.0), Felt::ZERO, Felt::ZERO, Felt::ZERO])
+        Word::from([Felt::new(value.0.as_u64()), Felt::new(0), Felt::new(0), Felt::new(0)])
     }
 }
 
@@ -510,6 +512,7 @@ mod tests {
     #[test]
     fn large_smt_backend_same_root_as_regular_smt() {
         use miden_crypto::merkle::smt::{LargeSmt, MemoryStorage};
+        use miden_processor::PrimeField64;
 
         let nullifier1 = Nullifier::dummy(1);
         let nullifier2 = Nullifier::dummy(2);

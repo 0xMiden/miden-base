@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use std::borrow::ToOwned;
 
 use miden_processor::crypto::RpoRandomCoin;
-use miden_processor::{Felt, ONE};
+use miden_processor::{Felt, ONE, PrimeField64};
 use miden_protocol::Word;
 use miden_protocol::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
 use miden_protocol::asset::{Asset, FungibleAsset};
@@ -85,8 +85,8 @@ async fn test_transaction_epilogue() -> anyhow::Result<()> {
         end
         ",
         recipient = output_note_1.recipient().digest(),
-        note_type = Felt::from(output_note_1.metadata().note_type()),
-        tag = Felt::from(output_note_1.metadata().tag()),
+        note_type = Felt::new(output_note_1.metadata().note_type() as u64),
+        tag = Felt::new(output_note_1.metadata().tag().as_u32() as u64),
         asset = Word::from(asset)
     );
 
@@ -130,7 +130,7 @@ async fn test_transaction_epilogue() -> anyhow::Result<()> {
         .iter()
         .rev(),
     );
-    expected_stack.push(Felt::from(u32::MAX)); // Value for tx expiration block number
+    expected_stack.push(Felt::new(u32::MAX as u64)); // Value for tx expiration block number
     expected_stack.extend((13..16).map(|_| ZERO));
 
     assert_eq!(
@@ -192,8 +192,8 @@ async fn test_compute_output_note_id() -> anyhow::Result<()> {
         # => []
         ",
             recipient = note.recipient().digest(),
-            note_type = Felt::from(note.metadata().note_type()),
-            tag = Felt::from(note.metadata().tag()),
+            note_type = Felt::new(note.metadata().note_type() as u64),
+            tag = Felt::new(note.metadata().tag().as_u32() as u64),
             asset = Word::from(asset)
         ));
     }
@@ -379,7 +379,7 @@ async fn test_block_expiration_height_monotonically_decreases() -> anyhow::Resul
         assert_eq!(
             exec_output
                 .get_stack_element(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
-                .as_int(),
+                .as_canonical_u64(),
             expected_expiry
         );
     }
@@ -439,7 +439,7 @@ async fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     assert_eq!(
         exec_output
             .get_stack_element(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
-            .as_int() as u32,
+            .as_canonical_u64() as u32,
         u32::MAX
     );
 

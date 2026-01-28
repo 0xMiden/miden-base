@@ -6,7 +6,14 @@ use miden_agglayer::{agglayer_library, utils};
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, DefaultHost, ExecutionError, Program, StackInputs};
+use miden_processor::{
+    AdviceInputs,
+    DefaultHost,
+    ExecutionError,
+    PrimeField64,
+    Program,
+    StackInputs,
+};
 use miden_protocol::Felt;
 use miden_protocol::transaction::TransactionKernel;
 use primitive_types::U256;
@@ -41,10 +48,10 @@ async fn execute_program_with_default_host(
     let asset_conversion_lib = agglayer_library();
     host.load_library(asset_conversion_lib.mast_forest()).unwrap();
 
-    let stack_inputs = StackInputs::new(vec![]).unwrap();
+    let stack_inputs = StackInputs::new(&[]).unwrap();
     let advice_inputs = AdviceInputs::default();
 
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    let processor = FastProcessor::new_debug(stack_inputs, advice_inputs);
     processor.execute(&program, &mut host).await
 }
 
@@ -83,14 +90,14 @@ async fn test_convert_to_u256_helper(
 
     // Extract the first 8 u32 values from the stack (the U256 representation)
     let actual_result: [u32; 8] = [
-        exec_output.stack[0].as_int() as u32,
-        exec_output.stack[1].as_int() as u32,
-        exec_output.stack[2].as_int() as u32,
-        exec_output.stack[3].as_int() as u32,
-        exec_output.stack[4].as_int() as u32,
-        exec_output.stack[5].as_int() as u32,
-        exec_output.stack[6].as_int() as u32,
-        exec_output.stack[7].as_int() as u32,
+        exec_output.stack[0].as_canonical_u64() as u32,
+        exec_output.stack[1].as_canonical_u64() as u32,
+        exec_output.stack[2].as_canonical_u64() as u32,
+        exec_output.stack[3].as_canonical_u64() as u32,
+        exec_output.stack[4].as_canonical_u64() as u32,
+        exec_output.stack[5].as_canonical_u64() as u32,
+        exec_output.stack[6].as_canonical_u64() as u32,
+        exec_output.stack[7].as_canonical_u64() as u32,
     ];
 
     let actual_result_u256 = stack_to_u256(&exec_output);

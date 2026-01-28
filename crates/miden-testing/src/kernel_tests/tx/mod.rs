@@ -71,10 +71,9 @@ impl ExecutionOutputExt for ExecutionOutput {
     fn get_kernel_mem_word(&self, addr: u32) -> Word {
         let tx_kernel_context = ContextId::root();
         let clk = 0u32;
-        let err_ctx = ();
 
         self.memory
-            .read_word(tx_kernel_context, Felt::from(addr), clk.into(), &err_ctx)
+            .read_word(tx_kernel_context, Felt::new(addr as u64), clk.into())
             .expect("expected address to be word-aligned")
     }
 
@@ -83,19 +82,21 @@ impl ExecutionOutputExt for ExecutionOutput {
     }
 
     fn get_stack_word_be(&self, index: usize) -> Word {
-        self.stack.get_stack_word_be(index).expect("index must be in bounds")
+        // Stack outputs now use get_word which returns in little-endian order
+        // For big-endian, we need to reverse
+        let word = self.stack.get_word(index).expect("index must be in bounds");
+        Word::from([word[3], word[2], word[1], word[0]])
     }
 
     fn get_stack_word_le(&self, index: usize) -> Word {
-        self.stack.get_stack_word_le(index).expect("index must be in bounds")
+        self.stack.get_word(index).expect("index must be in bounds")
     }
 
     fn get_kernel_mem_element(&self, addr: u32) -> Felt {
         let tx_kernel_context = ContextId::root();
-        let err_ctx = ();
 
         self.memory
-            .read_element(tx_kernel_context, Felt::from(addr), &err_ctx)
+            .read_element(tx_kernel_context, Felt::new(addr as u64))
             .expect("address converted from u32 should be in bounds")
     }
 }

@@ -393,8 +393,8 @@ fn prepare_falcon512_rpo_signature(sig: &falcon512_rpo::Signature) -> Vec<Felt> 
     // Finally, we push the nonce needed for the hash-to-point algorithm.
 
     let mut polynomials: Vec<Felt> =
-        h.coefficients.iter().map(|a| Felt::from(a.value() as u32)).collect();
-    polynomials.extend(s2.coefficients.iter().map(|a| Felt::from(a.value() as u32)));
+        h.coefficients.iter().map(|a| Felt::new(a.value() as u32 as u64)).collect();
+    polynomials.extend(s2.coefficients.iter().map(|a| Felt::new(a.value() as u32 as u64)));
     polynomials.extend(pi.iter().map(|a| Felt::new(*a)));
 
     let digest_polynomials = Hasher::hash_elements(&polynomials);

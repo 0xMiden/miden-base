@@ -225,7 +225,8 @@ impl Deserializable for NoteAttachmentContent {
             },
             NoteAttachmentKind::Array => {
                 let num_elements = u16::read_from(source)?;
-                let elements = source.read_many(num_elements as usize)?;
+                let elements =
+                    source.read_many_iter(num_elements as usize)?.collect::<Result<Vec<_>, _>>()?;
                 Self::new_array(elements)
                     .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
             },
@@ -499,7 +500,7 @@ mod tests {
     #[test]
     fn note_attachment_commitment_fails_on_too_many_elements() -> anyhow::Result<()> {
         let too_many_elements = (NoteAttachmentArray::MAX_NUM_ELEMENTS as usize) + 1;
-        let elements = vec![Felt::from(1u32); too_many_elements];
+        let elements = vec![Felt::new(1u32 as u64); too_many_elements];
         let err = NoteAttachmentArray::new(elements).unwrap_err();
 
         assert_matches!(err, NoteError::NoteAttachmentArraySizeExceeded(len) => {

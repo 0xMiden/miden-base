@@ -1,14 +1,14 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::future::Future;
 
 use miden_processor::{
     AdviceMutation,
-    BaseHost,
     EventError,
+    Host,
     MastForest,
     MastForestStore,
-    ProcessState,
-    SyncHost,
+    ProcessorState,
 };
 use miden_protocol::Word;
 use miden_protocol::account::{AccountDelta, PartialAccount};
@@ -19,7 +19,7 @@ use miden_protocol::transaction::{InputNote, InputNotes, OutputNote};
 use crate::host::{RecipientData, ScriptMastForestStore, TransactionBaseHost, TransactionEvent};
 use crate::{AccountProcedureIndexMap, TransactionKernelError};
 
-/// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
+/// The transaction prover host is responsible for handling [`Host`] requests made by the
 /// transaction kernel during proving.
 pub struct TransactionProverHost<'store, STORE>
 where
@@ -67,7 +67,7 @@ where
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
+impl<STORE> Host for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
@@ -80,17 +80,35 @@ where
         // is only used to improve error message quality which we shouldn't run into here.
         (SourceSpan::UNKNOWN, None)
     }
+
+    fn get_mast_forest(
+        &self,
+        node_digest: &Word,
+    ) -> impl Future<Output = Option<Arc<MastForest>>> + Send {
+        let forest = self.base_host.get_mast_forest(node_digest);
+        async move { forest }
+    }
+
+    fn on_event(
+        &mut self,
+        process: &ProcessorState<'_>,
+    ) -> impl Future<Output = Result<Vec<AdviceMutation>, EventError>> + Send {
+        // Extract the event from the process state
+        let result = self.handle_on_event_sync(process);
+        async move { result }
+    }
 }
 
-impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
+impl<STORE> TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
-    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(node_digest)
-    }
-
-    fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
+    /// Synchronous handler for on_event - does the actual work and returns a result.
+    /// This is wrapped in an async block by the trait implementation.
+    fn handle_on_event_sync(
+        &mut self,
+        process: &ProcessorState<'_>,
+    ) -> Result<Vec<AdviceMutation>, EventError> {
         if let Some(advice_mutations) = self.base_host.handle_core_lib_events(process)? {
             return Ok(advice_mutations);
         }

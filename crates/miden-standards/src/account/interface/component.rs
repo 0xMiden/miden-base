@@ -1,10 +1,11 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use miden_processor::PrimeField64;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountId, AccountProcedureRoot, AccountStorage, StorageSlotName};
 use miden_protocol::note::PartialNote;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word};
 
 use crate::AuthScheme;
 use crate::account::auth::{
@@ -233,7 +234,7 @@ impl AccountComponentInterface {
                 # => [tag, note_type, RECIPIENT, pad(16)]
                 ",
                 recipient = partial_note.recipient_digest(),
-                note_type = Felt::from(partial_note.metadata().note_type()),
+                note_type = Felt::new(partial_note.metadata().note_type() as u64),
                 tag = Felt::from(partial_note.metadata().tag()),
             ));
 
@@ -328,15 +329,15 @@ fn extract_multisig_auth_scheme(
         .get_item(config_slot)
         .expect("invalid slot name of the multisig configuration");
 
-    let threshold = config[0].as_int() as u32;
-    let num_approvers = config[1].as_int() as u8;
+    let threshold = config[0].as_canonical_u64() as u32;
+    let num_approvers = config[1].as_canonical_u64() as u8;
 
     let mut pub_keys = Vec::new();
 
     // Read each public key from the map
     for key_index in 0..num_approvers {
         // The multisig component stores keys using pattern [index, 0, 0, 0]
-        let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
+        let map_key = [Felt::new(key_index as u64), Felt::new(0), Felt::new(0), Felt::new(0)];
 
         match storage.get_map_item(approver_public_keys_slot, map_key.into()) {
             Ok(pub_key) => {

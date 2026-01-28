@@ -9,6 +9,7 @@ use miden_agglayer::{
     create_existing_agglayer_faucet,
     create_existing_bridge_account,
 };
+use miden_processor::PrimeField64;
 use miden_protocol::Felt;
 use miden_protocol::account::Account;
 use miden_protocol::asset::{Asset, FungibleAsset};
@@ -127,7 +128,8 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
 
     // CREATE EXPECTED P2ID NOTE FOR VERIFICATION
     // --------------------------------------------------------------------------------------------
-    let mint_asset: Asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?.into();
+    let mint_asset: Asset =
+        FungibleAsset::new(agglayer_faucet.id(), amount_felt.as_canonical_u64())?.into();
     let output_note_tag = NoteTag::with_account_target(user_account.id());
     let expected_p2id_note = Note::new(
         NoteAssets::new(vec![mint_asset])?,
@@ -155,7 +157,7 @@ async fn test_bridge_in_claim_to_p2id() -> anyhow::Result<()> {
     let output_note = executed_transaction.output_notes().get_note(0);
 
     // Verify the output note contains the minted fungible asset
-    let expected_asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.into())?;
+    let expected_asset = FungibleAsset::new(agglayer_faucet.id(), amount_felt.as_canonical_u64())?;
 
     // Verify note metadata properties
     assert_eq!(output_note.metadata().sender(), agglayer_faucet.id());

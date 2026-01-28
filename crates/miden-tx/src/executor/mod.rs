@@ -1,5 +1,6 @@
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_processor::fast::FastProcessor;
 use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
@@ -80,6 +81,7 @@ where
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,
+                1 << 12, // DEFAULT_CORE_TRACE_FRAGMENT_SIZE = 4096
                 false,
                 false,
             )
@@ -148,7 +150,7 @@ where
     /// stages of transaction execution take.
     #[must_use]
     pub fn with_tracing(mut self) -> Self {
-        self.exec_options = self.exec_options.with_tracing();
+        self.exec_options = self.exec_options.with_tracing(true);
         self
     }
 
@@ -188,9 +190,9 @@ where
         // TODO: the processor does not yet respect other execution options (e.g., max cycles);
         // this will be fixed in v0.21 release of the VM
         let processor = if self.exec_options.enable_debugging() {
-            FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs)
+            FastProcessor::new_debug(stack_inputs.clone(), advice_inputs)
         } else {
-            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs)
+            FastProcessor::new_with_advice_inputs(stack_inputs.clone(), advice_inputs)
         };
 
         let output = processor
@@ -237,8 +239,7 @@ where
 
         let (mut host, stack_inputs, advice_inputs) = self.prepare_transaction(&tx_inputs).await?;
 
-        let processor =
-            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let processor = FastProcessor::new_with_advice_inputs(stack_inputs.clone(), advice_inputs);
         let output = processor
             .execute(&TransactionKernel::tx_script_main(), &mut host)
             .await
@@ -322,7 +323,8 @@ where
         //
         // Once we use the FastProcessor for execution and proving, we can change the way these
         // inputs are constructed in TransactionKernel::prepare_inputs.
-        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
+        let stack_inputs_vec: Vec<_> = stack_inputs.iter().copied().collect();
+        let stack_inputs = StackInputs::new(&stack_inputs_vec).unwrap();
 
         let input_notes = tx_inputs.input_notes();
 

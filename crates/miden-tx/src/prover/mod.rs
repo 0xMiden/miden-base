@@ -1,6 +1,8 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_processor::StackInputs;
+use miden_protocol::Word;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{AccountDelta, PartialAccount};
 use miden_protocol::asset::Asset;
@@ -16,7 +18,7 @@ use miden_protocol::transaction::{
     TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;
-use miden_prover::{ExecutionProof, Word, prove};
+use miden_prover::{ExecutionProof, HashFunction, Host, prove_sync};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -43,6 +45,149 @@ impl LocalTransactionProver {
             mast_store: Arc::new(TransactionMastStore::new()),
             proof_options,
         }
+    }
+
+    /// Async version of prove that uses the async processor API.
+    /// This avoids Tokio runtime nesting issues when called from async contexts.
+    pub async fn prove_async(
+        &self,
+        tx_inputs: impl Into<TransactionInputs>,
+    ) -> Result<ProvenTransaction, TransactionProverError> {
+        let tx_inputs = tx_inputs.into();
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(&tx_inputs);
+
+        self.mast_store.load_account_code(tx_inputs.account().code());
+        for account_code in tx_inputs.foreign_account_code() {
+            self.mast_store.load_account_code(account_code);
+        }
+
+        let script_mast_store = ScriptMastForestStore::new(
+            tx_inputs.tx_script(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+        );
+
+        let account_procedure_index_map = AccountProcedureIndexMap::new(
+            tx_inputs.foreign_account_code().iter().chain([tx_inputs.account().code()]),
+        );
+
+        let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
+        let mut host = TransactionProverHost::new(
+            &partial_account,
+            input_notes,
+            self.mast_store.as_ref(),
+            script_mast_store,
+            account_procedure_index_map,
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
+
+        // Call the async prover instead of sync
+        let (stack_outputs, proof) = self
+            .prove_inner_async(stack_inputs, advice_inputs.clone(), &mut host)
+            .await
+            .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
+
+        // Extract transaction outputs and process transaction data.
+        let (pre_fee_account_delta, input_notes, output_notes) = host.into_parts();
+        let tx_outputs =
+            TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
+                .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
+
+        self.build_proven_transaction(
+            &input_notes,
+            tx_outputs,
+            pre_fee_account_delta,
+            partial_account,
+            ref_block.block_num(),
+            ref_block.commitment(),
+            proof,
+        )
+    }
+
+    /// Inner async prover that replicates miden_prover::prove but uses async processor.
+    async fn prove_inner_async(
+        &self,
+        stack_inputs: miden_prover::StackInputs,
+        advice_inputs: miden_prover::AdviceInputs,
+        host: &mut impl Host,
+    ) -> Result<(miden_prover::StackOutputs, ExecutionProof), miden_prover::ExecutionError> {
+        use miden_air::ProcessorAir;
+        use miden_processor::fast::FastProcessor;
+        use miden_processor::parallel::build_trace;
+        use miden_prover::math::Felt;
+
+        let program = &TransactionKernel::main();
+
+        // Reverse stack inputs
+        let stack_inputs_reversed: Vec<Felt> = stack_inputs.iter().copied().rev().collect();
+        let stack_inputs = StackInputs::new(&stack_inputs_reversed).unwrap();
+
+        let processor = if self.proof_options.execution_options().enable_debugging() {
+            FastProcessor::new_debug(stack_inputs.clone(), advice_inputs.clone())
+        } else {
+            FastProcessor::new_with_advice_inputs(stack_inputs.clone(), advice_inputs.clone())
+        };
+
+        // Use async execute_for_trace instead of sync version
+        let (execution_output, trace_generation_context) =
+            processor.execute_for_trace(program, host).await?;
+
+        let trace = build_trace(
+            execution_output,
+            trace_generation_context,
+            program.hash(),
+            program.kernel().clone(),
+        );
+
+        let stack_outputs = trace.stack_outputs().clone();
+        let precompile_requests = trace.precompile_requests().to_vec();
+        let hash_fn = self.proof_options.hash_fn();
+
+        // Convert trace to row-major format
+        let trace_matrix = miden_prover::execution_trace_to_row_major(&trace);
+
+        // Build public values
+        let public_values = trace.to_public_values();
+
+        // Create AIR with aux trace builders
+        let air = ProcessorAir::with_aux_builder(trace.aux_trace_builders().clone());
+
+        // Generate STARK proof using unified miden-prover
+        let proof_bytes = match hash_fn {
+            HashFunction::Blake3_256 => {
+                let config = miden_air::config::create_blake3_256_config();
+                let proof =
+                    miden_crypto::stark::prove(&config, &air, &trace_matrix, &public_values);
+                bincode::serialize(&proof).expect("Failed to serialize proof")
+            },
+            HashFunction::Keccak => {
+                let config = miden_air::config::create_keccak_config();
+                let proof =
+                    miden_crypto::stark::prove(&config, &air, &trace_matrix, &public_values);
+                bincode::serialize(&proof).expect("Failed to serialize proof")
+            },
+            HashFunction::Rpo256 => {
+                let config = miden_air::config::create_rpo_config();
+                let proof =
+                    miden_crypto::stark::prove(&config, &air, &trace_matrix, &public_values);
+                bincode::serialize(&proof).expect("Failed to serialize proof")
+            },
+            HashFunction::Poseidon2 => {
+                let config = miden_air::config::create_poseidon2_config();
+                let proof =
+                    miden_crypto::stark::prove(&config, &air, &trace_matrix, &public_values);
+                bincode::serialize(&proof).expect("Failed to serialize proof")
+            },
+            HashFunction::Rpx256 => {
+                let config = miden_air::config::create_rpx_config();
+                let proof =
+                    miden_crypto::stark::prove(&config, &air, &trace_matrix, &public_values);
+                bincode::serialize(&proof).expect("Failed to serialize proof")
+            },
+        };
+
+        let proof = ExecutionProof::new(proof_bytes, hash_fn, precompile_requests);
+        Ok((stack_outputs, proof))
     }
 
     fn build_proven_transaction(
@@ -94,6 +239,7 @@ impl LocalTransactionProver {
         builder.build().map_err(TransactionProverError::ProvenTransactionBuildFailed)
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn prove(
         &self,
         tx_inputs: impl Into<TransactionInputs>,
@@ -126,7 +272,8 @@ impl LocalTransactionProver {
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        let (stack_outputs, proof) = prove(
+        // On non-wasm32, use prove_sync(). This code path is gated by the function-level cfg.
+        let (stack_outputs, proof) = prove_sync(
             &TransactionKernel::main(),
             stack_inputs,
             advice_inputs.clone(),
@@ -174,6 +321,9 @@ impl LocalTransactionProver {
 
         let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
 
+        // Create a dummy execution proof (for testing purposes only)
+        let proof = ExecutionProof::new(vec![1u8, 2, 3], HashFunction::Rpo256, vec![]);
+
         self.build_proven_transaction(
             &input_notes,
             tx_outputs,
@@ -181,7 +331,7 @@ impl LocalTransactionProver {
             partial_account,
             ref_block.block_num(),
             ref_block.commitment(),
-            ExecutionProof::new_dummy(),
+            proof,
         )
     }
 }

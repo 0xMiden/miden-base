@@ -2,7 +2,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
 
-use miden_processor::MastNodeExt;
+use miden_processor::{MastNodeExt, PrimeField64};
 
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
@@ -112,7 +112,7 @@ impl From<&NoteScript> for Vec<Felt> {
         let mut result = Vec::with_capacity(final_size);
 
         // Push the length, this is used to remove the padding later
-        result.push(Felt::from(u32::from(script.entrypoint)));
+        result.push(Felt::new(u32::from(script.entrypoint) as u64));
         result.push(Felt::new(len as u64));
 
         // A Felt can not represent all u64 values, so the data is encoded using u32.
@@ -153,12 +153,14 @@ impl TryFrom<&[Felt]> for NoteScript {
             return Err(DeserializationError::UnexpectedEOF);
         }
 
-        let entrypoint: u32 = elements[0].try_into().map_err(DeserializationError::InvalidValue)?;
-        let len = elements[1].as_int();
+        let entrypoint: u32 = u32::try_from(elements[0].as_canonical_u64())
+            .map_err(|_| DeserializationError::InvalidValue("invalid entrypoint value".into()))?;
+        let len = elements[1].as_canonical_u64();
         let mut data = Vec::with_capacity(elements.len() * 4);
 
         for &felt in &elements[2..] {
-            let v: u32 = felt.try_into().map_err(DeserializationError::InvalidValue)?;
+            let v: u32 = u32::try_from(felt.as_canonical_u64())
+                .map_err(|_| DeserializationError::InvalidValue("invalid element value".into()))?;
             data.extend(v.to_le_bytes())
         }
         data.shrink_to(len as usize);
@@ -239,6 +241,7 @@ mod tests {
     #[test]
     fn test_note_script_with_advice_map() {
         use miden_core::{AdviceMap, Word};
+        use miden_processor::PrimeField64;
 
         let assembler = Assembler::default();
         let program = assembler.assemble_program("begin nop end").unwrap();

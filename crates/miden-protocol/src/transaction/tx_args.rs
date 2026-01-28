@@ -177,7 +177,7 @@ impl TransactionArgs {
             (storage.commitment(), storage.to_elements()),
             (
                 Hasher::hash_elements(storage.commitment().as_elements()),
-                vec![Felt::from(storage.num_items())],
+                vec![Felt::new(storage.num_items() as u64)],
             ),
             (script.root(), script_encoded),
         ];
@@ -363,8 +363,10 @@ impl Deserializable for TransactionScript {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
+    use alloc::vec::Vec;
+
     use miden_core::AdviceMap;
     use miden_core::utils::{Deserializable, Serializable};
 
@@ -373,7 +375,7 @@ mod tests {
     #[test]
     fn test_tx_args_serialization() {
         let tx_args = TransactionArgs::new(AdviceMap::default());
-        let bytes: std::vec::Vec<u8> = tx_args.to_bytes();
+        let bytes: Vec<u8> = tx_args.to_bytes();
         let decoded = TransactionArgs::read_from_bytes(&bytes).unwrap();
 
         assert_eq!(tx_args, decoded);

@@ -21,7 +21,7 @@ pub use id_version::AccountIdVersion;
 use miden_core::Felt;
 use miden_core::utils::{ByteReader, Deserializable, Serializable};
 use miden_crypto::utils::hex_to_bytes;
-use miden_processor::DeserializationError;
+use miden_processor::{DeserializationError, PrimeField64};
 
 use crate::Word;
 use crate::address::NetworkId;
@@ -142,7 +142,7 @@ impl AccountId {
     pub fn new_unchecked(elements: [Felt; 2]) -> Self {
         // The prefix contains the metadata.
         // If we add more versions in the future, we may need to generalize this.
-        match v0::extract_version(elements[0].as_int())
+        match v0::extract_version(elements[0].as_canonical_u64())
             .expect("prefix should contain a valid account ID version")
         {
             AccountIdVersion::Version0 => Self::V0(AccountIdV0::new_unchecked(elements)),
@@ -207,7 +207,7 @@ impl AccountId {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the type of this account ID.
-    pub const fn account_type(&self) -> AccountType {
+    pub fn account_type(&self) -> AccountType {
         match self {
             AccountId::V0(account_id) => account_id.account_type(),
         }
@@ -411,7 +411,7 @@ impl TryFrom<[Felt; 2]> for AccountId {
     fn try_from(elements: [Felt; 2]) -> Result<Self, Self::Error> {
         // The prefix contains the metadata.
         // If we add more versions in the future, we may need to generalize this.
-        match v0::extract_version(elements[0].as_int())? {
+        match v0::extract_version(elements[0].as_canonical_u64())? {
             AccountIdVersion::Version0 => AccountIdV0::try_from(elements).map(Self::V0),
         }
     }

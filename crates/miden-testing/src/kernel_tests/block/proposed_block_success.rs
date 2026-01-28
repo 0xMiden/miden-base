@@ -4,6 +4,7 @@ use std::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
+use miden_protocol::Felt;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{Account, AccountId, AccountStorageMode};
 use miden_protocol::asset::FungibleAsset;
@@ -11,7 +12,6 @@ use miden_protocol::block::{BlockInputs, ProposedBlock};
 use miden_protocol::note::{Note, NoteType};
 use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_protocol::transaction::{ExecutedTransaction, OutputNote, TransactionHeader};
-use miden_protocol::{Felt, FieldElement};
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_standards::testing::note::NoteBuilder;
 use miden_tx::LocalTransactionProver;
@@ -33,7 +33,8 @@ async fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         BTreeMap::default(),
         BTreeMap::default(),
     );
-    let block = ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
+    let block =
+        ProposedBlock::new_at(block_inputs, Vec::new(), 0).context("failed to propose block")?;
 
     assert_eq!(block.transactions().count(), 0);
     assert_eq!(block.output_note_batches().len(), 0);
@@ -67,7 +68,7 @@ async fn proposed_block_basic_success() -> anyhow::Result<()> {
     let batches = [batch0, batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
 
-    let proposed_block = ProposedBlock::new(block_inputs.clone(), batches.to_vec()).unwrap();
+    let proposed_block = ProposedBlock::new_at(block_inputs.clone(), batches.to_vec(), 0).unwrap();
 
     assert_eq!(proposed_block.batches().as_slice(), batches);
     assert_eq!(proposed_block.block_num(), block_inputs.prev_block_header().block_num() + 1);
@@ -149,8 +150,8 @@ async fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches).unwrap();
 
-    let block =
-        ProposedBlock::new(block_inputs, batches).context("failed to build proposed block")?;
+    let block = ProposedBlock::new_at(block_inputs, batches, 0)
+        .context("failed to build proposed block")?;
 
     assert_eq!(block.updated_accounts().len(), 1);
     let (account_id, account_update) = &block.updated_accounts()[0];
@@ -210,7 +211,7 @@ async fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result
     assert!(block_inputs.nullifier_witnesses().contains_key(&note0.nullifier()));
     assert!(block_inputs.nullifier_witnesses().contains_key(&note1.nullifier()));
 
-    let proposed_block = ProposedBlock::new(block_inputs.clone(), batches.to_vec())
+    let proposed_block = ProposedBlock::new_at(block_inputs.clone(), batches.to_vec(), 0)
         .context("failed to build proposed block")?;
 
     // We expect both notes to have been authenticated and therefore should be part of the
@@ -254,7 +255,7 @@ async fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     // This block's number is 3 (the previous block is block 2), which means batch 1, which expires
     // at block 3 (due to tx1) should still be accepted into the block.
     let block_inputs = chain.get_block_inputs(&batches)?;
-    ProposedBlock::new(block_inputs.clone(), batches.clone())?;
+    ProposedBlock::new_at(block_inputs.clone(), batches.clone(), 0)?;
 
     Ok(())
 }
@@ -306,7 +307,7 @@ async fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> a
     let batches = vec![batch0.clone(), batch1.clone()];
 
     let block_inputs = chain.get_block_inputs(&batches)?;
-    let block = ProposedBlock::new(block_inputs, batches.clone())?;
+    let block = ProposedBlock::new_at(block_inputs, batches.clone(), 0)?;
 
     let (_, update) = block.updated_accounts().iter().next().unwrap();
     assert_eq!(update.initial_state_commitment(), account0.commitment());
@@ -331,7 +332,7 @@ async fn generate_conditional_tx(
 ) -> ExecutedTransaction {
     let auth_args = [
         // increment nonce if modify_storage is true
-        if modify_storage { Felt::ONE } else { Felt::ZERO },
+        if modify_storage { Felt::new(1) } else { Felt::new(0) },
         Felt::new(99),
         Felt::new(98),
         Felt::new(97),

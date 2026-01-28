@@ -3,11 +3,10 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_processor::{ONE, ZERO};
+use miden_processor::{Felt, ONE, ZERO};
 use miden_protocol::{EMPTY_WORD, LexicographicWord, Word};
 use miden_tx::{LinkMap, MemoryViewer};
 use rand::seq::IteratorRandom;
-use winter_rand_utils::rand_value;
 
 use crate::TransactionContextBuilder;
 
@@ -176,7 +175,7 @@ async fn insertion() -> anyhow::Result<()> {
     let exec_output = tx_context.execute_code(&code).await.context("failed to execute code")?;
     let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
-    let map = LinkMap::new(map_ptr.into(), &mem_viewer);
+    let map = LinkMap::new(miden_protocol::Felt::new(map_ptr as u64), &mem_viewer);
     let mut map_iter = map.iter();
 
     let entry0 = map_iter.next().expect("map should have four entries");
@@ -546,7 +545,7 @@ async fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result
     let mem_viewer = MemoryViewer::ExecutionOutputs(&exec_output);
 
     for (map_ptr, control_map) in control_maps {
-        let map = LinkMap::new(map_ptr.into(), &mem_viewer);
+        let map = LinkMap::new(Felt::new(map_ptr as u64), &mem_viewer);
         let actual_map_len = map.iter().count();
         assert_eq!(
             actual_map_len,
@@ -604,8 +603,8 @@ fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Word, Word))> {
     (0..count)
         .map(|_| {
             let key = rand_link_map_key();
-            let value0 = rand_value::<Word>();
-            let value1 = rand_value::<Word>();
+            let value0 = rand_word();
+            let value1 = rand_word();
             (key, (value0, value1))
         })
         .collect()
@@ -621,10 +620,19 @@ fn generate_updates(
         .iter()
         .choose_multiple(&mut rng, num_updates)
         .into_iter()
-        .map(|(key, _)| (*key, (rand_value::<Word>(), rand_value::<Word>())))
+        .map(|(key, _)| (*key, (rand_word(), rand_word())))
         .collect()
 }
 
+fn rand_word() -> Word {
+    Word::from([
+        Felt::new(rand::random()),
+        Felt::new(rand::random()),
+        Felt::new(rand::random()),
+        Felt::new(rand::random()),
+    ])
+}
+
 fn rand_link_map_key() -> LexicographicWord {
-    LexicographicWord::new(rand_value())
+    LexicographicWord::new(rand_word())
 }

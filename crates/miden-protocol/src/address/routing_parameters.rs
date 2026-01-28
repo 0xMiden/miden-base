@@ -254,7 +254,8 @@ impl Serializable for RoutingParameters {
 impl Deserializable for RoutingParameters {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let num_bytes = source.read_u16()?;
-        let bytes: Vec<u8> = source.read_many(num_bytes as usize)?;
+        let bytes: Vec<u8> =
+            source.read_many_iter(num_bytes as usize)?.collect::<Result<Vec<_>, _>>()?;
 
         Self::decode_from_bytes(bytes.into_iter())
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))

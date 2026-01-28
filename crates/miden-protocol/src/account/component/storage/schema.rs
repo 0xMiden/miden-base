@@ -12,7 +12,7 @@ use crate::account::storage::is_reserved_slot_name;
 use crate::account::{StorageMap, StorageSlot, StorageSlotName};
 use crate::crypto::utils::bytes_to_elements_with_padding;
 use crate::errors::AccountComponentTemplateError;
-use crate::{Felt, FieldElement, Hasher, Word};
+use crate::{Felt, Hasher, Word};
 
 // STORAGE SCHEMA
 // ================================================================================================
@@ -428,7 +428,7 @@ impl WordSchema {
                     return parse_storage_value_with_schema(self, value, &slot_prefix);
                 }
 
-                let mut result = [Felt::ZERO; 4];
+                let mut result = [Felt::new(0); 4];
                 for (index, felt_schema) in value.iter().enumerate() {
                     result[index] = felt_schema.try_build_felt(init_storage_data, slot_name)?;
                 }
@@ -692,7 +692,7 @@ impl FeltSchema {
         }
 
         if self.r#type == SchemaTypeId::void() {
-            return Ok(Felt::ZERO);
+            return Ok(Felt::new(0));
         }
 
         if let Some(default_value) = self.default_value {
@@ -1039,7 +1039,7 @@ fn parse_composite_elements(
     elements: &[String; 4],
     slot_prefix: &StorageValueName,
 ) -> Result<Word, AccountComponentTemplateError> {
-    let mut felts = [Felt::ZERO; 4];
+    let mut felts = [Felt::new(0); 4];
     for (index, felt_schema) in schema.iter().enumerate() {
         let felt_type = felt_schema.felt_type();
         felts[index] =

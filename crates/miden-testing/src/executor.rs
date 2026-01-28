@@ -1,7 +1,9 @@
+use alloc::vec::Vec;
+
 #[cfg(test)]
 use miden_processor::DefaultHost;
 use miden_processor::fast::{ExecutionOutput, FastProcessor};
-use miden_processor::{AdviceInputs, AsyncHost, ExecutionError, Program, StackInputs};
+use miden_processor::{AdviceInputs, ExecutionError, Host, Program, StackInputs};
 #[cfg(test)]
 use miden_protocol::assembly::Assembler;
 
@@ -15,7 +17,7 @@ pub(crate) struct CodeExecutor<H> {
     advice_inputs: AdviceInputs,
 }
 
-impl<H: AsyncHost> CodeExecutor<H> {
+impl<H: Host> CodeExecutor<H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     pub(crate) fn new(host: H) -> Self {
@@ -73,11 +75,11 @@ impl<H: AsyncHost> CodeExecutor<H> {
         //
         // Once we use the FastProcessor for execution and proving, we can change the way these
         // inputs are constructed in TransactionKernel::prepare_inputs.
-        let stack_inputs =
-            StackInputs::new(self.stack_inputs.unwrap_or_default().iter().copied().collect())
-                .unwrap();
+        let stack_inputs_vec: Vec<_> =
+            self.stack_inputs.unwrap_or_default().iter().copied().collect();
+        let stack_inputs = StackInputs::new(&stack_inputs_vec).unwrap();
 
-        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), self.advice_inputs);
+        let processor = FastProcessor::new_debug(stack_inputs, self.advice_inputs);
 
         let execution_output = processor.execute(&program, &mut self.host).await?;
 

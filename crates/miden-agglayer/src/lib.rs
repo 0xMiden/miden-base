@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 
 use miden_assembly::Library;
 use miden_assembly::utils::Deserializable;
-use miden_core::{Felt, FieldElement, Program, Word};
+use miden_core::{Felt, Program, Word};
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -236,7 +236,7 @@ pub fn create_agglayer_faucet_component(
     // Create network faucet metadata slot: [max_supply, decimals, token_symbol, 0]
     let token_symbol = TokenSymbol::new(token_symbol).expect("Token symbol should be valid");
     let metadata_word =
-        Word::new([max_supply, Felt::from(decimals), token_symbol.into(), FieldElement::ZERO]);
+        Word::new([max_supply, Felt::new(decimals as u64), token_symbol.into(), Felt::new(0)]);
     let metadata_slot =
         StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
 
@@ -453,7 +453,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     // metadata (fixed size of 8 felts)
     claim_storage_items.extend(params.metadata);
 
-    let padding = vec![Felt::ZERO; 4];
+    let padding = vec![Felt::new(0); 4];
     claim_storage_items.extend(padding);
 
     // 3) CLAIM NOTE DATA
@@ -466,7 +466,7 @@ pub fn create_claim_note<R: FeltRng>(params: ClaimNoteParams<'_, R>) -> Result<N
     claim_storage_items.push(params.agglayer_faucet_account_id.suffix());
 
     // output note tag
-    claim_storage_items.push(params.output_note_tag.as_u32().into());
+    claim_storage_items.push(Felt::from(params.output_note_tag));
 
     let inputs = NoteStorage::new(claim_storage_items)?;
 

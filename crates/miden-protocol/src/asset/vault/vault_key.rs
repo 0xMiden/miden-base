@@ -1,7 +1,7 @@
 use core::fmt;
 
 use miden_crypto::merkle::smt::LeafIndex;
-use miden_processor::SMT_DEPTH;
+use miden_processor::{PrimeField64, SMT_DEPTH};
 
 use crate::Word;
 use crate::account::AccountType::FungibleFaucet;
@@ -89,7 +89,7 @@ impl AssetVaultKey {
 
     /// Returns `true` if the asset key is for a fungible asset, `false` otherwise.
     fn is_fungible(&self) -> bool {
-        self.0[0].as_int() == 0 && self.0[1].as_int() == 0
+        self.0[0].as_canonical_u64() == 0 && self.0[1].as_canonical_u64() == 0
     }
 }
 
