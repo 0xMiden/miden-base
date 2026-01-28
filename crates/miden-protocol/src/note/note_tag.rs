@@ -257,10 +257,11 @@ mod tests {
 
         let tag = NoteTag::with_custom_account_target(account_id, len)?;
 
-        let prefix = account_id.prefix().as_u64();
-        let expected = (prefix >> (64 - len)) as u32;
-
-        assert_eq!(tag.as_u32(), expected, "full 32-bit tag should match account prefix");
+        assert_eq!(
+            (account_id.prefix().as_u64() >> 32) as u32,
+            tag.as_u32(),
+            "32 most significant bits should match"
+        );
 
         Ok(())
     }
