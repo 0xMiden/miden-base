@@ -326,7 +326,7 @@ impl OutputNote {
         }
     }
 
-    /// Converts this raw output note to a proven output note.
+    /// Converts this output note to a proven output note.
     ///
     /// This method performs the following transformations:
     /// - Full private notes are converted to note headers (only public info retained)
