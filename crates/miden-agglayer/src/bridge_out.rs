@@ -79,7 +79,7 @@ impl TryFrom<B2AggNoteStorage> for NoteStorage {
 ///
 /// This note is used to bridge assets from Miden to another network via the AggLayer.
 /// When consumed by a bridge account, the assets are burned and a corresponding
-/// claim can be made on the destination network.
+/// claim can be made on the destination network. B2AGG notes are always public.
 ///
 /// # Parameters
 /// - `storage`: The destination network and address information
@@ -88,7 +88,6 @@ impl TryFrom<B2AggNoteStorage> for NoteStorage {
 /// - `target_account_id`: The account ID that will consume this note (bridge
 ///   account)
 /// - `sender_account_id`: The account ID of the note creator
-/// - `note_type`: The type of note (Public or Private)
 /// - `rng`: Random number generator for creating the note serial number
 ///
 /// # Errors
@@ -98,7 +97,6 @@ pub fn create_b2agg_note<R: FeltRng>(
     assets: NoteAssets,
     target_account_id: AccountId,
     sender_account_id: AccountId,
-    note_type: NoteType,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let note_storage = NoteStorage::try_from(storage)?;
@@ -110,7 +108,8 @@ pub fn create_b2agg_note<R: FeltRng>(
             .map_err(|e| NoteError::other(e.to_string()))?,
     );
 
-    let metadata = NoteMetadata::new(sender_account_id, note_type, tag).with_attachment(attachment);
+    let metadata =
+        NoteMetadata::new(sender_account_id, NoteType::Public, tag).with_attachment(attachment);
 
     let b2agg_script = b2agg_script();
     let recipient = NoteRecipient::new(

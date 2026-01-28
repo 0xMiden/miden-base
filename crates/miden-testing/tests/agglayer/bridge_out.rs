@@ -65,7 +65,6 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         assets,
         bridge_account.id(),
         faucet.id(),
-        NoteType::Public,
         builder.rng_mut(),
     )?;
 
@@ -218,7 +217,6 @@ async fn test_b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
         assets,
         bridge_account.id(),
         user_account.id(),
-        NoteType::Public,
         builder.rng_mut(),
     )?;
 
@@ -325,7 +323,6 @@ async fn test_b2agg_note_non_target_account_cannot_consume() -> anyhow::Result<(
         assets,
         bridge_account.id(), // target
         sender_account.id(), // sender
-        NoteType::Public,
         builder.rng_mut(),
     )?;
 
