@@ -1,6 +1,8 @@
 use alloc::string::{String, ToString};
 use core::fmt;
 
+use miden_processor::PrimeField64;
+
 use super::v0;
 use crate::Felt;
 use crate::account::account_id::AccountIdPrefixV0;
@@ -57,7 +59,7 @@ impl AccountIdPrefix {
     pub fn new_unchecked(prefix: Felt) -> Self {
         // The prefix contains the metadata.
         // If we add more versions in the future, we may need to generalize this.
-        match v0::extract_version(prefix.as_int())
+        match v0::extract_version(prefix.as_canonical_u64())
             .expect("prefix should contain a valid account ID version")
         {
             AccountIdVersion::Version0 => Self::V0(AccountIdPrefixV0::new_unchecked(prefix)),
@@ -73,7 +75,7 @@ impl AccountIdPrefix {
     pub fn new(prefix: Felt) -> Result<Self, AccountIdError> {
         // The prefix contains the metadata.
         // If we add more versions in the future, we may need to generalize this.
-        match v0::extract_version(prefix.as_int())? {
+        match v0::extract_version(prefix.as_canonical_u64())? {
             AccountIdVersion::Version0 => AccountIdPrefixV0::new(prefix).map(Self::V0),
         }
     }
@@ -89,14 +91,14 @@ impl AccountIdPrefix {
     }
 
     /// Returns the prefix as a [`u64`].
-    pub const fn as_u64(&self) -> u64 {
+    pub fn as_u64(&self) -> u64 {
         match self {
             AccountIdPrefix::V0(id_prefix) => id_prefix.as_u64(),
         }
     }
 
     /// Returns the type of this account ID.
-    pub const fn account_type(&self) -> AccountType {
+    pub fn account_type(&self) -> AccountType {
         match self {
             AccountIdPrefix::V0(id_prefix) => id_prefix.account_type(),
         }
@@ -162,8 +164,7 @@ impl AccountIdPrefix {
                 // Set the fungible bit to zero by taking the bitwise `and` of the felt with the
                 // inverted is_faucet mask.
                 let clear_fungible_bit_mask = !AccountIdV0::IS_FAUCET_MASK;
-                Felt::try_from(felt.as_int() & clear_fungible_bit_mask)
-                    .expect("felt should still be valid as we cleared a bit and did not set any")
+                Felt::new(felt.as_canonical_u64() & u64::from(clear_fungible_bit_mask))
             },
         }
     }
@@ -237,8 +238,7 @@ impl TryFrom<u64> for AccountIdPrefix {
     /// Returns an error if any of the ID constraints are not met. See the [constraints
     /// documentation](super::AccountId#constraints) for details.
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        let element = Felt::try_from(value.to_le_bytes().as_slice())
-            .map_err(AccountIdError::AccountIdInvalidPrefixFieldElement)?;
+        let element = Felt::new(value);
         Self::new(element)
     }
 }

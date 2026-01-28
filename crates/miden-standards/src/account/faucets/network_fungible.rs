@@ -1,3 +1,4 @@
+use miden_processor::PrimeField64;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -11,7 +12,7 @@ use miden_protocol::account::{
 };
 use miden_protocol::asset::TokenSymbol;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word};
 
 use super::{BasicFungibleFaucet, FungibleFaucetError};
 use crate::account::auth::NoAuth;
@@ -142,9 +143,9 @@ impl NetworkFungibleFaucet {
                 // verify metadata values and create BasicFungibleFaucet
                 let token_symbol = TokenSymbol::try_from(token_symbol)
                     .map_err(FungibleFaucetError::InvalidTokenSymbol)?;
-                let decimals = decimals.as_int().try_into().map_err(|_| {
+                let decimals = decimals.as_canonical_u64().try_into().map_err(|_| {
                     FungibleFaucetError::TooManyDecimals {
-                        actual: decimals.as_int(),
+                        actual: decimals.as_canonical_u64(),
                         max: Self::MAX_DECIMALS,
                     }
                 })?;
@@ -209,9 +210,9 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
         // [a3, a2, a1, a0, ...]
         let metadata = Word::new([
             network_faucet.faucet.max_supply(),
-            Felt::from(network_faucet.faucet.decimals()),
+            Felt::new(network_faucet.faucet.decimals() as u64),
             network_faucet.faucet.symbol().into(),
-            Felt::ZERO,
+            Felt::new(0),
         ]);
 
         // Convert AccountId into its Word encoding for storage.

@@ -8,6 +8,7 @@ use crate::Hasher;
 use crate::account::StorageMapDelta;
 use crate::crypto::merkle::InnerNodeInfo;
 use crate::crypto::merkle::smt::{LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
+use crate::errors::{AccountError, StorageMapError};
 
 mod partial;
 pub use partial::PartialStorageMap;
@@ -159,6 +160,7 @@ impl StorageMap {
     /// Returns an iterator over the key-value pairs in this storage map.
     ///
     /// Note that the returned key is the raw map key.
+    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
         self.entries.iter()
     }
 

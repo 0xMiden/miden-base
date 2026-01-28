@@ -129,8 +129,8 @@ pub fn create_swap_note<R: FeltRng>(
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::with_account_target(sender);
 
-    let attachment_scheme = Felt::from(payback_note_attachment.attachment_scheme().as_u32());
-    let attachment_kind = Felt::from(payback_note_attachment.attachment_kind().as_u8());
+    let attachment_scheme = Felt::new(payback_note_attachment.attachment_scheme().as_u32() as u64);
+    let attachment_kind = Felt::new(payback_note_attachment.attachment_kind().as_u8() as u64);
     let attachment = payback_note_attachment.content().to_word();
 
     let mut inputs = Vec::with_capacity(16);

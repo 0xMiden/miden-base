@@ -5,6 +5,7 @@ use alloc::vec::Vec;
 
 use super::map::EMPTY_STORAGE_MAP_ROOT;
 use super::{AccountStorage, Felt, StorageSlotType, Word};
+use crate::ZERO;
 use crate::account::{StorageSlot, StorageSlotId, StorageSlotName};
 use crate::crypto::SequentialCommit;
 use crate::errors::AccountError;
@@ -15,7 +16,6 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{FieldElement, ZERO};
 
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
@@ -233,7 +233,8 @@ impl Serializable for AccountStorageHeader {
 impl Deserializable for AccountStorageHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let len = source.read_u8()?;
-        let slots: Vec<StorageSlotHeader> = source.read_many(len as usize)?;
+        let slots: Vec<StorageSlotHeader> =
+            source.read_many_iter(len as usize)?.collect::<Result<Vec<_>, _>>()?;
         Self::new(slots).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
@@ -306,7 +307,7 @@ impl StorageSlotHeader {
         let id = self.id();
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS];
         elements[0..4].copy_from_slice(&[
-            Felt::ZERO,
+            Felt::new(0),
             self.r#type.as_felt(),
             id.suffix(),
             id.prefix(),

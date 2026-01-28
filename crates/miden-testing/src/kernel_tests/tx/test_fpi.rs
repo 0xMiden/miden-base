@@ -38,7 +38,7 @@ use miden_protocol::transaction::memory::{
     ACCT_VAULT_ROOT_OFFSET,
     NATIVE_ACCOUNT_DATA_PTR,
 };
-use miden_protocol::{FieldElement, Word, ZERO};
+use miden_protocol::{Word, ZERO};
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::testing::account_component::MockAccountComponent;
 use miden_tx::LocalTransactionProver;
@@ -1616,7 +1616,7 @@ async fn test_fpi_stale_account() -> anyhow::Result<()> {
     // commitment.
     foreign_account.storage_mut().set_item(
         mock_value_slot0.name(),
-        Word::from([Felt::ONE, Felt::ONE, Felt::ONE, Felt::ONE]),
+        Word::from([Felt::new(1), Felt::new(1), Felt::new(1), Felt::new(1)]),
     )?;
 
     // We pass the modified foreign account with a witness that is valid against the ref block. This

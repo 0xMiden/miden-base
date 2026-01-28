@@ -262,7 +262,7 @@ async fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![input_asset_2])?;
     let attachment = NoteAttachment::new_array(
         NoteAttachmentScheme::new(5),
-        [42, 43, 44, 45, 46u32].map(Felt::from).to_vec(),
+        [42, 43, 44, 45, 46u32].map(|v| Felt::new(v as u64)).to_vec(),
     )?;
     let metadata =
         NoteMetadata::new(tx_context.tx_inputs().account().id(), NoteType::Public, output_tag_2)
@@ -1117,7 +1117,7 @@ async fn test_set_word_attachment() -> anyhow::Result<()> {
 async fn test_set_array_attachment() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, Auth::IncrNonce);
     let rng = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]));
-    let elements = [3, 4, 5, 6, 7, 8, 9u32].map(Felt::from).to_vec();
+    let elements = [3, 4, 5, 6, 7, 8, 9u32].map(|v| Felt::new(v as u64)).to_vec();
     let attachment = NoteAttachment::new_array(NoteAttachmentScheme::new(42), elements.clone())?;
     let output_note =
         OutputNote::Full(NoteBuilder::new(account.id(), rng).attachment(attachment).build()?);
@@ -1218,7 +1218,7 @@ fn create_output_note(note: &Note) -> String {
     ",
         RECIPIENT = note.recipient().digest(),
         note_type = note.metadata().note_type() as u8,
-        tag = Felt::from(note.metadata().tag()),
+        tag = note.metadata().tag().as_u32(),
     );
 
     for asset in note.assets().iter() {

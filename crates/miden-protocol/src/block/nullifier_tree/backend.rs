@@ -227,5 +227,11 @@ pub(super) fn large_smt_error_to_merkle_error(err: LargeSmtError) -> MerkleError
             panic!("Storage error encountered: {:?}", storage_err)
         },
         LargeSmtError::Merkle(merkle_err) => merkle_err,
+        LargeSmtError::RootMismatch { .. } => {
+            panic!("Root mismatch error encountered")
+        },
+        LargeSmtError::StorageNotEmpty => {
+            panic!("Storage not empty error encountered")
+        },
     }
 }

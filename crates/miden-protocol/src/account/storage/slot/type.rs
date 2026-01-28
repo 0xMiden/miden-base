@@ -31,7 +31,7 @@ impl StorageSlotType {
     const MAP_TYPE: u8 = 1;
 
     pub fn as_felt(&self) -> Felt {
-        Felt::from(*self as u8)
+        Felt::new(*self as u8 as u64)
     }
 
     /// Returns `true` if the slot is a value slot, `false` otherwise.
@@ -116,8 +116,8 @@ impl Deserializable for StorageSlotType {
 mod tests {
     use miden_core::utils::{Deserializable, Serializable};
 
+    use crate::Felt;
     use crate::account::StorageSlotType;
-    use crate::{Felt, FieldElement};
 
     #[test]
     fn test_serde_account_storage_slot_type() {
@@ -133,11 +133,11 @@ mod tests {
 
     #[test]
     fn test_storage_slot_type_from_felt() {
-        let felt = Felt::ZERO;
+        let felt = Felt::new(0);
         let slot_type = StorageSlotType::try_from(felt).unwrap();
         assert_eq!(slot_type, StorageSlotType::Value);
 
-        let felt = Felt::ONE;
+        let felt = Felt::new(1);
         let slot_type = StorageSlotType::try_from(felt).unwrap();
         assert_eq!(slot_type, StorageSlotType::Map);
     }

@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use miden_processor::PrimeField64;
+
 use crate::asset::{Asset, AssetVault};
 use crate::errors::AccountError;
 use crate::utils::serde::{
@@ -361,7 +363,7 @@ impl Account {
     pub fn increment_nonce(&mut self, nonce_delta: Felt) -> Result<(), AccountError> {
         let new_nonce = self.nonce + nonce_delta;
 
-        if new_nonce.as_int() < self.nonce.as_int() {
+        if new_nonce.as_canonical_u64() < self.nonce.as_canonical_u64() {
             return Err(AccountError::NonceOverflow {
                 current: self.nonce,
                 increment: nonce_delta,
@@ -581,9 +583,9 @@ mod tests {
 
     use assert_matches::assert_matches;
     use miden_assembly::Assembler;
-    use miden_core::FieldElement;
     use miden_crypto::utils::{Deserializable, Serializable};
     use miden_crypto::{Felt, Word};
+    use miden_processor::PrimeField64;
 
     use super::{
         AccountCode,
@@ -874,13 +876,15 @@ mod tests {
         )?;
 
         // Set nonce to 1 so the account is considered existing and provide the seed.
-        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, seed)
-            .unwrap_err();
+        let err =
+            Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::new(1), seed)
+                .unwrap_err();
         assert_matches!(err, AccountError::ExistingAccountWithSeed);
 
         // Set nonce to 0 so the account is considered new but don't provide the seed.
-        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, None)
-            .unwrap_err();
+        let err =
+            Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::new(0), None)
+                .unwrap_err();
         assert_matches!(err, AccountError::NewAccountMissingSeed);
 
         // Set nonce to 0 so the account is considered new and provide a valid seed that results in
@@ -890,7 +894,7 @@ mod tests {
             vault.clone(),
             storage.clone(),
             code.clone(),
-            Felt::ZERO,
+            Felt::new(0),
             Some(other_seed),
         )
         .unwrap_err();
@@ -903,7 +907,7 @@ mod tests {
             vault.clone(),
             storage.clone(),
             code.clone(),
-            Felt::ZERO,
+            Felt::new(0),
             Some(Word::from([1, 2, 3, 4u32])),
         )
         .unwrap_err();
@@ -911,11 +915,11 @@ mod tests {
 
         // Set nonce to 1 so the account is considered existing and don't provide the seed, which
         // should be valid.
-        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, None)?;
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::new(1), None)?;
 
         // Set nonce to 0 so the account is considered new and provide the original seed, which
         // should be valid.
-        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::new(0), seed)?;
 
         Ok(())
     }
@@ -926,7 +930,7 @@ mod tests {
             .with_auth_component(NoopAuthComponent)
             .with_component(AddComponent)
             .build()?;
-        account.increment_nonce(Felt::ONE)?;
+        account.increment_nonce(Felt::new(1))?;
 
         assert_matches!(account.seed(), None);
 

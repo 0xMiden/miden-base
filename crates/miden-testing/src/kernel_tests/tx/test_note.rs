@@ -2,6 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 
 use anyhow::Context;
+use miden_processor::PrimeField64;
 use miden_processor::fast::ExecutionOutput;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{AccountBuilder, AccountId};
@@ -176,7 +177,7 @@ fn note_setup_memory_assertions(exec_output: &ExecutionOutput) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
         exec_output.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
-        Felt::from(input_note_data_ptr(0))
+        Felt::new(input_note_data_ptr(0) as u64)
     );
 }
 
@@ -271,7 +272,7 @@ async fn test_build_recipient() -> anyhow::Result<()> {
             Hasher::hash_elements(note_storage.0.commitment().as_elements());
         assert_eq!(
             exec_output.advice.get_mapped_values(&num_storage_items_advice_map_key).unwrap(),
-            &[Felt::from(note_storage.0.num_items())],
+            &[Felt::new(note_storage.0.num_items() as u64)],
             "advice entry with note number of storage items should contain the original number of values"
         );
     }
@@ -401,7 +402,7 @@ async fn test_build_metadata_header() -> anyhow::Result<()> {
           swapw dropw
         end
         ",
-            note_type = Felt::from(test_metadata.note_type()),
+            note_type = Felt::new(test_metadata.note_type() as u64),
             tag = test_metadata.tag(),
         );
 
@@ -458,7 +459,7 @@ pub async fn test_timelock() -> anyhow::Result<()> {
     let lock_timestamp = 2_000_000_000;
     let source_manager = Arc::new(DefaultSourceManager::default());
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
-        .note_storage([Felt::from(lock_timestamp)])?
+        .note_storage([Felt::new(lock_timestamp as u64)])?
         .source_manager(source_manager.clone())
         .code(code.clone())
         .dynamically_linked_libraries(CodeBuilder::mock_libraries())
@@ -549,7 +550,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let expected_tag = NoteTag::with_account_target(account_id).as_u32();
 
     let prefix: u64 = account_id.prefix().into();
-    let suffix: u64 = account_id.suffix().into();
+    let suffix: u64 = account_id.suffix().as_canonical_u64();
 
     let code = format!(
         "
@@ -570,7 +571,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     );
 
     let exec_output = tx_context.execute_code(&code).await?;
-    let actual_tag = exec_output.stack[0].as_int();
+    let actual_tag = exec_output.stack[0].as_canonical_u64();
 
     assert_eq!(
         actual_tag, expected_tag as u64,

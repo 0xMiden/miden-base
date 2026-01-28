@@ -13,7 +13,7 @@ use miden_protocol::transaction::{
     ProvenTransaction,
     ProvenTransactionBuilder,
 };
-use miden_protocol::vm::ExecutionProof;
+use miden_prover::{ExecutionProof, HashFunction};
 
 /// A builder to build mocked [`ProvenTransaction`]s.
 pub struct MockProvenTxBuilder {
@@ -102,6 +102,9 @@ impl MockProvenTxBuilder {
 
     /// Builds the [`ProvenTransaction`] and returns potential errors.
     pub fn build(self) -> anyhow::Result<ProvenTransaction> {
+        // Create a dummy execution proof for testing purposes
+        let proof = ExecutionProof::new(vec![1u8, 2, 3], HashFunction::Rpo256, vec![]);
+
         ProvenTransactionBuilder::new(
             self.account_id,
             self.initial_account_commitment,
@@ -111,6 +114,7 @@ impl MockProvenTxBuilder {
             self.ref_block_commitment.unwrap_or_default(),
             self.fee,
             self.expiration_block_num,
+            proof,
         )
         .add_input_notes(self.input_notes.unwrap_or_default())
         .add_input_notes(self.nullifiers.unwrap_or_default())

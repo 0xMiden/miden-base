@@ -117,9 +117,10 @@ impl TransactionInputs {
         for witness in witnesses {
             self.advice_inputs.store.extend(witness.authenticated_nodes());
             let smt_proof = SmtProof::from(witness);
-            self.advice_inputs
-                .map
-                .extend([(smt_proof.leaf().hash(), smt_proof.leaf().to_elements())]);
+            self.advice_inputs.map.extend([(
+                smt_proof.leaf().hash(),
+                smt_proof.leaf().to_elements().collect::<Vec<_>>(),
+            )]);
         }
 
         self

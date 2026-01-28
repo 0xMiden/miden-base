@@ -13,6 +13,7 @@ const DEFAULT_FAUCET_DECIMALS: u8 = 10;
 // ================================================================================================
 
 use itertools::Itertools;
+use miden_processor::PrimeField64;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{
@@ -309,9 +310,11 @@ impl MockChainBuilder {
     ) -> anyhow::Result<Account> {
         let token_symbol = TokenSymbol::new(token_symbol)
             .with_context(|| format!("invalid token symbol: {token_symbol}"))?;
-        let max_supply_felt = max_supply.try_into().map_err(|_| {
-            anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
-        })?;
+        // Check if max_supply fits in Felt (must be < modulus)
+        if max_supply >= miden_processor::Felt::ORDER_U64 {
+            anyhow::bail!("max supply value cannot be converted to Felt: {max_supply}");
+        }
+        let max_supply_felt = miden_protocol::Felt::new(max_supply);
         let basic_faucet =
             BasicFungibleFaucet::new(token_symbol, DEFAULT_FAUCET_DECIMALS, max_supply_felt)
                 .context("failed to create BasicFungibleFaucet")?;

@@ -1,6 +1,8 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_processor::StackInputs;
+use miden_protocol::Word;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{AccountDelta, PartialAccount};
 use miden_protocol::asset::Asset;
@@ -16,6 +18,7 @@ use miden_protocol::transaction::{
     TransactionOutputs,
 };
 pub use miden_prover::ProvingOptions;
+use miden_prover::{ExecutionProof, HashFunction, Host, prove_sync};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -106,29 +109,28 @@ impl LocalTransactionProver {
         &self,
         stack_inputs: miden_prover::StackInputs,
         advice_inputs: miden_prover::AdviceInputs,
-        host: &mut impl miden_prover::AsyncHost,
+        host: &mut impl Host,
     ) -> Result<(miden_prover::StackOutputs, ExecutionProof), miden_prover::ExecutionError> {
         use miden_air::ProcessorAir;
         use miden_processor::fast::FastProcessor;
         use miden_processor::parallel::build_trace;
         use miden_prover::math::Felt;
 
-        const DEFAULT_FRAGMENT_SIZE: usize = 1 << 16;
-
         let program = &TransactionKernel::main();
 
         // Reverse stack inputs
         let stack_inputs_reversed: Vec<Felt> = stack_inputs.iter().copied().rev().collect();
+        let stack_inputs = StackInputs::new(&stack_inputs_reversed).unwrap();
 
         let processor = if self.proof_options.execution_options().enable_debugging() {
-            FastProcessor::new_debug(&stack_inputs_reversed, advice_inputs.clone())
+            FastProcessor::new_debug(stack_inputs.clone(), advice_inputs.clone())
         } else {
-            FastProcessor::new_with_advice_inputs(&stack_inputs_reversed, advice_inputs.clone())
+            FastProcessor::new_with_advice_inputs(stack_inputs.clone(), advice_inputs.clone())
         };
 
         // Use async execute_for_trace instead of sync version
         let (execution_output, trace_generation_context) =
-            processor.execute_for_trace(program, host, DEFAULT_FRAGMENT_SIZE).await?;
+            processor.execute_for_trace(program, host).await?;
 
         let trace = build_trace(
             execution_output,
@@ -319,6 +321,9 @@ impl LocalTransactionProver {
 
         let (partial_account, ref_block, _, input_notes, _) = tx_inputs.into_parts();
 
+        // Create a dummy execution proof (for testing purposes only)
+        let proof = ExecutionProof::new(vec![1u8, 2, 3], HashFunction::Rpo256, vec![]);
+
         self.build_proven_transaction(
             &input_notes,
             tx_outputs,
@@ -326,6 +331,7 @@ impl LocalTransactionProver {
             partial_account,
             ref_block.block_num(),
             ref_block.commitment(),
+            proof,
         )
     }
 }

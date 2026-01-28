@@ -6,7 +6,7 @@ use thiserror::Error;
 
 use super::StorageValueName;
 use crate::account::StorageSlotName;
-use crate::{Felt, FieldElement, Word};
+use crate::{Felt, Word};
 
 /// A word value provided via [`InitStorageData`].
 ///
@@ -47,7 +47,7 @@ impl From<&str> for WordValue {
 impl From<Felt> for WordValue {
     /// Converts a [`Felt`] to a [`WordValue`] as a Word in the form `[0, 0, 0, felt]`.
     fn from(value: Felt) -> Self {
-        WordValue::FullyTyped(Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, value]))
+        WordValue::FullyTyped(Word::from([Felt::new(0), Felt::new(0), Felt::new(0), value]))
     }
 }
 

@@ -686,9 +686,10 @@ mod tests {
     use alloc::collections::BTreeMap;
 
     use anyhow::Context;
+    use miden_core::HashFunction;
     use miden_core::utils::Deserializable;
+    use miden_crypto::rand::test_utils::rand_value;
     use miden_verifier::ExecutionProof;
-    use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
     use crate::account::delta::AccountUpdateDetails;
@@ -810,6 +811,9 @@ mod tests {
         let ref_block_num = BlockNumber::from(1);
         let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
+
+        // Create a dummy execution proof (for testing purposes only)
+        let proof = ExecutionProof::new(vec![1u8, 2, 3], HashFunction::Rpo256, vec![]);
 
         let tx = ProvenTransactionBuilder::new(
             account_id,

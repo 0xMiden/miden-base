@@ -246,7 +246,7 @@ fn test_read_foreign_account_inputs_with_proper_witness() {
 
     // Add the account leaf to the advice map (needed for witness verification).
     let leaf = foreign_witness.leaf();
-    advice_inputs.map.insert(leaf.hash(), leaf.to_elements());
+    advice_inputs.map.insert(leaf.hash(), leaf.to_elements().collect::<Vec<_>>());
 
     // Create block header with the account tree root.
     let block_header = crate::block::BlockHeader::mock(0, None, None, &[], account_tree_root);

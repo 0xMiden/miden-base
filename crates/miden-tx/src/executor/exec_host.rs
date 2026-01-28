@@ -5,12 +5,11 @@ use alloc::vec::Vec;
 
 use miden_processor::{
     AdviceMutation,
-    AsyncHost,
-    BaseHost,
     EventError,
     FutureMaybeSend,
+    Host,
     MastForest,
-    ProcessState,
+    ProcessorState,
 };
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{
@@ -300,10 +299,9 @@ where
             AdviceMutation::extend_merkle_store(storage_map_witness.authenticated_nodes());
 
         let smt_proof = SmtProof::from(storage_map_witness);
-        let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
-            smt_proof.leaf().hash(),
-            smt_proof.leaf().to_elements(),
-        )]));
+        let elements: Vec<_> = smt_proof.leaf().to_elements().collect();
+        let map_ext =
+            AdviceMutation::extend_map(AdviceMap::from_iter([(smt_proof.leaf().hash(), elements)]));
 
         Ok(vec![merkle_store_ext, map_ext])
     }
@@ -449,10 +447,10 @@ where
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl<STORE, AUTH> BaseHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
+impl<STORE, AUTH> Host for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: DataStore,
-    AUTH: TransactionAuthenticator,
+    STORE: DataStore + Sync,
+    AUTH: TransactionAuthenticator + Sync,
 {
     fn get_label_and_source_file(
         &self,
@@ -463,13 +461,7 @@ where
         let span = source_manager.location_to_span(location.clone()).unwrap_or_default();
         (span, maybe_file)
     }
-}
 
-impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
-where
-    STORE: DataStore + Sync,
-    AUTH: TransactionAuthenticator + Sync,
-{
     fn get_mast_forest(&self, node_digest: &Word) -> impl FutureMaybeSend<Option<Arc<MastForest>>> {
         let mast_forest = self.base_host.get_mast_forest(node_digest);
         async move { mast_forest }
@@ -477,7 +469,7 @@ where
 
     fn on_event(
         &mut self,
-        process: &ProcessState,
+        process: &ProcessorState<'_>,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
         let core_lib_event_result = self.base_host.handle_core_lib_events(process);
 
@@ -695,10 +687,9 @@ fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> [AdviceMutat
     let merkle_store_ext = AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
 
     let smt_proof = SmtProof::from(asset_witness);
-    let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
-        smt_proof.leaf().hash(),
-        smt_proof.leaf().to_elements(),
-    )]));
+    let elements: Vec<_> = smt_proof.leaf().to_elements().collect();
+    let map_ext =
+        AdviceMutation::extend_map(AdviceMap::from_iter([(smt_proof.leaf().hash(), elements)]));
 
     [merkle_store_ext, map_ext]
 }

@@ -1,3 +1,4 @@
+use miden_processor::PrimeField64;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -9,7 +10,7 @@ use miden_protocol::account::{
     StorageSlotName,
 };
 use miden_protocol::asset::{FungibleAsset, TokenSymbol};
-use miden_protocol::{Felt, FieldElement, Word};
+use miden_protocol::{Felt, Word};
 
 use super::FungibleFaucetError;
 use crate::account::AuthScheme;
@@ -98,9 +99,9 @@ impl BasicFungibleFaucet {
                 actual: decimals as u64,
                 max: Self::MAX_DECIMALS,
             });
-        } else if max_supply.as_int() > FungibleAsset::MAX_AMOUNT {
+        } else if max_supply.as_canonical_u64() > FungibleAsset::MAX_AMOUNT {
             return Err(FungibleFaucetError::MaxSupplyTooLarge {
-                actual: max_supply.as_int(),
+                actual: max_supply.as_canonical_u64(),
                 max: FungibleAsset::MAX_AMOUNT,
             });
         }
@@ -137,9 +138,9 @@ impl BasicFungibleFaucet {
                 // verify metadata values
                 let token_symbol = TokenSymbol::try_from(token_symbol)
                     .map_err(FungibleFaucetError::InvalidTokenSymbol)?;
-                let decimals = decimals.as_int().try_into().map_err(|_| {
+                let decimals = decimals.as_canonical_u64().try_into().map_err(|_| {
                     FungibleFaucetError::TooManyDecimals {
-                        actual: decimals.as_int(),
+                        actual: decimals.as_canonical_u64(),
                         max: Self::MAX_DECIMALS,
                     }
                 })?;
@@ -191,9 +192,9 @@ impl From<BasicFungibleFaucet> for AccountComponent {
         // [a3, a2, a1, a0, ...]
         let metadata = Word::new([
             faucet.max_supply,
-            Felt::from(faucet.decimals),
+            Felt::new(faucet.decimals as u64),
             faucet.symbol.into(),
-            Felt::ZERO,
+            Felt::new(0),
         ]);
         let storage_slot =
             StorageSlot::with_value(BasicFungibleFaucet::metadata_slot().clone(), metadata);
@@ -313,7 +314,7 @@ mod tests {
     use assert_matches::assert_matches;
     use miden_protocol::account::AccountStorage;
     use miden_protocol::account::auth::PublicKeyCommitment;
-    use miden_protocol::{FieldElement, ONE, Word};
+    use miden_protocol::{ONE, Word};
 
     use super::{
         AccountBuilder,
@@ -381,7 +382,7 @@ mod tests {
         // allow_unauthorized_input_notes=true, this should be [1, 0, 1, 0].
         assert_eq!(
             faucet_account.storage().get_item(AuthFalcon512RpoAcl::config_slot()).unwrap(),
-            [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
+            [Felt::new(1), Felt::new(0), Felt::new(1), Felt::new(0)].into()
         );
 
         // The procedure root map should contain the distribute procedure root.
@@ -391,7 +392,7 @@ mod tests {
                 .storage()
                 .get_map_item(
                     AuthFalcon512RpoAcl::trigger_procedure_roots_slot(),
-                    [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
+                    [Felt::new(0), Felt::new(0), Felt::new(0), Felt::new(0)].into()
                 )
                 .unwrap(),
             distribute_root
@@ -400,7 +401,7 @@ mod tests {
         // Check that faucet metadata was initialized to the given values.
         assert_eq!(
             faucet_account.storage().get_item(BasicFungibleFaucet::metadata_slot()).unwrap(),
-            [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
+            [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::new(0)].into()
         );
 
         assert!(faucet_account.is_faucet());

@@ -3,6 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_core_lib::CoreLibrary;
+use miden_processor::PrimeField64;
 
 use crate::account::{AccountHeader, AccountId};
 #[cfg(any(feature = "testing", test))]
@@ -181,13 +182,13 @@ impl TransactionKernel {
     ) -> StackInputs {
         // Note: Must be kept in sync with the transaction's kernel prepare_transaction procedure
         let mut inputs: Vec<Felt> = Vec::with_capacity(14);
-        inputs.push(Felt::from(block_num));
+        inputs.push(Felt::new(block_num.as_u64()));
         inputs.push(account_id.suffix());
         inputs.push(account_id.prefix().as_felt());
         inputs.extend(input_notes_commitment);
         inputs.extend_from_slice(initial_account_commitment.as_elements());
         inputs.extend_from_slice(block_commitment.as_elements());
-        StackInputs::new(inputs)
+        StackInputs::new(&inputs)
             .map_err(|e| e.to_string())
             .expect("Invalid stack input")
     }
@@ -220,12 +221,12 @@ impl TransactionKernel {
         let account_update_commitment =
             Hasher::merge(&[final_account_commitment, account_delta_commitment]);
         let mut outputs: Vec<Felt> = Vec::with_capacity(9);
-        outputs.push(Felt::from(expiration_block_num));
+        outputs.push(Felt::new(expiration_block_num.as_u64()));
         outputs.extend(Word::from(fee));
         outputs.extend(account_update_commitment);
         outputs.extend(output_notes_commitment);
         outputs.reverse();
-        StackOutputs::new(outputs)
+        StackOutputs::new(&outputs)
             .map_err(|e| e.to_string())
             .expect("Invalid stack output")
     }
@@ -258,25 +259,25 @@ impl TransactionKernel {
     /// - Indices 13..16 on the stack are not zeroes.
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
-        stack: &StackOutputs, // FIXME TODO add an extension trait for this one
+        stack: &StackOutputs,
     ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
-            .get_stack_word_be(TransactionOutputs::OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
+            .get_word(TransactionOutputs::OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
             .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
-            .get_stack_word_be(TransactionOutputs::ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
+            .get_word(TransactionOutputs::ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
             .expect("account_update_commitment (second word) missing");
 
         let fee = stack
-            .get_stack_word_be(TransactionOutputs::FEE_ASSET_WORD_IDX * 4)
+            .get_word(TransactionOutputs::FEE_ASSET_WORD_IDX * 4)
             .expect("fee_asset (third word) missing");
 
-        let expiration_block_num = stack
-            .get_stack_item(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
+        let expiration_block_num_felt = stack
+            .get_element(TransactionOutputs::EXPIRATION_BLOCK_ELEMENT_IDX)
             .expect("tx_expiration_block_num (element on index 12) missing");
 
-        let expiration_block_num = u32::try_from(expiration_block_num.as_int())
+        let expiration_block_num = u32::try_from(expiration_block_num_felt.as_canonical_u64())
             .map_err(|_| {
                 TransactionOutputError::OutputStackInvalid(
                     "expiration block number should be smaller than u32::MAX".into(),
@@ -286,9 +287,8 @@ impl TransactionKernel {
 
         // Make sure that indices 13, 14 and 15 are zeroes (i.e. the fourth word without the
         // expiration block number).
-        if stack.get_stack_word_be(12).expect("fourth word missing").as_elements()[..3]
-            != Word::empty().as_elements()[..3]
-        {
+        let fourth_word = stack.get_word(12).expect("fourth word missing");
+        if fourth_word.as_elements()[..3] != Word::empty().as_elements()[..3] {
             return Err(TransactionOutputError::OutputStackInvalid(
                 "indices 13, 14 and 15 on the output stack should be ZERO".into(),
             ));

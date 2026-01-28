@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use core::error::Error;
 
+use miden_processor::PrimeField64;
 use miden_protocol::account::AccountId;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::note::{Note, NoteScript};
@@ -380,10 +381,10 @@ fn parse_p2ide_storage(
 
     let receiver_account_id = try_read_account_id_from_storage(note_storage)?;
 
-    let reclaim_height = u32::try_from(note_storage[2])
+    let reclaim_height = u32::try_from(note_storage[2].as_canonical_u64())
         .map_err(|_err| StaticAnalysisError::new("reclaim block height should be a u32"))?;
 
-    let timelock_height = u32::try_from(note_storage[3])
+    let timelock_height = u32::try_from(note_storage[3].as_canonical_u64())
         .map_err(|_err| StaticAnalysisError::new("timelock block height should be a u32"))?;
 
     Ok((receiver_account_id, reclaim_height, timelock_height))

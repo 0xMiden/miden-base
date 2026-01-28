@@ -21,6 +21,8 @@ testing = ["dep:rand", "miden-assembly/testing", "miden-protocol/testing"]
 
 [dependencies]
 # Miden dependencies
+miden-assembly  = { workspace = true }
+miden-core-lib  = { workspace = true }
 miden-processor = { workspace = true }
 miden-protocol  = { workspace = true }
 
@@ -29,6 +31,10 @@ rand      = { optional = true, workspace = true }
 thiserror = { workspace = true }
 
 [build-dependencies]
+fs-err         = { workspace = true }
+miden-assembly = { workspace = true }
+miden-core     = { workspace = true }
+miden-protocol = { workspace = true }
 regex          = { version = "1.11" }
 walkdir        = { version = "2.5" }
 

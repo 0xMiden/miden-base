@@ -5,7 +5,7 @@ use miden_protocol::account::{
     AccountVaultDelta,
     PartialAccount,
 };
-use miden_protocol::{Felt, FieldElement, ZERO};
+use miden_protocol::{Felt, ZERO};
 
 use crate::host::storage_delta_tracker::StorageDeltaTracker;
 
@@ -50,12 +50,12 @@ impl AccountDeltaTracker {
 
     /// Returns true if the nonce delta is non-zero.
     pub fn was_nonce_incremented(&self) -> bool {
-        self.nonce_delta != Felt::ZERO
+        self.nonce_delta != Felt::new(0)
     }
 
     /// Increments the nonce delta by one.
     pub fn increment_nonce(&mut self) {
-        self.nonce_delta += Felt::ONE;
+        self.nonce_delta += Felt::new(1);
     }
 
     /// Returns a reference to the vault delta.

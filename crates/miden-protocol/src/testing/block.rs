@@ -1,6 +1,6 @@
 use miden_crypto::merkle::smt::Smt;
-#[cfg(not(target_family = "wasm"))]
-use winter_rand_utils::rand_value;
+use miden_crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_processor::PrimeField64;
 
 use crate::Word;
 use crate::account::Account;
@@ -46,12 +46,13 @@ impl BlockHeader {
             tx_commitment,
             timestamp,
         ) = {
-            let prev_block_commitment = rand_value::<Word>();
-            let chain_commitment = chain_commitment.unwrap_or(rand_value::<Word>());
-            let nullifier_root = rand_value::<Word>();
-            let note_root = note_root.unwrap_or(rand_value::<Word>());
-            let tx_commitment = rand_value::<Word>();
-            let timestamp = rand_value();
+            let mut rng = RpoRandomCoin::new(Word::default());
+            let prev_block_commitment = rng.draw_word();
+            let chain_commitment = chain_commitment.unwrap_or_else(|| rng.draw_word());
+            let nullifier_root = rng.draw_word();
+            let note_root = note_root.unwrap_or_else(|| rng.draw_word());
+            let tx_commitment = rng.draw_word();
+            let timestamp = rng.draw_element().as_canonical_u64() as u32;
 
             (
                 prev_block_commitment,

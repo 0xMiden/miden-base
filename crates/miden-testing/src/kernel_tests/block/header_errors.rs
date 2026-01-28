@@ -18,7 +18,7 @@ use miden_protocol::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_protocol::errors::{AccountTreeError, NullifierTreeError, ProposedBlockError};
 use miden_protocol::note::NoteType;
 use miden_protocol::transaction::ProvenTransactionBuilder;
-use miden_protocol::vm::ExecutionProof;
+use miden_prover::{ExecutionProof, HashFunction};
 use miden_standards::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_standards::testing::mock_account::MockAccountExt;
 use miden_tx::LocalTransactionProver;
@@ -101,8 +101,9 @@ async fn block_building_fails_on_stale_account_witnesses() -> anyhow::Result<()>
     *invalid_account_tree_block_inputs.account_witnesses_mut() =
         stale_block_inputs.account_witnesses().clone();
 
-    let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
-        .context("failed to propose block 0")?;
+    let proposed_block0 =
+        ProposedBlock::new_at(invalid_account_tree_block_inputs, batches.clone(), 0)
+            .context("failed to propose block 0")?;
 
     let error = proposed_block0.into_header_and_body().unwrap_err();
 
@@ -138,8 +139,9 @@ async fn block_building_fails_on_stale_nullifier_witnesses() -> anyhow::Result<(
     *invalid_nullifier_tree_block_inputs.nullifier_witnesses_mut() =
         stale_block_inputs.nullifier_witnesses().clone();
 
-    let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
-        .context("failed to propose block 2")?;
+    let proposed_block2 =
+        ProposedBlock::new_at(invalid_nullifier_tree_block_inputs, batches.clone(), 0)
+            .context("failed to propose block 2")?;
 
     let error = proposed_block2.into_header_and_body().unwrap_err();
 
@@ -184,8 +186,9 @@ async fn block_building_fails_on_account_tree_root_mismatch() -> anyhow::Result<
         .context("failed to get stale account witness")?
         .clone();
 
-    let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
-        .context("failed to propose block 1")?;
+    let proposed_block1 =
+        ProposedBlock::new_at(stale_account_witness_block_inputs, batches.clone(), 0)
+            .context("failed to propose block 1")?;
 
     let error = proposed_block1.into_header_and_body().unwrap_err();
 
@@ -232,7 +235,7 @@ async fn block_building_fails_on_nullifier_tree_root_mismatch() -> anyhow::Resul
         .context("failed to get stale nullifier witness")?
         .clone();
 
-    let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
+    let proposed_block3 = ProposedBlock::new_at(invalid_nullifier_witness_block_inputs, batches, 0)
         .context("failed to propose block 3")?;
 
     let error = proposed_block3.into_header_and_body().unwrap_err();
@@ -383,6 +386,9 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
 
     let [tx0, tx1] =
         [(id0, [0, 0, 0, 1u32]), (id1, [0, 0, 0, 2u32])].map(|(id, final_state_comm)| {
+            // Create a dummy execution proof for testing purposes
+            let proof = ExecutionProof::new(vec![1u8, 2, 3], HashFunction::Rpo256, vec![]);
+
             ProvenTransactionBuilder::new(
                 id,
                 Word::empty(),
@@ -392,6 +398,7 @@ async fn block_building_fails_on_creating_account_with_duplicate_account_id_pref
                 genesis_block.commitment(),
                 FungibleAsset::mock(500).unwrap_fungible(),
                 BlockNumber::from(u32::MAX),
+                proof,
             )
             .account_update_details(AccountUpdateDetails::Private)
             .build()

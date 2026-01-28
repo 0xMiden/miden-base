@@ -293,8 +293,8 @@ async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
         .remove(&output_note0.nullifier())
         .unwrap();
 
-    let proposed_block = ProposedBlock::new(block_inputs.clone(), batches.to_vec())
-        .context("failed to build proposed block")?;
+    let proposed_block = ProposedBlock::new_at(block_inputs.clone(), batches.to_vec(), 0)
+        .context("failed to propose block")?;
 
     // The output note should have been erased, so we expect only the nullifiers of note0, note2 and
     // note3 to be created.
@@ -402,8 +402,8 @@ async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     );
 
     let batches = Vec::new();
-    let proposed_block =
-        ProposedBlock::new(block_inputs, batches.clone()).context("failed to propose block")?;
+    let proposed_block = ProposedBlock::new_at(block_inputs, batches.clone(), 0)
+        .context("failed to propose block")?;
 
     let proven_block = chain.prove_block(proposed_block.clone())?;
 

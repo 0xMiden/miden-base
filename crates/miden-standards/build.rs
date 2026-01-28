@@ -2,7 +2,7 @@ use std::env;
 use std::path::Path;
 
 use fs_err as fs;
-use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr};
+use miden_assembly::diagnostics::{NamedSource, Result, WrapErr};
 use miden_assembly::utils::Serializable;
 use miden_assembly::{Assembler, Library, Report};
 use miden_protocol::transaction::TransactionKernel;
@@ -94,7 +94,7 @@ fn compile_standards_lib(
     let standards_lib = assembler.assemble_library_from_dir(source_dir, STANDARDS_LIB_NAMESPACE)?;
 
     let output_file = target_dir.join("standards").with_extension(Library::LIBRARY_EXTENSION);
-    standards_lib.write_to_file(output_file).into_diagnostic()?;
+    standards_lib.write_to_file(output_file).unwrap();
 
     Ok(standards_lib)
 }
@@ -107,9 +107,7 @@ fn compile_standards_lib(
 ///
 /// The source files are expected to contain executable programs.
 fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
-    fs::create_dir_all(target_dir)
-        .into_diagnostic()
-        .wrap_err("failed to create note_scripts directory")?;
+    fs::create_dir_all(target_dir).unwrap();
 
     for masm_file_path in shared::get_masm_files(source_dir).unwrap() {
         // read the MASM file, parse it, and serialize the parsed AST to bytes
@@ -176,7 +174,7 @@ fn compile_account_components(
 
         let component_file_path =
             output_dir.join(component_name).with_extension(Library::LIBRARY_EXTENSION);
-        component_library.write_to_file(component_file_path).into_diagnostic()?;
+        component_library.write_to_file(component_file_path).unwrap();
     }
 
     Ok(())
@@ -260,15 +258,11 @@ mod shared {
         let target_dir = dst.as_ref().join(asm_dir);
         if target_dir.exists() {
             // Clear existing asm files that were copied earlier which may no longer exist.
-            fs::remove_dir_all(&target_dir)
-                .into_diagnostic()
-                .wrap_err("failed to remove ASM directory")?;
+            fs::remove_dir_all(&target_dir).unwrap();
         }
 
         // Recreate the directory structure.
-        fs::create_dir_all(&target_dir)
-            .into_diagnostic()
-            .wrap_err("failed to create ASM directory")?;
+        fs::create_dir_all(&target_dir).unwrap();
 
         let dst = dst.as_ref();
         let mut todo = vec![src.as_ref().to_path_buf()];
@@ -303,9 +297,9 @@ mod shared {
         let path = dir_path.as_ref();
         if path.is_dir() {
             for entry in WalkDir::new(path) {
-                let entry = entry.into_diagnostic()?;
+                let entry = entry.unwrap();
                 let file_path = entry.path().to_path_buf();
-                if is_masm_file(&file_path).into_diagnostic()? {
+                if is_masm_file(&file_path).unwrap() {
                     files.push(file_path);
                 }
             }
@@ -341,11 +335,11 @@ mod shared {
 
         // Walk all files of the kernel source directory.
         for entry in WalkDir::new(asm_source_dir) {
-            let entry = entry.into_diagnostic()?;
-            if !is_masm_file(entry.path()).into_diagnostic()? {
+            let entry = entry.unwrap();
+            if !is_masm_file(entry.path()).unwrap() {
                 continue;
             }
-            let file_contents = std::fs::read_to_string(entry.path()).into_diagnostic()?;
+            let file_contents = std::fs::read_to_string(entry.path()).unwrap();
             extract_masm_errors(&mut errors, &file_contents)?;
         }
 
@@ -458,18 +452,18 @@ mod shared {
 
             // Group errors into blocks separate by newlines.
             if is_new_error_category(&mut last_error, name) {
-                writeln!(output).into_diagnostic()?;
+                writeln!(output).unwrap();
             }
 
-            writeln!(output, "/// Error Message: \"{message}\"").into_diagnostic()?;
+            writeln!(output, "/// Error Message: \"{message}\"").unwrap();
             writeln!(
                 output,
                 r#"pub const ERR_{name}: MasmError = MasmError::from_static_str("{message}");"#
             )
-            .into_diagnostic()?;
+            .unwrap();
         }
 
-        std::fs::write(module.file_name, output).into_diagnostic()?;
+        std::fs::write(module.file_name, output).unwrap();
 
         Ok(())
     }

@@ -47,7 +47,7 @@ pub async fn prove_send_swap_note() -> anyhow::Result<()> {
         ",
         recipient = swap_note.recipient().digest(),
         note_type = NoteType::Public as u8,
-        tag = Felt::from(swap_note.metadata().tag()),
+        tag = Felt::new(swap_note.metadata().tag().as_u32() as u64),
         asset = Word::from(offered_asset),
     );
 

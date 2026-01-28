@@ -94,7 +94,7 @@ pub proc scale_native_amount_to_u256
     # Perform U64 multiplication: amount * scale
     # This is safe because both the scaling factor and amount are guaranteed to be smaller
     # than 2^64, so we will never overflow a 256-bit value.
-    exec.u64::overflowing_mul
+    exec.u64::widening_mul
     # => [res_hi, res_mid_hi, res_mid_lo, res_lo]
 
     exec.word::reverse
