@@ -1,5 +1,6 @@
 extern crate alloc;
 
+use alloc::string::String;
 use alloc::sync::Arc;
 
 use miden_agglayer::agglayer_library;
@@ -10,62 +11,30 @@ use miden_agglayer::errors::{
 };
 use miden_assembly::{Assembler, DefaultSourceManager};
 use miden_core_lib::CoreLibrary;
-use miden_processor::AdviceInputs;
 use miden_processor::Program;
-use miden_protocol::{Felt, Word};
 use miden_testing::assert_execution_error;
 
 use crate::agglayer::test_utils::execute_program_with_default_host;
 
-fn assemble_verify_leaf_bridge_program(
-    global_index_be_u32_limbs: [u32; 8],
-) -> (Program, AdviceInputs) {
-    let proof_data_key: Word = [
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-    ]
-    .into();
-    let leaf_value = [11u32, 12, 13, 14, 15, 16, 17, 18];
-    let leaf_value_push = leaf_value
-        .iter()
-        .map(u32::to_string)
-        .collect::<Vec<_>>()
-        .join(".");
+const BRIDGE_IN_SOURCE: &str = include_str!("../../../miden-agglayer/asm/bridge/bridge_in.masm");
 
-    let script_code = format!(
-        r#"
-        use miden::core::sys
-        use miden::agglayer::bridge_in
+fn assemble_process_global_index_program(global_index_be_u32_limbs: [u32; 8]) -> Program {
+    let [g0, g1, g2, g3, g4, g5, g6, g7] = global_index_be_u32_limbs;
 
-        begin
-            push.{proof_data_key}
-            push.{leaf_value_push}
-            exec.bridge_in::verify_leaf_bridge
-            exec.sys::truncate_stack
-        end
-        "#
-    );
+    let mut script_code = String::new();
+    script_code.push_str("use miden::core::sys\n\n");
+    script_code.push_str(BRIDGE_IN_SOURCE);
+    script_code.push_str("\n\nbegin\n    push.");
+    script_code.push_str(&format!("{g7}.{g6}.{g5}.{g4}.{g3}.{g2}.{g1}.{g0}"));
+    script_code.push_str("\n    exec.process_global_index_mainnet\n    exec.sys::truncate_stack\nend\n");
 
-    let program = Assembler::new(Arc::new(DefaultSourceManager::default()))
+    Assembler::new(Arc::new(DefaultSourceManager::default()))
         .with_dynamic_library(CoreLibrary::default())
         .unwrap()
         .with_dynamic_library(agglayer_library())
         .unwrap()
         .assemble_program(&script_code)
-        .unwrap();
-
-    let mut proof_data = Vec::with_capacity(536);
-    proof_data.extend(core::iter::repeat(Felt::new(0)).take(256));
-    proof_data.extend(core::iter::repeat(Felt::new(0)).take(256));
-    proof_data.extend(global_index_be_u32_limbs.map(|limb| Felt::new(limb as u64)));
-    proof_data.extend(core::iter::repeat(Felt::new(0)).take(8));
-    proof_data.extend(core::iter::repeat(Felt::new(0)).take(8));
-
-    let advice_inputs = AdviceInputs::default().with_map(vec![(proof_data_key, proof_data)]);
-
-    (program, advice_inputs)
+        .unwrap()
 }
 
 #[tokio::test]
@@ -73,9 +42,9 @@ async fn test_process_global_index_mainnet_returns_leaf_index() -> anyhow::Resul
     // 256-bit globalIndex encoded as 8 u32 limbs (big-endian):
     // [top 191 bits = 0, mainnet flag = 1, rollup_index = 0, leaf_index = 2]
     let global_index = [0, 0, 0, 0, 0, 1, 0, 2];
-    let (program, advice_inputs) = assemble_verify_leaf_bridge_program(global_index);
+    let program = assemble_process_global_index_program(global_index);
 
-    let exec_output = execute_program_with_default_host(program, Some(advice_inputs)).await?;
+    let exec_output = execute_program_with_default_host(program, None).await?;
 
     assert_eq!(exec_output.stack[0].as_int(), 2);
     Ok(())
@@ -84,9 +53,9 @@ async fn test_process_global_index_mainnet_returns_leaf_index() -> anyhow::Resul
 #[tokio::test]
 async fn test_process_global_index_mainnet_rejects_non_zero_leading_bits() {
     let global_index = [1, 0, 0, 0, 0, 1, 0, 2];
-    let (program, advice_inputs) = assemble_verify_leaf_bridge_program(global_index);
+    let program = assemble_process_global_index_program(global_index);
 
-    let err = execute_program_with_default_host(program, Some(advice_inputs)).await;
+    let err = execute_program_with_default_host(program, None).await;
     assert_execution_error!(err, ERR_LEADING_BITS_NON_ZERO);
 }
 
@@ -94,17 +63,17 @@ async fn test_process_global_index_mainnet_rejects_non_zero_leading_bits() {
 async fn test_process_global_index_mainnet_rejects_flag_limb_upper_bits() {
     // limb5 is the mainent flag; only the lowest bit is allowed
     let global_index = [0, 0, 0, 0, 0, 3, 0, 2];
-    let (program, advice_inputs) = assemble_verify_leaf_bridge_program(global_index);
+    let program = assemble_process_global_index_program(global_index);
 
-    let err = execute_program_with_default_host(program, Some(advice_inputs)).await;
+    let err = execute_program_with_default_host(program, None).await;
     assert_execution_error!(err, ERR_BRIDGE_NOT_MAINNET);
 }
 
 #[tokio::test]
 async fn test_process_global_index_mainnet_rejects_non_zero_rollup_index() {
     let global_index = [0, 0, 0, 0, 0, 1, 7, 2];
-    let (program, advice_inputs) = assemble_verify_leaf_bridge_program(global_index);
+    let program = assemble_process_global_index_program(global_index);
 
-    let err = execute_program_with_default_host(program, Some(advice_inputs)).await;
+    let err = execute_program_with_default_host(program, None).await;
     assert_execution_error!(err, ERR_ROLLUP_INDEX_NON_ZERO);
 }
