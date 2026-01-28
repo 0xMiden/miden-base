@@ -549,7 +549,7 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
 
     // Network account rule: top 30 bits of the prefix
     let prefix: u64 = account_id.prefix().into();
-    let expected_tag: u64 = prefix >> 34;
+    let expected_tag = NoteTag::with_account_target(account_id);
     let suffix: u64 = account_id.suffix().into();
 
     let code = format!(
@@ -574,9 +574,11 @@ async fn test_build_note_tag_for_network_account() -> anyhow::Result<()> {
     let actual_tag = exec_output.stack[0].as_int();
 
     assert_eq!(
-        actual_tag, expected_tag,
+        actual_tag,
+        expected_tag.as_u32() as u64,
         "Expected tag {:#010x}, got {:#010x}",
-        expected_tag, actual_tag
+        expected_tag.as_u32(),
+        actual_tag
     );
 
     Ok(())

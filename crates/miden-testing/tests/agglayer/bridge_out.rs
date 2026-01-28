@@ -140,6 +140,12 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
         "BURN note should contain the bridged asset"
     );
 
+    assert_eq!(
+        burn_note.metadata().tag(),
+        NoteTag::with_account_target(faucet.id()),
+        "BURN note should have the correct tag"
+    );
+
     // Verify the BURN note uses the correct script
     assert_eq!(
         burn_note.recipient().script().root(),
