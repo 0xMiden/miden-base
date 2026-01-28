@@ -43,11 +43,11 @@ fn assemble_verify_leaf_bridge_program(
         .unwrap();
 
     let mut proof_data = Vec::with_capacity(536);
-    proof_data.extend(core::iter::repeat(Felt::ZERO).take(256));
-    proof_data.extend(core::iter::repeat(Felt::ZERO).take(256));
+    proof_data.extend(core::iter::repeat(Felt::new(0)).take(256));
+    proof_data.extend(core::iter::repeat(Felt::new(0)).take(256));
     proof_data.extend(global_index_be_u32_limbs.map(|limb| Felt::new(limb as u64)));
-    proof_data.extend(core::iter::repeat(Felt::ZERO).take(8));
-    proof_data.extend(core::iter::repeat(Felt::ZERO).take(8));
+    proof_data.extend(core::iter::repeat(Felt::new(0)).take(8));
+    proof_data.extend(core::iter::repeat(Felt::new(0)).take(8));
 
     let advice_inputs = AdviceInputs::default().with_map(vec![(Word::default(), proof_data)]);
 
