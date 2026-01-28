@@ -102,6 +102,7 @@ pub proc verify_leaf_bridge
 
     # delegate proof verification
     exec.verify_leaf
+    # => [pad(16)]
 end
 
 #! Assert the global index is valid for a mainnet deposit.

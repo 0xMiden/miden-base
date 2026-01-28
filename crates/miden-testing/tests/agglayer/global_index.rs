@@ -64,7 +64,7 @@ async fn test_process_global_index_mainnet_rejects_non_zero_leading_bits() {
 
 #[tokio::test]
 async fn test_process_global_index_mainnet_rejects_flag_limb_upper_bits() {
-    // limb5 is the mainent flag; only the lowest bit is allowed
+    // limb5 is the mainnet flag; only the lowest bit is allowed
     let global_index = [0, 0, 0, 0, 0, 3, 0, 2];
     let program = assemble_process_global_index_program(global_index);
 
