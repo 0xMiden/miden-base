@@ -35,7 +35,7 @@ const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account do
 #!   - destination_address_3: bytes 12-15
 #!   - destination_address_4: bytes 16-19
 #! Note attachment is constructed from a NetworkAccountTarget standard:
-#! - [0, 0, target_id_prefix, target_id_suffix]
+#! - [0, exec_hint_tag, target_id_prefix, target_id_suffix]
 #!
 #! Panics if:
 #! - The note does not contain exactly 6 storage items.
