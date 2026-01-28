@@ -31,8 +31,7 @@ use crate::{EthAddressFormat, b2agg_script};
 
 /// Storage data for B2AGG note creation.
 ///
-/// Contains the destination network and address information required
-/// for bridging assets to the AggLayer network.
+/// Contains the destination network and address, required for bridging assets to AggLayer.
 #[derive(Debug, Clone)]
 pub struct B2AggNoteStorage {
     /// Destination network identifier (AggLayer-assigned network ID)
