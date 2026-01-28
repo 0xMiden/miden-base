@@ -23,9 +23,8 @@ const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account do
 #!
 #! This note can be consumed in two ways:
 #! - If the consuming account is the sender (reclaim): the note's assets are added back to the consuming account.
-#! - If the consuming account is the Agglayer Bridge: the note's assets are moved to a BURN note, 
+#! - If the consuming account is the Agglayer Bridge: the note's assets are moved to a BURN note,
 #!   and the note details are hashed into a leaf and appended to the Local Exit Tree.
-#!   global exit root (GER) merkle tree structure.
 #!
 #! Inputs:  []
 #! Outputs: []
