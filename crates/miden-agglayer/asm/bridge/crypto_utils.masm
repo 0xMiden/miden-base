@@ -74,6 +74,9 @@ end
 
 #! Computes the Global Exit Tree (GET) root from the mainnet and rollup exit roots.
 #!
+#! The mainnet exit root is expected at `exit_roots_ptr` and
+#! the rollup exit root is expected at `exit_roots_ptr + 8`.
+#!
 #! Inputs: [exit_roots_ptr]
 #! Outputs: [GER_ROOT[8]]
 #!
