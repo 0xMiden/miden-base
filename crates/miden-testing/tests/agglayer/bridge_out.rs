@@ -324,8 +324,8 @@ async fn test_b2agg_note_non_target_account_cannot_consume() -> anyhow::Result<(
     let b2agg_note = create_b2agg_note(
         storage,
         assets,
-        bridge_account.id(), // target
-        sender_account.id(), // sender
+        bridge_account.id(),
+        sender_account.id(),
         builder.rng_mut(),
     )?;
 

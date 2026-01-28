@@ -43,7 +43,7 @@ pub fn create_update_ger_note<R: FeltRng>(
     let recipient = NoteRecipient::new(serial_num, update_ger_script, note_storage);
 
     let attachment = NoteAttachment::from(
-        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::None)
+        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::Always)
             .map_err(|e| NoteError::other(e.to_string()))?,
     );
     let note_tag = NoteTag::new(0);
