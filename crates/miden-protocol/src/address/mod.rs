@@ -77,9 +77,11 @@ impl Address {
         Self { id: id.into(), routing_params: None }
     }
 
-    /// Sets the routing parameters of the address.
+    /// Sets the routing parameters of the address. 
+    /// Validation of tag length, interface, and encryption key is handled 
+    /// internally by [`RoutingParameters`]. This method simply attaches the 
+    /// provided parameters to the address.
     pub fn with_routing_parameters(mut self, routing_params: RoutingParameters) -> Self {
-        // All validation should now live inside RoutingParameters itself.
         self.routing_params = Some(routing_params);
         self
     }
@@ -269,7 +271,7 @@ mod tests {
                 // Encode/Decode with routing parameters should be valid.
                 address = address.with_routing_parameters(
                     RoutingParameters::new(AddressInterface::BasicWallet)
-                        .with_note_tag_len(NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH)?,
+                        .with_note_tag_len(NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH)?,
                 );
 
                 let bech32_string = address.encode(network_id.clone());
@@ -398,7 +400,7 @@ mod tests {
             let account_id = AccountIdBuilder::new().account_type(account_type).build_with_rng(rng);
             let address = Address::new(account_id).with_routing_parameters(
                 RoutingParameters::new(AddressInterface::BasicWallet)
-                    .with_note_tag_len(NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH)?,
+                    .with_note_tag_len(NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH)?,
             );
 
             let serialized = address.to_bytes();

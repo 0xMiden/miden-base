@@ -108,7 +108,7 @@ impl RoutingParameters {
     /// Returns the note tag length preference.
     ///
     /// This is guaranteed to be in range `0..=32` (e.g. the maximum of
-    /// [`NoteTag::DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH`]).
+    /// [`NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> Option<u8> {
         self.note_tag_len
     }

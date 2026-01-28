@@ -65,8 +65,6 @@ impl NoteTag {
 
     /// The default note tag length for an account ID with local execution.
     pub const DEFAULT_ACCOUNT_TARGET_TAG_LENGTH: u8 = 14;
-    /// The default note tag length for an account ID with network execution.
-    pub const DEFAULT_NETWORK_ACCOUNT_TARGET_TAG_LENGTH: u8 = 32;
     /// The maximum number of bits that can be encoded into the tag for local accounts.
     pub const MAX_ACCOUNT_TARGET_TAG_LENGTH: u8 = 32;
 
