@@ -778,7 +778,7 @@ mod output_notes_tests {
         assert!(computed_note_size > NOTE_MAX_SIZE as usize);
 
         // Creating a PublicOutputNote should fail with size limit error
-        let result = PublicOutputNote::new(oversized_note);
+        let result = PublicOutputNote::new(oversized_note.clone());
 
         assert_matches!(
             result,
@@ -786,43 +786,8 @@ mod output_notes_tests {
                 if note_size > NOTE_MAX_SIZE as usize
         );
 
-        Ok(())
-    }
-
-    #[test]
-    fn shrink_enforces_size_limit_on_public_notes() -> anyhow::Result<()> {
-        // Test that shrink() on an OutputNote with an oversized public note fails
-
-        let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
-
-        // Build a large MASM program
-        // After strip_decorators(), the size is reduced, so we need more nops.
-        let mut src = alloc::string::String::from("begin\n");
-        for _ in 0..50000 {
-            src.push_str("    nop\n");
-        }
-        src.push_str("end\n");
-
-        let assembler = Assembler::default();
-        let program = assembler.assemble_program(&src).unwrap();
-        let script = NoteScript::new(program);
-
-        let serial_num = Word::empty();
-        let storage = NoteStorage::new(alloc::vec::Vec::new())?;
-
-        let faucet_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap();
-        let asset = FungibleAsset::new(faucet_id, 100)?.into();
-        let assets = NoteAssets::new(vec![asset])?;
-
-        // Create a PUBLIC note so it will go through size validation during shrink
-        let metadata =
-            NoteMetadata::new(sender_id, NoteType::Public, NoteTag::with_account_target(sender_id));
-
-        let recipient = NoteRecipient::new(serial_num, script, storage);
-        let oversized_note = Note::new(assets, metadata, recipient);
+        // to_proven_output_note() should also fail
         let output_note = OutputNote::Full(oversized_note);
-
-        // Shrink should fail because the public note exceeds size limit
         let result = output_note.to_proven_output_note();
 
         assert_matches!(
