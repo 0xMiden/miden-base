@@ -78,7 +78,9 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
     assert_eq!(len_bytes, 113);
 
     let preimage = KeccakPreimage::new(input_u8.clone());
-    let input_felts = bytes_to_packed_u32_felts(&input_u8);
+    let mut input_felts = bytes_to_packed_u32_felts(&input_u8);
+    // Pad to 32 felts (128 bytes) as expected by the downstream code
+    input_felts.resize(32, Felt::ZERO);
     assert_eq!(input_felts.len(), 32);
 
     // Arbitrary key to store input in advice map (in prod this is RPO(input_felts))
