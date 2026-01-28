@@ -4,13 +4,38 @@ use miden::core::mem
 use miden::protocol::active_account
 use miden::protocol::native_account
 
-# CONSTANTS
+# CONSTANTS - STORAGE SLOTS
 # =================================================================================================
+
 const GER_UPPER_STORAGE_SLOT=word("miden::agglayer::bridge::ger_upper")
 const GER_LOWER_STORAGE_SLOT=word("miden::agglayer::bridge::ger_lower")
 
-# Inputs: [GER_LOWER[4], GER_UPPER[4]]
-# Outputs: []
+# CONSTANTS - MEMORY LAYOUT
+# =================================================================================================
+
+const PROOF_DATA_PTR = 0
+const PROOF_DATA_WORD_LEN = 134
+const SMT_PROOF_LOCAL_EXIT_ROOT_PTR = 0 # local SMT proof is first
+const GLOBAL_INDEX_PTR = PROOF_DATA_PTR + 2 * 256 # 512
+const EXIT_ROOTS_PTR = GLOBAL_INDEX_PTR + 8 # 520
+const MAINNET_EXIT_ROOT_PTR = GLOBAL_INDEX_PTR # it's the first exit root
+
+# ERRORS
+# =================================================================================================
+
+const ERR_BRIDGE_NOT_MAINNET = "bridge not mainnet"
+const ERR_LEADING_BITS_NON_ZERO = "leading bits of global index must be zero"
+const ERR_ROLLUP_INDEX_NON_ZERO = "rollup index must be zero for a mainnet deposit"
+
+# PUBLIC INTERFACE
+# =================================================================================================
+
+#! Updates the Global Exit Root (GER) in the bridge account storage.
+#!
+#! Inputs: [GER_LOWER[4], GER_UPPER[4]]
+#! Outputs: []
+#!
+#! Invocation: exec
 pub proc update_ger
     push.GER_LOWER_STORAGE_SLOT[0..2]
     # => [slot_id_prefix, slot_id_suffix, GER_LOWER[4], GER_UPPER[4]]
@@ -31,19 +56,12 @@ pub proc update_ger
     # => []
 end
 
-const PROOF_DATA_PTR = 0
-const PROOF_DATA_WORD_LEN = 134
-const SMT_PROOF_LOCAL_EXIT_ROOT_PTR = 0 # local SMT proof is first
-const GLOBAL_INDEX_PTR = PROOF_DATA_PTR + 2 * 256 # 512
-const EXIT_ROOTS_PTR = GLOBAL_INDEX_PTR + 8 # 520
-const MAINNET_EXIT_ROOT_PTR = GLOBAL_INDEX_PTR # it's the first exit root
-
-const ERR_BRIDGE_NOT_MAINNET = "bridge not mainnet"
-const ERR_LEADING_BITS_NON_ZERO = "leading bits of global index must be zero"
-const ERR_ROLLUP_INDEX_NON_ZERO = "rollup index must be zero for a mainnet deposit"
-
-# Inputs: [GER_ROOT[8]]
-# Output: []
+#! Asserts that the provided GER is valid (exists in storage).
+#!
+#! Inputs: [GER_ROOT[8]]
+#! Outputs: []
+#!
+#! Invocation: exec
 pub proc assert_valid_ger
     # TODO verify that GER is in storage
     dropw dropw
@@ -73,6 +91,32 @@ pub proc verify_leaf_bridge
     # delegate proof verification
     exec.verify_leaf
 end
+
+#! Assert the global index is valid for a mainnet deposit.
+#!
+#! Inputs: [GLOBAL_INDEX[8]]
+#! Outputs: [leaf_index]
+#!
+#! Invocation: exec
+pub proc process_global_index_mainnet
+# for v0.1, let's only implement the mainnet branch
+    # the top 191 bits of the global index are zero
+    repeat.5 assertz.err=ERR_LEADING_BITS_NON_ZERO end
+
+    # the next element is a u32 mainnet flag bit
+    # enforce that this limb is one
+    # => [mainnet_flag, GLOBAL_INDEX[6..8], LEAF_VALUE[8]]
+    assert.err=ERR_BRIDGE_NOT_MAINNET
+
+    # the next element is a u32 rollup index, must be zero for a mainnet deposit
+    assertz.err=ERR_ROLLUP_INDEX_NON_ZERO
+
+    # finally, the leaf index = lowest 32 bits = last limb
+    # => [leaf_index]
+end
+
+# HELPER PROCEDURES
+# =================================================================================================
 
 #! Verify leaf and checks that it has not been claimed.
 #!
@@ -120,27 +164,4 @@ proc verify_leaf
     # => [smt_proof_local_exit_root_ptr, leaf_index, LEAF_VALUE[8], mainnet_exit_root_ptr]
     # delegate verification to crypto_utils::verify_merkle_proof (stubbed for now)
     exec.crypto_utils::verify_merkle_proof
-end
-
-#! Assert the global index is valid for a mainnet deposit.
-#!
-#! Inputs: [GLOBAL_INDEX[8]]
-#! Outputs: [leaf_index]
-#!
-#! Invocation: exec
-pub proc process_global_index_mainnet
-# for v0.1, let's only implement the mainnet branch
-    # the top 191 bits of the global index are zero
-    repeat.5 assertz.err=ERR_LEADING_BITS_NON_ZERO end
-
-    # the next element is a u32 mainnet flag bit
-    # enforce that this limb is one
-    # => [mainnet_flag, GLOBAL_INDEX[6..8], LEAF_VALUE[8]]
-    assert.err=ERR_BRIDGE_NOT_MAINNET
-
-    # the next element is a u32 rollup index, must be zero for a mainnet deposit
-    assertz.err=ERR_ROLLUP_INDEX_NON_ZERO
-
-    # finally, the leaf index = lowest 32 bits = last limb
-    # => [leaf_index]
 end
