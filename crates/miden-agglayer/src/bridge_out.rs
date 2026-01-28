@@ -102,7 +102,7 @@ pub fn create_b2agg_note<R: FeltRng>(
     let tag = NoteTag::new(0);
 
     let attachment = NoteAttachment::from(
-        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::None)
+        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::Always)
             .map_err(|e| NoteError::other(e.to_string()))?,
     );
 
