@@ -14,7 +14,7 @@ use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::note::{NoteAssets, NoteScript, NoteTag, NoteType};
 use miden_protocol::transaction::OutputNote;
 use miden_standards::account::faucets::FungibleFaucetExt;
-use miden_standards::note::WellKnownNote;
+use miden_standards::note::StandardNote;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 /// Tests the B2AGG (Bridge to AggLayer) note script with bridge_out account component.
@@ -75,7 +75,7 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let mut mock_chain = builder.build()?;
 
     // Get BURN note script to add to the transaction context
-    let burn_note_script: NoteScript = WellKnownNote::BURN.script();
+    let burn_note_script: NoteScript = StandardNote::BURN.script();
 
     // EXECUTE B2AGG NOTE AGAINST BRIDGE ACCOUNT (NETWORK TRANSACTION)
     // --------------------------------------------------------------------------------------------
