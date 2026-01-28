@@ -15,6 +15,10 @@ use miden_protocol::{Felt, Hasher, Word};
 
 use super::test_utils::execute_program_with_default_host;
 
+// LEAF_DATA_NUM_WORDS is defined as 8 in crypto_utils.masm, representing 8 Miden words of 4 felts
+// each
+const LEAF_DATA_FELTS: usize = 32;
+
 fn u32_words_to_solidity_bytes32_hex(words: &[u64]) -> String {
     assert_eq!(words.len(), 8, "expected 8 u32 words = 32 bytes");
     let mut out = [0u8; 32];
@@ -78,8 +82,10 @@ async fn test_keccak_hash_get_leaf_value() -> anyhow::Result<()> {
     assert_eq!(len_bytes, 113);
 
     let preimage = KeccakPreimage::new(input_u8.clone());
-    let input_felts = bytes_to_packed_u32_felts(&input_u8);
-    assert_eq!(input_felts.len(), 32);
+    let mut input_felts = bytes_to_packed_u32_felts(&input_u8);
+    // Pad to LEAF_DATA_FELTS (128 bytes) as expected by the downstream code
+    input_felts.resize(LEAF_DATA_FELTS, Felt::ZERO);
+    assert_eq!(input_felts.len(), LEAF_DATA_FELTS);
 
     // Arbitrary key to store input in advice map (in prod this is RPO(input_felts))
     let key: Word = Hasher::hash_elements(&input_felts);
