@@ -412,7 +412,7 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = r#"
       use miden::standards::auth
       use miden::protocol::tx
-      const AUTH_UNAUTHORIZED_EVENT=event("miden::auth::unauthorized")
+      const AUTH_UNAUTHORIZED_EVENT=event("miden::protocol::auth::unauthorized")
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
       pub proc auth_abort_tx
