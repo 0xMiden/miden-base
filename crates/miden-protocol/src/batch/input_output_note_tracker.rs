@@ -1,10 +1,11 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
+use crate::Word;
 use crate::batch::{BatchId, ProvenBatch};
 use crate::block::{BlockHeader, BlockNumber};
 use crate::crypto::merkle::MerkleError;
-use crate::errors::ProposedBatchError;
+use crate::errors::{ProposedBatchError, ProposedBlockError};
 use crate::note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use crate::transaction::{
     InputNoteCommitment,
@@ -13,7 +14,6 @@ use crate::transaction::{
     ProvenTransaction,
     TransactionId,
 };
-use crate::{ProposedBlockError, Word};
 
 type BatchInputNotes = Vec<InputNoteCommitment>;
 type BlockInputNotes = Vec<InputNoteCommitment>;

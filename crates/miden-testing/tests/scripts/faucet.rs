@@ -18,9 +18,9 @@ use miden_protocol::note::{
     NoteAssets,
     NoteAttachment,
     NoteId,
-    NoteInputs,
     NoteMetadata,
     NoteRecipient,
+    NoteStorage,
     NoteTag,
     NoteType,
 };
@@ -33,8 +33,11 @@ use miden_standards::account::faucets::{
     NetworkFungibleFaucet,
 };
 use miden_standards::code_builder::CodeBuilder;
-use miden_standards::errors::standards::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
-use miden_standards::note::{MintNoteInputs, WellKnownNote, create_burn_note, create_mint_note};
+use miden_standards::errors::standards::{
+    ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
+    ERR_SENDER_NOT_OWNER,
+};
+use miden_standards::note::{MintNoteStorage, StandardNote, create_burn_note, create_mint_note};
 use miden_standards::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
@@ -308,9 +311,9 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     let target_account_suffix = recipient_account_id.suffix();
     let target_account_prefix = recipient_account_id.prefix().as_felt();
 
-    // Use a length that is not a multiple of 8 (double word size) to make sure note inputs padding
+    // Use a length that is not a multiple of 8 (double word size) to make sure note storage padding
     // is correctly handled
-    let note_inputs = NoteInputs::new(vec![
+    let note_storage = NoteStorage::new(vec![
         target_account_suffix,
         target_account_prefix,
         Felt::new(0),
@@ -321,7 +324,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     ])?;
 
     let note_recipient =
-        NoteRecipient::new(serial_num, output_note_script.clone(), note_inputs.clone());
+        NoteRecipient::new(serial_num, output_note_script.clone(), note_storage.clone());
 
     let output_script_root = note_recipient.script().root();
 
@@ -334,14 +337,14 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
             use miden::protocol::note
             
             begin
-                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and INPUTS_COMMITMENT
+                # Build recipient hash from SERIAL_NUM, SCRIPT_ROOT, and STORAGE_COMMITMENT
                 push.{script_root}
                 # => [SCRIPT_ROOT]
 
                 push.{serial_num}
                 # => [SERIAL_NUM, SCRIPT_ROOT]
 
-                # Store note inputs in memory
+                # Store note storage in memory
                 push.{input0} mem_store.0
                 push.{input1} mem_store.1
                 push.{input2} mem_store.2
@@ -351,7 +354,7 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
                 push.{input6} mem_store.6
 
                 push.7 push.0
-                # => [inputs_ptr, num_inputs = 7, SERIAL_NUM, SCRIPT_ROOT]
+                # => [storage_ptr, num_storage_items = 7, SERIAL_NUM, SCRIPT_ROOT]
 
                 exec.note::build_recipient
                 # => [RECIPIENT]
@@ -370,13 +373,13 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
             end
             ",
         note_type = note_type as u8,
-        input0 = note_inputs.values()[0],
-        input1 = note_inputs.values()[1],
-        input2 = note_inputs.values()[2],
-        input3 = note_inputs.values()[3],
-        input4 = note_inputs.values()[4],
-        input5 = note_inputs.values()[5],
-        input6 = note_inputs.values()[6],
+        input0 = note_storage.items()[0],
+        input1 = note_storage.items()[1],
+        input2 = note_storage.items()[2],
+        input3 = note_storage.items()[3],
+        input4 = note_storage.items()[4],
+        input5 = note_storage.items()[5],
+        input6 = note_storage.items()[6],
         script_root = output_script_root,
         serial_num = serial_num,
         tag = u32::from(tag),
@@ -427,16 +430,16 @@ async fn test_public_note_creation_with_script_from_datastore() -> anyhow::Resul
     // Verify the note was created by the faucet
     assert_eq!(full_note.metadata().sender(), faucet.id());
 
-    // Verify the note inputs commitment matches the expected commitment
+    // Verify the note storage commitment matches the expected commitment
     assert_eq!(
-        full_note.recipient().inputs().commitment(),
-        note_inputs.commitment(),
-        "Output note inputs commitment should match expected inputs commitment"
+        full_note.recipient().storage().commitment(),
+        note_storage.commitment(),
+        "Output note storage commitment should match expected storage commitment"
     );
     assert_eq!(
-        full_note.recipient().inputs().num_values(),
-        note_inputs.num_values(),
-        "Output note inputs length should match expected inputs length"
+        full_note.recipient().storage().num_items(),
+        note_storage.num_items(),
+        "Output note number of storage items should match expected number of storage items"
     );
 
     // Verify the output note ID matches the expected note ID
@@ -506,13 +509,13 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     let recipient = p2id_mint_output_note.recipient().digest();
 
     // Create the MINT note using the helper function
-    let mint_inputs = MintNoteInputs::new_private(recipient, amount, output_note_tag.into());
+    let mint_storage = MintNoteStorage::new_private(recipient, amount, output_note_tag.into());
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
     let mint_note = create_mint_note(
         faucet.id(),
         faucet_owner_account_id,
-        mint_inputs,
+        mint_storage,
         NoteAttachment::default(),
         &mut rng,
     )?;
@@ -556,6 +559,487 @@ async fn network_faucet_mint() -> anyhow::Result<()> {
     // Verify the account's vault now contains the expected fungible asset
     let balance = target_account.vault().get_balance(faucet.id())?;
     assert_eq!(balance, expected_asset.amount(),);
+
+    Ok(())
+}
+
+// TESTS FOR NETWORK FAUCET OWNERSHIP
+// ================================================================================================
+
+/// Tests that the owner can mint assets on network faucet.
+#[tokio::test]
+async fn test_network_faucet_owner_can_mint() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet = builder.add_existing_network_faucet("NET", 1000, owner_account_id, Some(50))?;
+    let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let mock_chain = builder.build()?;
+
+    let amount = Felt::new(75);
+    let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
+
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
+    let p2id_note = create_p2id_note_exact(
+        faucet.id(),
+        target_account.id(),
+        vec![mint_asset],
+        NoteType::Private,
+        Word::default(),
+    )?;
+    let recipient = p2id_note.recipient().digest();
+
+    let mint_inputs = MintNoteStorage::new_private(recipient, amount, output_note_tag.into());
+
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note = create_mint_note(
+        faucet.id(),
+        owner_account_id,
+        mint_inputs,
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
+
+    let tx_context = mock_chain.build_tx_context(faucet.id(), &[], &[mint_note])?.build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+
+    Ok(())
+}
+
+/// Tests that a non-owner cannot mint assets on network faucet.
+#[tokio::test]
+async fn test_network_faucet_non_owner_cannot_mint() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let non_owner_account_id = AccountId::dummy(
+        [2; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet = builder.add_existing_network_faucet("NET", 1000, owner_account_id, Some(50))?;
+    let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let mock_chain = builder.build()?;
+
+    let amount = Felt::new(75);
+    let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
+
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
+    let p2id_note = create_p2id_note_exact(
+        faucet.id(),
+        target_account.id(),
+        vec![mint_asset],
+        NoteType::Private,
+        Word::default(),
+    )?;
+    let recipient = p2id_note.recipient().digest();
+
+    let mint_inputs = MintNoteStorage::new_private(recipient, amount, output_note_tag.into());
+
+    // Create mint note from NON-OWNER
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note = create_mint_note(
+        faucet.id(),
+        non_owner_account_id,
+        mint_inputs,
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
+
+    let tx_context = mock_chain.build_tx_context(faucet.id(), &[], &[mint_note])?.build()?;
+    let result = tx_context.execute().await;
+
+    // The distribute function uses ERR_ONLY_OWNER, which is "note sender is not the owner"
+    let expected_error = ERR_SENDER_NOT_OWNER;
+    assert_transaction_executor_error!(result, expected_error);
+
+    Ok(())
+}
+
+/// Tests that the owner is correctly stored and can be read from storage.
+#[tokio::test]
+async fn test_network_faucet_owner_storage() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet = builder.add_existing_network_faucet("NET", 1000, owner_account_id, Some(50))?;
+    let _mock_chain = builder.build()?;
+
+    // Verify owner is stored correctly
+    let stored_owner = faucet.storage().get_item(NetworkFungibleFaucet::owner_config_slot())?;
+
+    // Storage format: [0, 0, suffix, prefix]
+    assert_eq!(stored_owner[3], owner_account_id.prefix().as_felt());
+    assert_eq!(stored_owner[2], Felt::new(owner_account_id.suffix().as_int()));
+    assert_eq!(stored_owner[1], Felt::new(0));
+    assert_eq!(stored_owner[0], Felt::new(0));
+
+    Ok(())
+}
+
+/// Tests that transfer_ownership updates the owner correctly.
+#[tokio::test]
+async fn test_network_faucet_transfer_ownership() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    // Setup: Create initial owner and new owner accounts
+    let initial_owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let new_owner_account_id = AccountId::dummy(
+        [2; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet =
+        builder.add_existing_network_faucet("NET", 1000, initial_owner_account_id, Some(50))?;
+    let target_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+
+    let amount = Felt::new(75);
+    let mint_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
+
+    let output_note_tag = NoteTag::with_account_target(target_account.id());
+    let p2id_note = create_p2id_note_exact(
+        faucet.id(),
+        target_account.id(),
+        vec![mint_asset],
+        NoteType::Private,
+        Word::default(),
+    )?;
+    let recipient = p2id_note.recipient().digest();
+
+    // Sanity Check: Prove that the initial owner can mint assets
+    let mint_inputs = MintNoteStorage::new_private(recipient, amount, output_note_tag.into());
+
+    let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
+    let mint_note = create_mint_note(
+        faucet.id(),
+        initial_owner_account_id,
+        mint_inputs.clone(),
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
+
+    // Action: Create transfer_ownership note script
+    let transfer_note_script_code = format!(
+        r#"
+        use miden::standards::faucets::network_fungible->network_faucet
+
+        begin
+            repeat.14 push.0 end
+            push.{new_owner_suffix}
+            push.{new_owner_prefix}
+            call.network_faucet::transfer_ownership
+            dropw dropw dropw dropw
+        end
+        "#,
+        new_owner_prefix = new_owner_account_id.prefix().as_felt(),
+        new_owner_suffix = Felt::new(new_owner_account_id.suffix().as_int()),
+    );
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let transfer_note_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(transfer_note_script_code.clone())?;
+
+    // Create the transfer note and add it to the builder so it exists on-chain
+    let mut rng = RpoRandomCoin::new([Felt::from(200u32); 4].into());
+    let transfer_note = NoteBuilder::new(initial_owner_account_id, &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::default().into())
+        .serial_number(Word::from([11, 22, 33, 44u32]))
+        .code(transfer_note_script_code.clone())
+        .build()?;
+
+    // Add the transfer note to the builder before building the chain
+    builder.add_output_note(OutputNote::Full(transfer_note.clone()));
+    let mut mock_chain = builder.build()?;
+
+    // Prove the block to make the transfer note exist on-chain
+    mock_chain.prove_next_block()?;
+
+    // Sanity Check: Execute mint transaction to verify initial owner can mint
+    let tx_context = mock_chain.build_tx_context(faucet.id(), &[], &[mint_note])?.build()?;
+    let executed_transaction = tx_context.execute().await?;
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+
+    // Action: Execute transfer_ownership via note script
+    let tx_context = mock_chain
+        .build_tx_context(faucet.id(), &[transfer_note.id()], &[])?
+        .add_note_script(transfer_note_script.clone())
+        .with_source_manager(source_manager.clone())
+        .build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    // Persistence: Apply the transaction to update the faucet state
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    mock_chain.prove_next_block()?;
+
+    // Apply the delta to the faucet account to reflect the ownership change
+    let mut updated_faucet = faucet.clone();
+    updated_faucet.apply_delta(executed_transaction.account_delta())?;
+
+    // Validation 1: Try to mint using the old owner - should fail
+    let mut rng = RpoRandomCoin::new([Felt::from(300u32); 4].into());
+    let mint_note_old_owner = create_mint_note(
+        updated_faucet.id(),
+        initial_owner_account_id,
+        mint_inputs.clone(),
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
+
+    // Use the note as an unauthenticated note (full note object) - it will be created in this
+    // transaction
+    let tx_context = mock_chain
+        .build_tx_context(updated_faucet.id(), &[], &[mint_note_old_owner])?
+        .build()?;
+    let result = tx_context.execute().await;
+
+    // The distribute function uses ERR_ONLY_OWNER, which is "note sender is not the owner"
+    let expected_error = ERR_SENDER_NOT_OWNER;
+    assert_transaction_executor_error!(result, expected_error);
+
+    // Validation 2: Try to mint using the new owner - should succeed
+    let mut rng = RpoRandomCoin::new([Felt::from(400u32); 4].into());
+    let mint_note_new_owner = create_mint_note(
+        updated_faucet.id(),
+        new_owner_account_id,
+        mint_inputs,
+        NoteAttachment::default(),
+        &mut rng,
+    )?;
+
+    let tx_context = mock_chain
+        .build_tx_context(updated_faucet.id(), &[], &[mint_note_new_owner])?
+        .build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    // Verify that minting succeeded
+    assert_eq!(executed_transaction.output_notes().num_notes(), 1);
+
+    Ok(())
+}
+
+/// Tests that only the owner can transfer ownership.
+#[tokio::test]
+async fn test_network_faucet_only_owner_can_transfer() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let non_owner_account_id = AccountId::dummy(
+        [2; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let new_owner_account_id = AccountId::dummy(
+        [3; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet = builder.add_existing_network_faucet("NET", 1000, owner_account_id, Some(50))?;
+    let mock_chain = builder.build()?;
+
+    // Create transfer ownership note script
+    let transfer_note_script_code = format!(
+        r#"
+        use miden::standards::faucets::network_fungible->network_faucet
+
+        begin
+            repeat.14 push.0 end
+            push.{new_owner_suffix}
+            push.{new_owner_prefix}
+            call.network_faucet::transfer_ownership
+            dropw dropw dropw dropw
+        end
+        "#,
+        new_owner_prefix = new_owner_account_id.prefix().as_felt(),
+        new_owner_suffix = Felt::new(new_owner_account_id.suffix().as_int()),
+    );
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let transfer_note_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(transfer_note_script_code.clone())?;
+
+    // Create a note from NON-OWNER that tries to transfer ownership
+    let mut rng = RpoRandomCoin::new([Felt::from(100u32); 4].into());
+    let transfer_note = NoteBuilder::new(non_owner_account_id, &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::default().into())
+        .serial_number(Word::from([10, 20, 30, 40u32]))
+        .code(transfer_note_script_code.clone())
+        .build()?;
+
+    let tx_context = mock_chain
+        .build_tx_context(faucet.id(), &[], &[transfer_note])?
+        .add_note_script(transfer_note_script.clone())
+        .with_source_manager(source_manager.clone())
+        .build()?;
+    let result = tx_context.execute().await;
+
+    // Verify that the transaction failed with ERR_ONLY_OWNER
+    let expected_error = ERR_SENDER_NOT_OWNER;
+    assert_transaction_executor_error!(result, expected_error);
+
+    Ok(())
+}
+
+/// Tests that renounce_ownership clears the owner correctly.
+#[tokio::test]
+async fn test_network_faucet_renounce_ownership() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let owner_account_id = AccountId::dummy(
+        [1; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let new_owner_account_id = AccountId::dummy(
+        [2; 15],
+        AccountIdVersion::Version0,
+        AccountType::RegularAccountImmutableCode,
+        AccountStorageMode::Private,
+    );
+
+    let faucet = builder.add_existing_network_faucet("NET", 1000, owner_account_id, Some(50))?;
+
+    // Check stored value before renouncing
+    let stored_owner_before =
+        faucet.storage().get_item(NetworkFungibleFaucet::owner_config_slot())?;
+    assert_eq!(stored_owner_before[3], owner_account_id.prefix().as_felt());
+    assert_eq!(stored_owner_before[2], Felt::new(owner_account_id.suffix().as_int()));
+
+    // Create renounce_ownership note script
+    let renounce_note_script_code = r#"
+        use miden::standards::faucets::network_fungible->network_faucet
+
+        begin
+            repeat.16 push.0 end
+            call.network_faucet::renounce_ownership
+            dropw dropw dropw dropw
+        end
+        "#;
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let renounce_note_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(renounce_note_script_code)?;
+
+    // Create transfer note script (will be used after renounce)
+    let transfer_note_script_code = format!(
+        r#"
+        use miden::standards::faucets::network_fungible->network_faucet
+
+        begin
+            repeat.14 push.0 end
+            push.{new_owner_suffix}
+            push.{new_owner_prefix}
+            call.network_faucet::transfer_ownership
+            dropw dropw dropw dropw
+        end
+        "#,
+        new_owner_prefix = new_owner_account_id.prefix().as_felt(),
+        new_owner_suffix = Felt::new(new_owner_account_id.suffix().as_int()),
+    );
+
+    let transfer_note_script = CodeBuilder::with_source_manager(source_manager.clone())
+        .compile_note_script(transfer_note_script_code.clone())?;
+
+    let mut rng = RpoRandomCoin::new([Felt::from(200u32); 4].into());
+    let renounce_note = NoteBuilder::new(owner_account_id, &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::default().into())
+        .serial_number(Word::from([11, 22, 33, 44u32]))
+        .code(renounce_note_script_code)
+        .build()?;
+
+    let mut rng = RpoRandomCoin::new([Felt::from(300u32); 4].into());
+    let transfer_note = NoteBuilder::new(owner_account_id, &mut rng)
+        .note_type(NoteType::Private)
+        .tag(NoteTag::default().into())
+        .serial_number(Word::from([50, 60, 70, 80u32]))
+        .code(transfer_note_script_code.clone())
+        .build()?;
+
+    builder.add_output_note(OutputNote::Full(renounce_note.clone()));
+    builder.add_output_note(OutputNote::Full(transfer_note.clone()));
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    // Execute renounce_ownership
+    let tx_context = mock_chain
+        .build_tx_context(faucet.id(), &[renounce_note.id()], &[])?
+        .add_note_script(renounce_note_script.clone())
+        .with_source_manager(source_manager.clone())
+        .build()?;
+    let executed_transaction = tx_context.execute().await?;
+
+    mock_chain.add_pending_executed_transaction(&executed_transaction)?;
+    mock_chain.prove_next_block()?;
+
+    let mut updated_faucet = faucet.clone();
+    updated_faucet.apply_delta(executed_transaction.account_delta())?;
+
+    // Check stored value after renouncing - should be zero
+    let stored_owner_after =
+        updated_faucet.storage().get_item(NetworkFungibleFaucet::owner_config_slot())?;
+    assert_eq!(stored_owner_after[0], Felt::new(0));
+    assert_eq!(stored_owner_after[1], Felt::new(0));
+    assert_eq!(stored_owner_after[2], Felt::new(0));
+    assert_eq!(stored_owner_after[3], Felt::new(0));
+
+    // Try to transfer ownership - should fail because there's no owner
+    // The transfer note was already added to the builder, so we need to prove another block
+    // to make it available on-chain after the renounce transaction
+    mock_chain.prove_next_block()?;
+
+    let tx_context = mock_chain
+        .build_tx_context(updated_faucet.id(), &[transfer_note.id()], &[])?
+        .add_note_script(transfer_note_script.clone())
+        .with_source_manager(source_manager.clone())
+        .build()?;
+    let result = tx_context.execute().await;
+
+    let expected_error = ERR_SENDER_NOT_OWNER;
+    assert_transaction_executor_error!(result, expected_error);
 
     Ok(())
 }
@@ -671,29 +1155,28 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
     .unwrap();
 
     // Create MINT note based on note type
-    let mint_inputs = match note_type {
+    let mint_storage = match note_type {
         NoteType::Private => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
             let recipient = p2id_mint_output_note.recipient().digest();
-            MintNoteInputs::new_private(recipient, amount, output_note_tag.into())
+            MintNoteStorage::new_private(recipient, amount, output_note_tag.into())
         },
         NoteType::Public => {
             let output_note_tag = NoteTag::with_account_target(target_account.id());
-            let p2id_script = WellKnownNote::P2ID.script();
-            let p2id_inputs =
+            let p2id_script = StandardNote::P2ID.script();
+            let p2id_storage =
                 vec![target_account.id().suffix(), target_account.id().prefix().as_felt()];
-            let note_inputs = NoteInputs::new(p2id_inputs)?;
-            let recipient = NoteRecipient::new(serial_num, p2id_script, note_inputs);
-            MintNoteInputs::new_public(recipient, amount, output_note_tag.into())?
+            let note_storage = NoteStorage::new(p2id_storage)?;
+            let recipient = NoteRecipient::new(serial_num, p2id_script, note_storage);
+            MintNoteStorage::new_public(recipient, amount, output_note_tag.into())?
         },
-        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     };
 
     let mut rng = RpoRandomCoin::new([Felt::from(42u32); 4].into());
     let mint_note = create_mint_note(
         faucet.id(),
         faucet_owner_account_id,
-        mint_inputs.clone(),
+        mint_storage.clone(),
         NoteAttachment::default(),
         &mut rng,
     )?;
@@ -705,7 +1188,7 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
         mock_chain.build_tx_context(faucet.id(), &[mint_note.id()], &[])?;
 
     if note_type == NoteType::Public {
-        let p2id_script = WellKnownNote::P2ID.script();
+        let p2id_script = StandardNote::P2ID.script();
         tx_context_builder = tx_context_builder.add_note_script(p2id_script);
     }
 
@@ -731,7 +1214,6 @@ async fn test_mint_note_output_note_types(#[case] note_type: NoteType) -> anyhow
 
             assert_eq!(created_note, &p2id_mint_output_note);
         },
-        NoteType::Encrypted => unreachable!("Encrypted note type not used in this test"),
     }
 
     mock_chain.add_pending_executed_transaction(&executed_transaction)?;

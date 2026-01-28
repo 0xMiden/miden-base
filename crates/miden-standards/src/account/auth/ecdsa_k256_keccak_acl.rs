@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::account::auth::PublicKeyCommitment;
 use miden_protocol::account::{
     AccountCode,
@@ -8,8 +9,8 @@ use miden_protocol::account::{
     StorageSlot,
     StorageSlotName,
 };
+use miden_protocol::errors::AccountError;
 use miden_protocol::utils::sync::LazyLock;
-use miden_protocol::{AccountError, Word};
 
 use crate::account::components::ecdsa_k256_keccak_acl_library;
 
@@ -224,7 +225,7 @@ mod tests {
     use miden_protocol::account::AccountBuilder;
 
     use super::*;
-    use crate::account::components::WellKnownComponent;
+    use crate::account::components::StandardAccountComponent;
     use crate::account::wallets::BasicWallet;
 
     /// Test configuration for parametrized ACL tests
@@ -242,7 +243,8 @@ mod tests {
     /// Helper function to get the basic wallet procedures for testing
     fn get_basic_wallet_procedures() -> Vec<Word> {
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
-        let procedures: Vec<Word> = WellKnownComponent::BasicWallet.procedure_digests().collect();
+        let procedures: Vec<Word> =
+            StandardAccountComponent::BasicWallet.procedure_digests().collect();
 
         assert_eq!(procedures.len(), 2);
         procedures

@@ -1,6 +1,11 @@
 use miden::core::crypto::hashes::keccak256
+use miden::core::mem
 
-#! Given the leaf data returns the leaf value.
+const LEAF_DATA_BYTES = 113
+const LEAF_DATA_NUM_WORDS = 8
+const LEAF_DATA_START_PTR = 0
+
+#! Given the leaf data key returns the leaf value.
 #!
 #! Inputs:
 #!   Operand stack: [LEAF_DATA_KEY]
@@ -18,7 +23,22 @@ use miden::core::crypto::hashes::keccak256
 #!
 #! Invocation: exec
 pub proc get_leaf_value
-    padw
+    adv.push_mapval
+    # => [LEAF_DATA_KEY]
+
+    push.LEAF_DATA_START_PTR push.LEAF_DATA_NUM_WORDS
+    exec.mem::pipe_preimage_to_memory drop
+    # => []
+
+    push.LEAF_DATA_BYTES push.LEAF_DATA_START_PTR
+    # => [start_ptr, byte_len]
+
+    exec.keccak256::hash_bytes
+    # => [LEAF_VALUE[8]]
+
+    # truncate stack
+    swapdw dropw dropw
+    # => [LEAF_VALUE[8]]
 end
 
 #! Verify leaf and checks that it has not been claimed.
@@ -27,7 +47,7 @@ end
 #! and that the leaf has not been previously claimed.
 #!
 #! Inputs:
-#!   Operand stack: [GER_ROOT[8], CLAIM_PROOF_RPO_COMMITMENT, pad(12)]
+#!   Operand stack: [GER_ROOT[8], PROOF_DATA_KEY, LEAF_DATA_KEY, pad(12)]
 #!   Advice map: {
 #!     PROOF_DATA_KEY => [
 #!       smtProofLocalExitRoot[256],      // SMT proof for local exit root (256 felts, bytes32[_DEPOSIT_CONTRACT_TREE_DEPTH])
@@ -50,7 +70,7 @@ end
 #!   Operand stack: [is_valid]
 #!
 #! Where:
-#! - RPO_CLAIM_NOTE_INPUTS_COMMITMENT is the RPO hash commitment of all claim note inputs
+#! - RPO_CLAIM_NOTE_STORAGE_COMMITMENT is the RPO hash commitment of all claim note storage
 #! - leafType is the leaf type: [0] transfer Ether / ERC20 tokens, [1] message
 #! - originNetwork is the origin network identifier (u32 as Felt)
 #! - originAddress is the origin address (5 felts representing address)

@@ -1,4 +1,6 @@
+use miden_protocol::Word;
 use miden_protocol::account::AccountId;
+use miden_protocol::errors::{AccountIdError, NoteError};
 use miden_protocol::note::{
     NoteAttachment,
     NoteAttachmentContent,
@@ -6,9 +8,8 @@ use miden_protocol::note::{
     NoteAttachmentScheme,
     NoteExecutionHint,
 };
-use miden_protocol::{AccountIdError, NoteError, Word};
 
-use crate::note::WellKnownNoteAttachment;
+use crate::note::StandardNoteAttachment;
 
 // NETWORK ACCOUNT TARGET
 // ================================================================================================
@@ -35,7 +36,7 @@ impl NetworkAccountTarget {
 
     /// The standardized scheme of [`NetworkAccountTarget`] attachments.
     pub const ATTACHMENT_SCHEME: NoteAttachmentScheme =
-        WellKnownNoteAttachment::NetworkAccountTarget.attachment_scheme();
+        StandardNoteAttachment::NetworkAccountTarget.attachment_scheme();
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -84,10 +85,10 @@ impl From<NetworkAccountTarget> for NoteAttachment {
     }
 }
 
-impl TryFrom<NoteAttachment> for NetworkAccountTarget {
+impl TryFrom<&NoteAttachment> for NetworkAccountTarget {
     type Error = NetworkAccountTargetError;
 
-    fn try_from(attachment: NoteAttachment) -> Result<Self, Self::Error> {
+    fn try_from(attachment: &NoteAttachment) -> Result<Self, Self::Error> {
         if attachment.attachment_scheme() != Self::ATTACHMENT_SCHEME {
             return Err(NetworkAccountTargetError::AttachmentSchemeMismatch(
                 attachment.attachment_scheme(),
@@ -157,7 +158,7 @@ mod tests {
         let network_account_target = NetworkAccountTarget::new(id, NoteExecutionHint::Always)?;
         assert_eq!(
             network_account_target,
-            NetworkAccountTarget::try_from(NoteAttachment::from(network_account_target))?
+            NetworkAccountTarget::try_from(&NoteAttachment::from(network_account_target))?
         );
 
         Ok(())
