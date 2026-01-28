@@ -70,6 +70,9 @@ begin
         exec.active_note::get_metadata
         # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 
+        swapw
+        # => [METADATA_HEADER, NOTE_ATTACHMENT, pad(8)]
+
         exec.note::extract_attachment_info_from_metadata
         # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT, pad(8)]
 
