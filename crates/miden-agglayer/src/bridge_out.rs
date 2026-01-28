@@ -17,6 +17,7 @@ use miden_protocol::note::{
     NoteExecutionHint,
     NoteMetadata,
     NoteRecipient,
+    NoteScript,
     NoteStorage,
     NoteTag,
     NoteType,
@@ -104,7 +105,7 @@ pub fn create_b2agg_note<R: FeltRng>(
     let tag = NoteTag::new(0);
 
     let attachment = NoteAttachment::from(
-        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::None)
+        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::Always)
             .map_err(|e| NoteError::other(e.to_string()))?,
     );
 
@@ -113,7 +114,7 @@ pub fn create_b2agg_note<R: FeltRng>(
     let b2agg_script = b2agg_script();
     let recipient = NoteRecipient::new(
         rng.draw_word(),
-        miden_protocol::note::NoteScript::new(b2agg_script),
+        NoteScript::new(b2agg_script),
         note_storage,
     );
 
