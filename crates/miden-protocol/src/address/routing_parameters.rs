@@ -38,7 +38,7 @@ const BECH32_SEPARATOR: &str = "1";
 ///
 /// If the note tag length is absent from routing parameters, the note tag length for the address
 /// will be set to the default default tag length of the address' ID component.
-const ABSENT_NOTE_TAG_LEN: u8 = 63; // 31
+const ABSENT_NOTE_TAG_LEN: u8 = 63;
 
 /// The routing parameter key for the receiver profile.
 const RECEIVER_PROFILE_PARAM_KEY: u8 = 0;
