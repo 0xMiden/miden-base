@@ -20,14 +20,27 @@ use crate::agglayer::test_utils::execute_program_with_default_host;
 fn assemble_verify_leaf_bridge_program(
     global_index_be_u32_limbs: [u32; 8],
 ) -> (Program, AdviceInputs) {
+    let proof_data_key: Word = [
+        Felt::new(1),
+        Felt::new(2),
+        Felt::new(3),
+        Felt::new(4),
+    ];
+    let leaf_value = [11u32, 12, 13, 14, 15, 16, 17, 18];
+    let leaf_value_push = leaf_value
+        .iter()
+        .map(u32::to_string)
+        .collect::<Vec<_>>()
+        .join(".");
+
     let script_code = format!(
         r#"
         use miden::core::sys
         use miden::agglayer::bridge_in
 
         begin
-            push.0.0.0.0
-            push.0.0.0.0.0.0.0.0
+            push.{proof_data_key}
+            push.{leaf_value_push}
             exec.bridge_in::verify_leaf_bridge
             exec.sys::truncate_stack
         end
@@ -49,7 +62,7 @@ fn assemble_verify_leaf_bridge_program(
     proof_data.extend(core::iter::repeat(Felt::new(0)).take(8));
     proof_data.extend(core::iter::repeat(Felt::new(0)).take(8));
 
-    let advice_inputs = AdviceInputs::default().with_map(vec![(Word::default(), proof_data)]);
+    let advice_inputs = AdviceInputs::default().with_map(vec![(proof_data_key, proof_data)]);
 
     (program, advice_inputs)
 }
