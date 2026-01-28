@@ -23,6 +23,8 @@ const LEAF_DATA_START_PTR = 0
 #!
 #! Invocation: exec
 pub proc get_leaf_value
+    # TODO: keep this implementation in sync with DepositContractV2::getLeafValue
+    # https://github.com/agglayer/agglayer-contracts/blob/e468f9b0967334403069aa650d9f1164b1731ebb/contracts/v2/lib/DepositContractV2.sol#L22
     adv.push_mapval
     # => [LEAF_DATA_KEY]
 
