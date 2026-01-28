@@ -77,9 +77,9 @@ impl Address {
         Self { id: id.into(), routing_params: None }
     }
 
-    /// Sets the routing parameters of the address. 
-    /// Validation of tag length, interface, and encryption key is handled 
-    /// internally by [`RoutingParameters`]. This method simply attaches the 
+    /// Sets the routing parameters of the address.
+    /// Validation of tag length, interface, and encryption key is handled
+    /// internally by [`RoutingParameters`]. This method simply attaches the
     /// provided parameters to the address.
     pub fn with_routing_parameters(mut self, routing_params: RoutingParameters) -> Self {
         self.routing_params = Some(routing_params);
