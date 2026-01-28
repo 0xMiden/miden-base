@@ -97,6 +97,8 @@ end
 #! Computes the Global Exit Tree (GET) root from the mainnet and rollup exit roots.
 #!
 #! Inputs: [exit_roots_ptr]
+#!   - mainnet exit root is stored at exit_roots_ptr
+#!   - rollup exit root is stored at exit_roots_ptr + 8
 #! Outputs: [GER_ROOT[8]]
 #!
 #! Invocation: exec
