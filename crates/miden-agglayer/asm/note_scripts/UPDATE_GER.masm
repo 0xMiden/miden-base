@@ -2,6 +2,8 @@ use miden::agglayer::bridge_in
 use miden::protocol::active_note
 use miden::protocol::active_account
 use miden::protocol::account_id
+use miden::protocol::note
+use miden::standards::attachments::network_account_target
 
 # CONSTANTS
 # =================================================================================================
@@ -43,14 +45,14 @@ begin
     exec.active_note::get_metadata
     # => [NOTE_ATTACHMENT, METADATA_HEADER, pad(8)]
 
-    # TODO simplify once https://github.com/0xMiden/miden-base/pull/2338 lands
+    exec.note::extract_attachment_info_from_metadata
+    # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT, pad(8)]
 
-    swapw dropw
-    # => [NOTE_ATTACHMENT, pad(12)]
+    swap
+    # => [attachment_scheme, attachment_kind, NOTE_ATTACHMENT, pad(8)]
 
-    # Reorder attachment word to [target_id_prefix, target_id_suffix].
-    drop drop
-    # => [target_id_prefix, target_id_suffix, pad(14)] (auto-padding)
+    exec.network_account_target::get_id
+    # => [target_id_prefix, target_id_suffix, pad(14)]
 
     exec.active_account::get_id
     # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix, pad(14)]
