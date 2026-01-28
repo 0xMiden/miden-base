@@ -30,8 +30,8 @@ use crate::{EthAddressFormat, b2agg_script};
 
 /// Storage data for B2AGG note creation.
 ///
-/// Contains the destination network and address information required
-/// for bridging assets to the AggLayer network.
+/// Contains the destination network and address information required for
+/// bridging assets to the AggLayer network.
 #[derive(Debug, Clone)]
 pub struct B2AggNoteStorage {
     /// Destination network identifier (AggLayer-assigned network ID)
@@ -83,8 +83,10 @@ impl TryFrom<B2AggNoteStorage> for NoteStorage {
 ///
 /// # Parameters
 /// - `storage`: The destination network and address information
-/// - `assets`: The assets to bridge (must be fungible assets from a network faucet)
-/// - `target_account_id`: The account ID that will consume this note (bridge account)
+/// - `assets`: The assets to bridge (must be fungible assets from a network
+///   faucet)
+/// - `target_account_id`: The account ID that will consume this note (bridge
+///   account)
 /// - `sender_account_id`: The account ID of the note creator
 /// - `note_type`: The type of note (Public or Private)
 /// - `rng`: Random number generator for creating the note serial number
