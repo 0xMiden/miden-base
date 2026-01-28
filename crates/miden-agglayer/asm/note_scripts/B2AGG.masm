@@ -17,6 +17,8 @@ const ERR_B2AGG_WRONG_NUMBER_OF_ASSETS="B2AGG script requires exactly 1 note ass
 const ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="B2AGG script expects exactly 6 note storage items"
 const ERR_B2AGG_TARGET_ACCOUNT_MISMATCH="B2AGG note attachment target account does not match consuming account"
 
+# NOTE SCRIPT
+# =================================================================================================
 
 #! Bridge-to-AggLayer (B2AGG) note script: bridges assets from Miden to an AggLayer-connected chain.
 #!

@@ -16,6 +16,9 @@ const STORAGE_PTR_GER_UPPER = 4
 const ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS = "UPDATE_GER script expects exactly 8 note storage items"
 const ERR_UPDATE_GER_TARGET_ACCOUNT_MISMATCH = "UPDATE_GER note attachment target account does not match consuming account"
 
+# NOTE SCRIPT
+# =================================================================================================
+
 #! Agglayer Bridge UPDATE_GER script: updates the GER by calling the bridge_in::update_ger function.
 #!
 #! This note can only be consumed by the specific agglayer bridge account whose ID is provided
