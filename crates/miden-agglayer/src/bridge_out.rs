@@ -110,11 +110,8 @@ pub fn create_b2agg_note<R: FeltRng>(
         NoteMetadata::new(sender_account_id, NoteType::Public, tag).with_attachment(attachment);
 
     let b2agg_script = b2agg_script();
-    let recipient = NoteRecipient::new(
-        rng.draw_word(),
-        NoteScript::new(b2agg_script),
-        note_storage,
-    );
+    let recipient =
+        NoteRecipient::new(rng.draw_word(), NoteScript::new(b2agg_script), note_storage);
 
     Ok(Note::new(assets, metadata, recipient))
 }

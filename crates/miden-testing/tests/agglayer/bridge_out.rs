@@ -61,13 +61,8 @@ async fn test_bridge_out_consumes_b2agg_note() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![bridge_asset])?;
 
     // Create the B2AGG note using the helper
-    let b2agg_note = create_b2agg_note(
-        storage,
-        assets,
-        bridge_account.id(),
-        faucet.id(),
-        builder.rng_mut(),
-    )?;
+    let b2agg_note =
+        create_b2agg_note(storage, assets, bridge_account.id(), faucet.id(), builder.rng_mut())?;
 
     // Add the B2AGG note to the mock chain
     builder.add_output_note(OutputNote::Full(b2agg_note.clone()));
