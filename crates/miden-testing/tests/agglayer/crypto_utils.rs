@@ -15,7 +15,8 @@ use miden_protocol::{Felt, Hasher, Word};
 
 use super::test_utils::execute_program_with_default_host;
 
-// LEAF_DATA_NUM_WORDS is defined as 8 in crypto_utils.masm, representing 8 Miden words of 4 felts each
+// LEAF_DATA_NUM_WORDS is defined as 8 in crypto_utils.masm, representing 8 Miden words of 4 felts
+// each
 const LEAF_DATA_FELTS: usize = 32;
 
 fn u32_words_to_solidity_bytes32_hex(words: &[u64]) -> String {
