@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.14.0 (TBD)
+
+### Features
+
+- Enable `CodeBuilder` to add advice map entries to compiled scripts ([#2275](https://github.com/0xMiden/miden-base/pull/2275)).
+- Added `BlockNumber::MAX` constant to represent the maximum block number ([#2324](https://github.com/0xMiden/miden-base/pull/2324)).
+- Added single-word `Array` standard ([#2203](https://github.com/0xMiden/miden-base/pull/2203)).
+- Added `SignedBlock` struct ([#2355](https://github.com/0xMiden/miden-base/pull/2235)).
+- Added `PackageKind` and `ProcedureExport` ([#2358](https://github.com/0xMiden/miden-base/pull/2358)).
+
+### Changes
+
+- [BREAKING] Renamed `WellKnownComponent` to `StandardAccountComponent`, `WellKnownNote` to `StandardNote`, and `WellKnownNoteAttachment` to `StandardNoteAttachment` ([#2332](https://github.com/0xMiden/miden-base/pull/2332)).
+- Skip requests to the `DataStore` for asset vault witnesses which are already in transaction inputs ([#2298](https://github.com/0xMiden/miden-base/pull/2298)).
+- [BREAKING] refactored `TransactionAuthenticator::get_public_key()` method to return `Arc<PublicKey> `instead of `&PublicKey` ([#2304](https://github.com/0xMiden/miden-base/pull/2304)).
+- [BREAKING] Renamed `NoteInputs` to `NoteStorage` to better reflect that values are stored data associated with a note rather than inputs ([#1662](https://github.com/0xMiden/miden-base/issues/1662), [#2316](https://github.com/0xMiden/miden-base/issues/2316)).
+- Removed `NoteType::Encrypted` ([#2315](https://github.com/0xMiden/miden-base/pull/2315)).
+- Updated note tag length to support up to 32 bits ([#2329](https://github.com/0xMiden/miden-base/pull/2329)).
+
 ## 0.13.3 (2026-01-27)
 
 - Fixed `CLAIM` note creation to use `NetworkAccountTarget` attachment ([#2352](https://github.com/0xMiden/miden-base/pull/2352)).
