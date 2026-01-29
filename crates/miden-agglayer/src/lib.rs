@@ -24,12 +24,14 @@ use miden_standards::account::auth::NoAuth;
 use miden_standards::account::faucets::NetworkFungibleFaucet;
 use miden_utils_sync::LazyLock;
 
+pub mod bridge_out;
 pub mod claim_note;
 pub mod errors;
 pub mod eth_types;
 pub mod update_ger_note;
 pub mod utils;
 
+pub use bridge_out::{B2AggNoteStorage, create_b2agg_note};
 pub use claim_note::{
     ClaimNoteStorage,
     ExitRoot,
@@ -254,21 +256,26 @@ pub fn create_agglayer_faucet_component(
 
 /// Creates a complete bridge account builder with the standard configuration.
 pub fn create_bridge_account_builder(seed: Word) -> AccountBuilder {
+    // Create the "bridge_in" component
     let ger_upper_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge::ger_upper")
         .expect("Bridge storage slot name should be valid");
     let ger_lower_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge::ger_lower")
         .expect("Bridge storage slot name should be valid");
-    let bridge_storage_slots = vec![
+    let bridge_in_storage_slots = vec![
         StorageSlot::with_value(ger_upper_storage_slot_name, Word::empty()),
         StorageSlot::with_value(ger_lower_storage_slot_name, Word::empty()),
     ];
 
-    let bridge_in_component = bridge_in_component(bridge_storage_slots);
+    let bridge_in_component = bridge_in_component(bridge_in_storage_slots);
 
-    let bridge_out_component = bridge_out_component(vec![]);
+    // Create the "bridge_out" component
+    let let_storage_slot_name = StorageSlotName::new("miden::agglayer::let").unwrap();
+    let bridge_out_storage_slots = vec![StorageSlot::with_empty_map(let_storage_slot_name)];
+    let bridge_out_component = bridge_out_component(bridge_out_storage_slots);
 
+    // Combine the components into a single account(builder)
     Account::builder(seed.into())
-        .storage_mode(AccountStorageMode::Public)
+        .storage_mode(AccountStorageMode::Network)
         .with_component(bridge_out_component)
         .with_component(bridge_in_component)
 }
