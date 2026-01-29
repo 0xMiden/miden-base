@@ -597,44 +597,51 @@ pub proc account_remove_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the active
-#! account's vault.
+#! Returns the ASSET associated with the provided faucet_id in the active account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
-#! Outputs: [balance, pad(15)]
+#! Outputs: [ASSET, pad(12)]
 #!
 #! Where:
-#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
-#! - balance is the vault balance of the fungible asset.
+#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet id of the asset of
+#!   interest.
+#! - ASSET is the asset from the vault, which can be the EMPTY_WORD if it isn't present.
 #!
 #! Panics if:
 #! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
-pub proc account_get_balance
-    exec.account::get_balance
-    # => [balance, pad(15)]
+pub proc account_get_asset
+    exec.account::get_asset
+    # => [ASSET, pad(14)]
+
+    # drop excess elements
+    movup.4 drop movup.4 drop
+    # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of the fungible asset associated with the provided faucet_id in the active 
-#! account's vault at the beginning of the transaction.
+#! Returns the ASSET associated with the provided faucet_id in the active account's vault at the
+#! beginning of the transaction.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
-#! Outputs: [init_balance, pad(15)]
+#! Outputs: [ASSET, pad(12)]
 #!
 #! Where:
-#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
-#! - init_balance is the vault balance of the fungible asset at the beginning of the transaction.
+#! - faucet_id_{prefix,suffix} are the prefix and suffix felts of the faucet id of the asset of
+#!   interest.
+#! - ASSET is the asset from the vault, which can be the EMPTY_WORD if it isn't present.
 #!
 #! Panics if:
 #! - the provided faucet ID is not an ID of a fungible faucet.
 #!
 #! Invocation: dynexec
-pub proc account_get_initial_balance
-    exec.account::get_initial_balance
-    # => [init_balance, pad(15)]
+pub proc account_get_initial_asset
+    exec.account::get_initial_asset
+    # => [ASSET, pad(14)]
+
+    # drop excess elements
+    movup.4 drop movup.4 drop
+    # => [ASSET, pad(12)]
 end
 
 #! Returns a boolean indicating whether the non-fungible asset is present in the active account's

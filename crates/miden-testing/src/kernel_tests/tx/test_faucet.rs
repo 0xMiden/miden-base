@@ -59,7 +59,13 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
             push.{suffix} push.{prefix}
-            exec.asset_vault::get_balance
+            exec.asset_vault::get_asset
+            # => [ASSET]
+
+            # extract balance from asset
+            drop drop drop
+            # => [balance]
+
             push.{FUNGIBLE_ASSET_AMOUNT} assert_eq.err="input vault should contain minted asset"
         end
         "#,
@@ -311,7 +317,12 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             exec.memory::get_input_vault_root_ptr
 
             push.{suffix} push.{prefix}
-            exec.asset_vault::get_balance
+            exec.asset_vault::get_asset
+            # => [ASSET]
+
+            # extract balance from asset
+            drop drop drop
+            # => [balance]
 
             push.{final_input_vault_asset_amount}
             assert_eq.err="vault balance does not match expected balance"

@@ -9,8 +9,6 @@ use $kernel::util::asset::FUNGIBLE_ASSET_MAX_AMOUNT
 # ERRORS
 # =================================================================================================
 
-const ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="get_balance can only be called on a fungible asset"
-
 const ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="peek_balance can only be called on a fungible asset"
 
 const ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET="the has_non_fungible_asset procedure can only be called on a non-fungible faucet"
@@ -36,25 +34,17 @@ const INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 # ACCESSORS
 # =================================================================================================
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the ASSET associated with the provided faucet_id in the vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
-#! Outputs: [balance]
+#! Outputs: [ASSET]
 #!
 #! Where:
 #! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
 #! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
 #!   asset of interest.
-#! - balance is the vault balance of the fungible asset.
-#!
-#! Panics if:
-#! - the provided faucet ID is not an ID of a fungible faucet.
-pub proc get_balance
-    # assert that the faucet id is a fungible faucet
-    dup exec.account_id::is_fungible_faucet
-    assert.err=ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
-    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
-
+#! - ASSET is the asset from the vault, which can be the EMPTY_WORD if it isn't present.
+pub proc get_asset
     # load the asset vault root from memory
     padw movup.6 mem_loadw_be
     # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
@@ -66,10 +56,6 @@ pub proc get_balance
     # lookup asset
     exec.smt::get swapw dropw
     # => [ASSET]
-
-    # extract the asset's balance
-    exec.::$kernel::util::asset::get_balance_from_fungible_asset
-    # => [balance]
 end
 
 #! Returns the _peeked_ balance of a fungible asset associated with the provided faucet_id.

@@ -35,3 +35,6 @@ pub const ERR_NOTE_INVALID_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_
 
 /// Error Message: "number of note storage exceeded the maximum limit of 1024"
 pub const ERR_PROLOGUE_NOTE_NUM_STORAGE_ITEMS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note storage exceeded the maximum limit of 1024");
+
+/// Error Message: "get_balance can only be called on a fungible asset"
+pub const ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET: MasmError = MasmError::from_static_str("get_balance can only be called on a fungible asset");

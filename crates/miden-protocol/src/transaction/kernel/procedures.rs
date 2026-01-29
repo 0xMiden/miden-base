@@ -43,10 +43,10 @@ pub const KERNEL_PROCEDURES: [Word; 51] = [
     word!("0x9a63b5385a8ac6404306852c13b1f7c2625449ce6afde6c14d27701e9e3fb550"),
     // account_remove_asset
     word!("0x2ac6fa0e12e581a59edbf7ab0995033aa308dbf77ecaf9b9215ebcf27da5a942"),
-    // account_get_balance
-    word!("0x6a5eb788fd2beec7555874f978a4dd2f2c4f5d8088cd33e148c61450e4510fe1"),
-    // account_get_initial_balance
-    word!("0x2e0decbc35a10c15ba72c14ed3e32dc9d4a3866f66114c073b3fc7b127362b74"),
+    // account_get_asset
+    word!("0x7a914b63494145f876d4a16424b9f7b4ebf6ef55c41e1c13a370299aca7b2c8d"),
+    // account_get_initial_asset
+    word!("0x8c835cf997a5ebcc685478cca4b6a048a09a64f1afcc70df578fa8d28d3debaa"),
     // account_has_non_fungible_asset
     word!("0xffe57961158c8e5f8a3aaa773943ee208fac7ed4786a7c8b6fed04ba54f39111"),
     // account_compute_delta_commitment
