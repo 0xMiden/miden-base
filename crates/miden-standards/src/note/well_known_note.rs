@@ -10,7 +10,7 @@ use miden_protocol::utils::sync::LazyLock;
 use miden_protocol::vm::Program;
 use miden_protocol::{Felt, Word};
 use strum::EnumIter;
-pub use strum::IntoEnumIterator;
+use strum::IntoEnumIterator;
 
 use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
