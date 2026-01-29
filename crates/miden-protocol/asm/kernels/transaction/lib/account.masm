@@ -729,24 +729,20 @@ end
 
 #! Returns the ASSET associated with the provided faucet_id in the active account's vault.
 #!
-#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Inputs:  [ASSET_KEY]
 #! Outputs: [ASSET]
 #!
 #! Where:
-#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
+#! - ASSET_KEY is the asset vault key of the asset to fetch.
 #! - ASSET is the asset from the vault, which can be the EMPTY_WORD if it isn't present.
-#!
-#! Panics if:
-#! - the provided faucet ID is not an ID of a fungible faucet.
 pub proc get_asset
-    # get the vault root
-    exec.memory::get_account_vault_root_ptr movdn.2
-    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+    # get the vault root ptr
+    exec.memory::get_account_vault_root_ptr movdn.4
+    # => [ASSET_KEY, vault_root_ptr]
 
-    # emit event to signal that an asset's balance is requested
+    # emit event to signal that an asset is requested
     emit.ACCOUNT_VAULT_BEFORE_GET_ASSET_EVENT
-    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+    # => [ASSET_KEY, vault_root_ptr]
 
     # get the asset
     exec.asset_vault::get_asset
@@ -756,21 +752,20 @@ end
 #! Returns the ASSET associated with the provided faucet_id in the active account's vault at the
 #! beginning of the transaction.
 #!
-#! Inputs:  [faucet_id_prefix, faucet_id_suffix]
+#! Inputs:  [ASSET_KEY]
 #! Outputs: [ASSET]
 #!
 #! Where:
-#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
+#! - ASSET_KEY is the asset vault key of the asset to fetch.
 #! - ASSET is the asset from the vault, which can be the EMPTY_WORD if it isn't present.
 pub proc get_initial_asset
     # get the vault root associated with the initial vault root of the native account
-    exec.memory::get_account_initial_vault_root_ptr movdn.2
-    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+    exec.memory::get_account_initial_vault_root_ptr movdn.4
+    # => [ASSET_KEY, init_native_vault_root_ptr]
 
-    # emit event to signal that an asset's balance is requested
+    # emit event to signal that an asset is requested
     emit.ACCOUNT_VAULT_BEFORE_GET_ASSET_EVENT
-    # => [faucet_id_prefix, faucet_id_suffix, init_native_vault_root_ptr]
+    # => [ASSET_KEY, init_native_vault_root_ptr]
 
     # get the asset
     exec.asset_vault::get_asset

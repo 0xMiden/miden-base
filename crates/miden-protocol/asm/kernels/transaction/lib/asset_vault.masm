@@ -36,22 +36,20 @@ const INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 
 #! Returns the ASSET associated with the provided faucet_id in the vault.
 #!
-#! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+#! Inputs:  [ASSET_KEY, vault_root_ptr]
 #! Outputs: [ASSET]
 #!
 #! Where:
 #! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
-#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
+#! - ASSET_KEY is the asset vault key of the asset to fetch.
 #! - ASSET is the asset from the vault, which can be the EMPTY_WORD if it isn't present.
 pub proc get_asset
     # load the asset vault root from memory
-    padw movup.6 mem_loadw_be
-    # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
+    padw movup.8 mem_loadw_be
+    # => [ASSET_VAULT_ROOT, ASSET_KEY]
 
-    # prepare the key for fungible asset lookup (pad least significant elements with zeros)
-    push.0.0 movup.7 movup.7
-    # => [faucet_id_prefix, faucet_id_suffix, 0, 0, ASSET_VAULT_ROOT]
+    swapw
+    # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
     exec.smt::get swapw dropw

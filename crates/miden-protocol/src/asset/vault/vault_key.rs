@@ -7,6 +7,7 @@ use crate::Word;
 use crate::account::AccountType::FungibleFaucet;
 use crate::account::{AccountId, AccountIdPrefix};
 use crate::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use crate::errors::AssetError;
 
 /// The key of an [`Asset`] in the asset vault.
 ///

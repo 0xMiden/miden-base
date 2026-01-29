@@ -1,6 +1,12 @@
 use assert_matches::assert_matches;
 use miden_protocol::account::AccountId;
-use miden_protocol::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_protocol::asset::{
+    Asset,
+    AssetVaultKey,
+    FungibleAsset,
+    NonFungibleAsset,
+    NonFungibleAssetDetails,
+};
 use miden_protocol::errors::AssetVaultError;
 use miden_protocol::errors::protocol::ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET;
 use miden_protocol::errors::tx_kernel::{
@@ -62,6 +68,7 @@ async fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
 async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
+    let asset_key = AssetVaultKey::from_account_id(faucet_id).unwrap();
 
     let code = format!(
         r#"
@@ -72,15 +79,19 @@ async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            exec.memory::get_account_vault_root_ptr
-            push.{suffix} push.{prefix}
-            # => [prefix, suffix, account_vault_root_ptr, balance]
-
             # emit an event to fetch the merkle path for the asset since peek_balance does not do
             # that
-            emit.event("miden::account::vault_before_get_balance")
-            # => [prefix, suffix, account_vault_root_ptr, balance]
+            exec.memory::get_account_vault_root_ptr
+            push.{ASSET_KEY}
+            # => [ASSET_KEY, account_vault_root_ptr]
 
+            emit.event("miden::account::vault_before_get_asset")
+            # => [ASSET_KEY, account_vault_root_ptr, balance]
+
+            # replace the asset key with the faucet ID for peek_balance
+            dropw
+            push.{suffix} push.{prefix}
+            # => [prefix, suffix, account_vault_root_ptr, balance]
             exec.asset_vault::peek_balance
             # => [peeked_balance]
 
@@ -90,6 +101,7 @@ async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
             "#,
         prefix = faucet_id.prefix().as_felt(),
         suffix = faucet_id.suffix(),
+        ASSET_KEY = asset_key
     );
 
     let exec_output = tx_context.execute_code(&code).await?;

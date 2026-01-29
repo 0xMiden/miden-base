@@ -36,6 +36,7 @@ use crate::{TransactionContextBuilder, assert_execution_error, assert_transactio
 #[tokio::test]
 async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+    let asset = FungibleAsset::new(faucet_id, FUNGIBLE_ASSET_AMOUNT)?;
 
     let code = format!(
         r#"
@@ -49,16 +50,16 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             # mint asset
-            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
+            push.{FUNGIBLE_ASSET}
             call.mock_faucet::mint
 
             # assert the correct asset is returned
-            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
+            push.{FUNGIBLE_ASSET}
             assert_eqw.err="minted asset does not match expected asset"
 
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
-            push.{suffix} push.{prefix}
+            push.{ASSET_KEY}
             exec.asset_vault::get_asset
             # => [ASSET]
 
@@ -69,8 +70,8 @@ async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
             push.{FUNGIBLE_ASSET_AMOUNT} assert_eq.err="input vault should contain minted asset"
         end
         "#,
-        prefix = faucet_id.prefix().as_felt(),
-        suffix = faucet_id.suffix(),
+        FUNGIBLE_ASSET = Word::from(asset),
+        ASSET_KEY = asset.vault_key(),
     );
 
     TransactionContextBuilder::with_fungible_faucet(faucet_id.into())
@@ -283,16 +284,11 @@ async fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result
 
 #[tokio::test]
 async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
-    let tx_context = {
-        let account = Account::mock_fungible_faucet(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1);
-        let note = create_public_p2any_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            [FungibleAsset::new(account.id(), 100u64).unwrap().into()],
-        );
-        TransactionContextBuilder::new(account).extend_input_notes(vec![note]).build()?
-    };
-
-    let faucet_id = tx_context.account().id();
+    let account = Account::mock_fungible_faucet(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1);
+    let asset = FungibleAsset::new(account.id(), 100u64).unwrap().into();
+    let note = create_public_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [asset]);
+    let tx_context =
+        TransactionContextBuilder::new(account).extend_input_notes(vec![note]).build()?;
 
     let code = format!(
         r#"
@@ -306,17 +302,17 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             # burn asset
-            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
+            push.{FUNGIBLE_ASSET}
             call.mock_faucet::burn
 
             # assert the correct asset is returned
-            push.{FUNGIBLE_ASSET_AMOUNT} push.0 push.{suffix} push.{prefix}
+            push.{FUNGIBLE_ASSET}
             assert_eqw.err="burnt asset does not match expected asset"
 
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
 
-            push.{suffix} push.{prefix}
+            push.{ASSET_KEY}
             exec.asset_vault::get_asset
             # => [ASSET]
 
@@ -328,8 +324,8 @@ async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             assert_eq.err="vault balance does not match expected balance"
         end
         "#,
-        prefix = faucet_id.prefix().as_felt(),
-        suffix = faucet_id.suffix(),
+        FUNGIBLE_ASSET = Word::from(asset),
+        ASSET_KEY = asset.vault_key(),
         final_input_vault_asset_amount = CONSUMED_ASSET_1_AMOUNT - FUNGIBLE_ASSET_AMOUNT,
     );
 
