@@ -44,9 +44,9 @@ pub const KERNEL_PROCEDURES: [Word; 51] = [
     // account_remove_asset
     word!("0x2ac6fa0e12e581a59edbf7ab0995033aa308dbf77ecaf9b9215ebcf27da5a942"),
     // account_get_asset
-    word!("0x7a914b63494145f876d4a16424b9f7b4ebf6ef55c41e1c13a370299aca7b2c8d"),
+    word!("0xe45609c1292c04c836f0590ae558323922c4593b10abb37437b395d2227318f9"),
     // account_get_initial_asset
-    word!("0x8c835cf997a5ebcc685478cca4b6a048a09a64f1afcc70df578fa8d28d3debaa"),
+    word!("0x55f13f45d6dd10bddcd4f30a73e30375c90c95ca6710c67ed7a266403466467e"),
     // account_has_non_fungible_asset
     word!("0xffe57961158c8e5f8a3aaa773943ee208fac7ed4786a7c8b6fed04ba54f39111"),
     // account_compute_delta_commitment

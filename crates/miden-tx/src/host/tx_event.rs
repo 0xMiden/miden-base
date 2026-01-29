@@ -234,7 +234,7 @@ impl TransactionEvent {
 
                 Some(TransactionEvent::AccountVaultAfterAddAsset { asset })
             },
-            TransactionEventId::AccountVaultBeforeGetBalance => {
+            TransactionEventId::AccountVaultBeforeGetAsset => {
                 // Expected stack state:
                 // [event, faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
                 let stack_top = process.get_stack_word_be(1);
