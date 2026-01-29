@@ -26,8 +26,14 @@ pub const ERR_FELT_OUT_OF_FIELD: MasmError = MasmError::from_static_str("combine
 /// Error Message: "invalid claim proof"
 pub const ERR_INVALID_CLAIM_PROOF: MasmError = MasmError::from_static_str("invalid claim proof");
 
+/// Error Message: "number of leaves in the MMR of the MMR Frontier would exceed 4294967295 (2^32 - 1)"
+pub const ERR_MMR_FRONTIER_LEAVES_NUM_EXCEED_LIMIT: MasmError = MasmError::from_static_str("number of leaves in the MMR of the MMR Frontier would exceed 4294967295 (2^32 - 1)");
+
 /// Error Message: "address limb is not u32"
 pub const ERR_NOT_U32: MasmError = MasmError::from_static_str("address limb is not u32");
 
 /// Error Message: "maximum scaling factor is 18"
 pub const ERR_SCALE_AMOUNT_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("maximum scaling factor is 18");
+
+/// Error Message: "UPDATE_GER script expects exactly 8 note storage items"
+pub const ERR_UPDATE_GER_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("UPDATE_GER script expects exactly 8 note storage items");

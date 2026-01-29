@@ -36,7 +36,7 @@ const ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="B2AGG script expects exactly
 #!   - destination_address_4: bytes 16-19
 #!
 #! Panics if:
-#! - The note does not contain exactly 6 inputs.
+#! - The note does not contain exactly 6 storage items.
 #! - The note does not contain exactly 1 asset.
 #!
 begin
