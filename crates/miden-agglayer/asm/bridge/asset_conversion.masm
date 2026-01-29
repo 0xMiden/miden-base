@@ -284,13 +284,10 @@ pub proc verify_u256_to_native_amount_conversion
     #   z := x - y_scaled
     #   Constraint: y_scaled <= x
     # =============================================================================================
-    movup.9
-    movup.9
-    movup.9
-    movup.9
-    # => [x0, x1, x2, x3, y_scaled0, y_scaled1, y_scaled2, y_scaled3, y, scale_exp]
-
-    swapw
+    movup.5 movup.5
+    # => [y, scale_exp, y_scaled0, y_scaled1, y_scaled2, y_scaled3, x0, x1, x2, x3]
+ 
+    movdn.9 movdn.9
     # => [y_scaled0, y_scaled1, y_scaled2, y_scaled3, x0, x1, x2, x3, y, scale_exp]
 
     exec.u128_sub_no_underflow
