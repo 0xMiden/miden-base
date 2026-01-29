@@ -25,6 +25,9 @@ pub mod utils;
 mod network_account_target;
 pub use network_account_target::{NetworkAccountTarget, NetworkAccountTargetError};
 
+mod network_note;
+pub use network_note::{NetworkNote, NetworkNoteError, NetworkNoteExt};
+
 mod standard_note_attachment;
 pub use standard_note_attachment::StandardNoteAttachment;
 
