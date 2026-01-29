@@ -1,18 +1,23 @@
 extern crate alloc;
 
+use alloc::string::ToString;
 use alloc::vec;
 
+use miden_protocol::account::AccountId;
 use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::errors::NoteError;
 use miden_protocol::note::{
     Note,
     NoteAssets,
+    NoteAttachment,
+    NoteExecutionHint,
     NoteMetadata,
     NoteRecipient,
     NoteStorage,
     NoteTag,
     NoteType,
 };
+use miden_standards::note::NetworkAccountTarget;
 
 use crate::{ExitRoot, update_ger_script};
 
@@ -21,7 +26,8 @@ use crate::{ExitRoot, update_ger_script};
 /// The note storage contains 8 felts: GER[0..7]
 pub fn create_update_ger_note<R: FeltRng>(
     ger: ExitRoot,
-    sender_account_id: miden_protocol::account::AccountId,
+    sender_account_id: AccountId,
+    target_account_id: AccountId,
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let update_ger_script = update_ger_script();
@@ -36,9 +42,13 @@ pub fn create_update_ger_note<R: FeltRng>(
 
     let recipient = NoteRecipient::new(serial_num, update_ger_script, note_storage);
 
-    // Create note metadata - use a simple public tag
-    let note_tag = NoteTag::new(0);
-    let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, note_tag);
+    let attachment = NoteAttachment::from(
+        NetworkAccountTarget::new(target_account_id, NoteExecutionHint::Always)
+            .map_err(|e| NoteError::other(e.to_string()))?,
+    );
+    let note_tag = NoteTag::with_account_target(target_account_id);
+    let metadata = NoteMetadata::new(sender_account_id, NoteType::Public, note_tag)
+        .with_attachment(attachment);
 
     // UPDATE_GER notes don't carry assets
     let assets = NoteAssets::new(vec![])?;

@@ -2,6 +2,8 @@
 #!
 #! Provides a standardized way to work with network account targets.
 
+use miden::protocol::account_id
+use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::protocol::note
 
@@ -69,4 +71,38 @@ pub proc new
     push.NETWORK_ACCOUNT_TARGET_ATTACHMENT_KIND
     push.NETWORK_ACCOUNT_TARGET_ATTACHMENT_SCHEME
     # => [attachment_scheme, attachment_kind, ATTACHMENT]
+end
+
+#! Returns a boolean indicating whether the active account matches the target account
+#! encoded in the note attachment.
+#!
+#! Inputs: []
+#! Outputs: [is_equal]
+#!
+#! Where:
+#! - is_equal is a boolean indicating whether the active account matches the target account.
+#!
+#! Invocation: exec
+pub proc active_account_matches_target_account
+    # Ensure note attachment targets the consuming bridge account.
+    exec.active_note::get_metadata
+    # => [NOTE_ATTACHMENT, METADATA_HEADER]
+
+    swapw
+    # => [METADATA_HEADER, NOTE_ATTACHMENT]
+
+    exec.note::extract_attachment_info_from_metadata
+    # => [attachment_kind, attachment_scheme, NOTE_ATTACHMENT]
+
+    swap
+    # => [attachment_scheme, attachment_kind, NOTE_ATTACHMENT]
+
+    exec.get_id
+    # => [target_id_prefix, target_id_suffix]
+
+    exec.active_account::get_id
+    # => [account_id_prefix, account_id_suffix, target_id_prefix, target_id_suffix]
+
+    exec.account_id::is_equal
+    # => [is_equal]
 end
