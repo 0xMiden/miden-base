@@ -35,7 +35,7 @@ pub use standard_note_attachment::StandardNoteAttachment;
 // STANDARD NOTE
 // ================================================================================================
 
-/// The enum holding the types of standard notes provided by the `miden-lib`.
+/// The enum holding the types of standard notes provided by `miden-standards`.
 pub enum StandardNote {
     P2ID,
     P2IDE,
