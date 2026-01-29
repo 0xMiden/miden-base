@@ -249,9 +249,11 @@ mod tests {
     #[test]
     fn from_custom_account_target() -> anyhow::Result<()> {
         let account_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-        let len = 32;
 
-        let tag = NoteTag::with_custom_account_target(account_id, len)?;
+        let tag = NoteTag::with_custom_account_target(
+            account_id,
+            NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH,
+        )?;
 
         assert_eq!(
             (account_id.prefix().as_u64() >> 32) as u32,
