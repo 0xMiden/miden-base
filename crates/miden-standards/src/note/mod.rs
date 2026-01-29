@@ -30,7 +30,7 @@ pub use well_known_note_attachment::WellKnownNoteAttachment;
 
 mod well_known_note;
 pub use mint_inputs::MintNoteInputs;
-pub use well_known_note::{NoteConsumptionStatus, WellKnownNote};
+pub use well_known_note::{IntoEnumIterator, NoteConsumptionStatus, WellKnownNote};
 
 // STANDARDIZED SCRIPTS
 // ================================================================================================
