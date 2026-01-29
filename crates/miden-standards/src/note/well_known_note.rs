@@ -9,6 +9,7 @@ use miden_protocol::utils::Deserializable;
 use miden_protocol::utils::sync::LazyLock;
 use miden_protocol::vm::Program;
 use miden_protocol::{Felt, Word};
+use strum::{EnumIter, IntoEnumIterator};
 
 use crate::account::faucets::{BasicFungibleFaucet, NetworkFungibleFaucet};
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
@@ -106,6 +107,7 @@ fn burn_root() -> Word {
 // ================================================================================================
 
 /// The enum holding the types of basic well-known notes provided by the `miden-lib`.
+#[derive(EnumIter)]
 pub enum WellKnownNote {
     P2ID,
     P2IDE,
@@ -330,6 +332,14 @@ impl WellKnownNote {
             // further checks are necessary.
             _ => Ok(None),
         }
+    }
+
+    // HELPERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns an iterator over all well-known note types.
+    pub fn iter() -> impl Iterator<Item = Self> {
+        <Self as IntoEnumIterator>::iter()
     }
 }
 

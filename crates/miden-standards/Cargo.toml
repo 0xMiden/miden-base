@@ -26,6 +26,7 @@ miden-protocol  = { workspace = true }
 
 # External dependencies
 rand      = { optional = true, workspace = true }
+strum     = { features = ["derive"], version = "0.27" }
 thiserror = { workspace = true }
 
 [build-dependencies]
