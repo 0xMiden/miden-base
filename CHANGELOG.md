@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.13.4 (TBD)
+
+- Added `EnumIter` trait to `WellKnownNote` enum ([#2367](https://github.com/0xMiden/miden-base/pull/2367)).
+
 ## 0.13.3 (2026-01-27)
 
 - Fixed `CLAIM` note creation to use `NetworkAccountTarget` attachment ([#2352](https://github.com/0xMiden/miden-base/pull/2352)).
