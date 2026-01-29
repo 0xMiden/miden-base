@@ -9,6 +9,7 @@
 - Added single-word `Array` standard ([#2203](https://github.com/0xMiden/miden-base/pull/2203)).
 - Added `SignedBlock` struct ([#2355](https://github.com/0xMiden/miden-base/pull/2235)).
 - Added `PackageKind` and `ProcedureExport` ([#2358](https://github.com/0xMiden/miden-base/pull/2358)).
+- Added `NetworkNote` type ([#2365](https://github.com/0xMiden/miden-base/pull/2365)).
 
 ### Changes
 
