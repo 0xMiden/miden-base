@@ -149,9 +149,6 @@ const ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=event("miden::account::vault_after_
 # Event emitted before an asset is fetched from the account vault.
 const ACCOUNT_VAULT_BEFORE_GET_ASSET_EVENT=event("miden::account::vault_before_get_asset")
 
-# Event emitted before it is checked whether a non-fungible asset exists in the account vault.
-const ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT=event("miden::account::vault_before_has_non_fungible_asset")
-
 # Event emitted before an account storage item is updated.
 const ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT=event("miden::account::storage_before_set_item")
 # Event emitted after an account storage item is updated.
@@ -770,32 +767,6 @@ pub proc get_initial_asset
     # get the asset
     exec.asset_vault::get_asset
     # => [ASSET]
-end
-
-#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
-#! vault.
-#!
-#! Inputs:  [ASSET]
-#! Outputs: [has_asset]
-#!
-#! Where:
-#! - ASSET is the non-fungible asset of interest.
-#! - has_asset is a boolean indicating whether the account vault has the asset of interest.
-#!
-#! Panics if:
-#! - the ASSET is a fungible asset.
-pub proc has_non_fungible_asset
-    # get the vault root
-    exec.memory::get_account_vault_root_ptr movdn.4
-    # => [ASSET, vault_root_ptr]
-
-    # emit event to signal that an asset's presence is being checked
-    emit.ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT
-    # => [ASSET, vault_root_ptr]
-
-    # check if the account vault has the non-fungible asset
-    exec.asset_vault::has_non_fungible_asset
-    # => [has_asset]
 end
 
 # CODE

@@ -246,21 +246,6 @@ impl TransactionEvent {
 
                 on_account_vault_asset_accessed(base_host, process, asset_key, vault_root)?
             },
-            TransactionEventId::AccountVaultBeforeHasNonFungibleAsset => {
-                // Expected stack state: [event, ASSET, vault_root_ptr]
-                let asset_word = process.get_stack_word_be(1);
-                let asset = Asset::try_from(asset_word).map_err(|err| {
-                    TransactionKernelError::other_with_source(
-                        "provided asset is not a valid asset",
-                        err,
-                    )
-                })?;
-
-                let vault_root_ptr = process.get_stack_item(5);
-                let vault_root = process.get_vault_root(vault_root_ptr)?;
-
-                on_account_vault_asset_accessed(base_host, process, asset.vault_key(), vault_root)?
-            },
 
             TransactionEventId::AccountStorageBeforeSetItem => None,
 

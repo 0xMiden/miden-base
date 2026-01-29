@@ -2,6 +2,7 @@ use miden::protocol::kernel_proc_offsets
 use ::miden::protocol::account_id
 use ::miden::protocol::kernel_proc_offsets::ACCOUNT_GET_ASSET_OFFSET
 use ::miden::protocol::kernel_proc_offsets::ACCOUNT_GET_INITIAL_ASSET_OFFSET
+use miden::core::word
 
 # ACTIVE ACCOUNT PROCEDURES
 # =================================================================================================
@@ -10,6 +11,8 @@ use ::miden::protocol::kernel_proc_offsets::ACCOUNT_GET_INITIAL_ASSET_OFFSET
 # -------------------------------------------------------------------------------------------------
 
 const ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="get_balance can only be called on a fungible asset"
+
+const ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET="the has_non_fungible_asset procedure can only be called on a non-fungible faucet"
 
 # ID AND NONCE
 # -------------------------------------------------------------------------------------------------
@@ -549,18 +552,21 @@ end
 #!
 #! Invocation: exec
 pub proc has_non_fungible_asset
-    exec.kernel_proc_offsets::account_has_non_fungible_asset_offset
-    # => [offset, ASSET]
+    # check if the asset is a non-fungible asset
+    # hack: assert second element is zero to ensure it is a non-fungible asset
+    # TODO(expand_assets): This procedure may go away. If not, check more reliably.
+    dup.2 neq.0
+    assert.err=ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET
+    # => [ASSET]
 
-    # pad the stack
-    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, ASSET, pad(11)]
+    exec.build_non_fungible_asset_vault_key
+    # => [ASSET_KEY]
 
-    syscall.exec_kernel_proc
-    # => [has_asset, pad(15)]
+    exec.get_asset
+    # => [ASSET]
 
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # compare with EMPTY_WORD to assess if the asset exists in the vault
+    exec.word::eqz not
     # => [has_asset]
 end
 
@@ -649,4 +655,40 @@ pub proc has_procedure
     # clean the stack
     swapdw dropw dropw swapw dropw movdn.3 drop drop drop
     # => [is_procedure_available]
+end
+
+# TODO(expand_assets):
+# Exact copy of $kernel::asset_vault::build_non_fungible_asset_vault_key
+# This should only be temporarily needed and if not, deduplicate.
+
+# The bitmask that when applied will set the fungible bit to zero.
+const INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
+
+#!
+#! Builds the vault key of a non fungible asset. The asset is NOT validated and therefore must
+#! be a valid non-fungible asset.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [ASSET_KEY]
+#!
+#! Where:
+#! - ASSET is the non-fungible asset for which the vault key is built.
+#! - ASSET_KEY is the vault key of the non-fungible asset.
+proc build_non_fungible_asset_vault_key
+    # create the asset key from the non-fungible asset by swapping hash0 with the faucet id
+    # => [faucet_id_prefix, hash2, hash1, hash0]
+    swap.3
+    # => [hash0, hash2, hash1 faucet_id_prefix]
+
+    # disassemble hash0 into u32 limbs
+    u32split swap
+    # => [hash0_lo, hash0_hi, hash2, hash1 faucet_id_prefix]
+
+    # set the fungible bit to 0
+    u32and.INVERSE_FUNGIBLE_BITMASK_U32
+    # => [hash0_lo', hash0_hi, hash2, hash1 faucet_id_prefix]
+
+    # reassemble hash0 felt by multiplying the high part with 2^32 and adding the lo part
+    swap mul.0x0100000000 add
+    # => [ASSET_KEY]
 end

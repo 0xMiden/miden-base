@@ -183,7 +183,6 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context =
         TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
             .build()?;
-
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
 
     let code = format!(
@@ -208,13 +207,15 @@ async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # assert the input vault has been updated.
             exec.memory::get_input_vault_root_ptr
+            push.{ASSET_KEY}
+            exec.asset_vault::get_asset
             push.{non_fungible_asset}
-            exec.asset_vault::has_non_fungible_asset
-            assert.err="vault should contain asset"
+            assert_eqw.err="vault should contain asset"
 
             dropw
         end
         "#,
+        ASSET_KEY = non_fungible_asset.vault_key(),
         non_fungible_asset = Word::from(non_fungible_asset),
     );
 
@@ -432,7 +433,6 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context =
         TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
             .build()?;
-
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
     let code = format!(
@@ -452,9 +452,10 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # check that the non-fungible asset is presented in the input vault
             exec.memory::get_input_vault_root_ptr
+            push.{ASSET_KEY}
+            exec.asset_vault::get_asset
             push.{non_fungible_asset}
-            exec.asset_vault::has_non_fungible_asset
-            assert.err="input vault should contain the asset"
+            assert_eqw.err="input vault should contain the asset"
 
             # burn the non-fungible asset
             push.{non_fungible_asset}
@@ -466,13 +467,15 @@ async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # assert the input vault has been updated and does not have the burnt asset
             exec.memory::get_input_vault_root_ptr
-            push.{non_fungible_asset}
-            exec.asset_vault::has_non_fungible_asset
-            not assert.err="input vault should not contain burned asset"
+            push.{ASSET_KEY}
+            exec.asset_vault::get_asset
+            # the returned word should be empty, indicating the asset is absent
+            padw assert_eqw.err="input vault should not contain burned asset"
 
             dropw
         end
         "#,
+        ASSET_KEY = non_fungible_asset_burnt.vault_key(),
         non_fungible_asset = Word::from(non_fungible_asset_burnt),
     );
 

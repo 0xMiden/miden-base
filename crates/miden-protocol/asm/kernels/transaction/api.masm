@@ -632,25 +632,6 @@ pub proc account_get_initial_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the active account's
-#! vault.
-#!
-#! Inputs:  [ASSET, pad(12)]
-#! Outputs: [has_asset, pad(15)]
-#!
-#! Where:
-#! - ASSET is the non-fungible asset of interest.
-#! - has_asset is a boolean indicating whether the account vault has the asset of interest.
-#!
-#! Panics if:
-#! - the ASSET is a fungible asset.
-#!
-#! Invocation: dynexec
-pub proc account_has_non_fungible_asset
-    exec.account::has_non_fungible_asset
-    # => [has_asset, pad(15)]
-end
-
 #! Returns 1 if a native account procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT, pad(12)]
