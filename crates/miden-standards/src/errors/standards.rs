@@ -26,6 +26,9 @@ pub const ERR_MALFORMED_MULTISIG_CONFIG: MasmError = MasmError::from_static_str(
 /// Error Message: "MINT script expects exactly 12 storage items for private or 16+ storage items for public output notes"
 pub const ERR_MINT_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("MINT script expects exactly 12 storage items for private or 16+ storage items for public output notes");
 
+/// Error Message: "no pending ownership transfer exists"
+pub const ERR_NO_PENDING_OWNER: MasmError = MasmError::from_static_str("no pending ownership transfer exists");
+
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");
 /// Error Message: "P2IDE reclaim is disabled"
@@ -44,6 +47,8 @@ pub const ERR_P2ID_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::fr
 
 /// Error Message: "note sender is not the owner"
 pub const ERR_SENDER_NOT_OWNER: MasmError = MasmError::from_static_str("note sender is not the owner");
+/// Error Message: "note sender is not the pending owner"
+pub const ERR_SENDER_NOT_PENDING_OWNER: MasmError = MasmError::from_static_str("note sender is not the pending owner");
 
 /// Error Message: "SWAP script expects exactly 16 note storage items"
 pub const ERR_SWAP_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS: MasmError = MasmError::from_static_str("SWAP script expects exactly 16 note storage items");

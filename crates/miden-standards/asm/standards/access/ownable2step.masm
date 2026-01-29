@@ -1,0 +1,245 @@
+# miden::standards::access::ownable2step
+#
+# Two-step ownership transfer for Miden accounts.
+# Requires new owner to accept before transfer completes.
+#
+# STORAGE LAYOUT:
+# Rust storage:  [pending_suffix, pending_prefix, owner_suffix, owner_prefix]
+#                 word[0]         word[1]         word[2]       word[3]
+#
+# After get_item (loads reversed), stack is:
+#                [owner_prefix, owner_suffix, pending_prefix, pending_suffix]
+#                 (word[3])      (word[2])     (word[1])       (word[0])
+#                top of stack ---------------------------------> bottom
+
+use miden::protocol::active_account
+use miden::protocol::account_id
+use miden::protocol::active_note
+use miden::protocol::native_account
+
+# CONSTANTS
+# ================================================================================================
+
+const OWNERSHIP_SLOT=word("miden::standards::access::ownable2step::ownership")
+
+# ERRORS
+# ================================================================================================
+
+const ERR_SENDER_NOT_OWNER="note sender is not the owner"
+const ERR_SENDER_NOT_PENDING_OWNER="note sender is not the pending owner"
+const ERR_NO_PENDING_OWNER="no pending ownership transfer exists"
+
+# INTERNAL PROCEDURES
+# ================================================================================================
+
+#! Returns the full ownership word from storage.
+#! Stack transformation: [] -> [owner_prefix, owner_suffix, pending_prefix, pending_suffix]
+proc ownership_word
+    push.OWNERSHIP_SLOT[0..2]
+    exec.active_account::get_item
+end
+
+#! Returns the owner AccountId from storage.
+#! Stack transformation: [] -> [owner_prefix, owner_suffix]
+proc owner
+    exec.ownership_word
+    movup.2
+    drop
+    movup.2
+    drop
+end
+
+#! Returns the pending owner AccountId from storage.
+#! Stack transformation: [] -> [pending_prefix, pending_suffix]
+proc pending_owner
+    exec.ownership_word
+    # => [owner_prefix, owner_suffix, pending_prefix, pending_suffix]
+    drop drop
+    # => [pending_prefix, pending_suffix]
+end
+
+#! Checks if the given account ID equals the owner.
+#! Stack transformation: [id_prefix, id_suffix] -> [is_owner]
+proc is_owner
+    exec.owner
+    # => [owner_prefix, owner_suffix, id_prefix, id_suffix]
+    exec.account_id::is_equal
+    # => [is_equal]
+end
+
+#! Checks if the given account ID equals the pending owner.
+#! Stack transformation: [id_prefix, id_suffix] -> [is_pending]
+proc is_pending_owner
+    exec.pending_owner
+    # => [pending_prefix, pending_suffix, id_prefix, id_suffix]
+    exec.account_id::is_equal
+    # => [is_equal]
+end
+
+# PUBLIC INTERFACE
+# ================================================================================================
+
+#! Verifies the note sender is the owner. Panics otherwise.
+#! Stack transformation: [] -> []
+pub proc verify_owner
+    exec.active_note::get_sender
+    exec.is_owner
+    assert.err=ERR_SENDER_NOT_OWNER
+end
+
+#! Returns the owner AccountId.
+#! Inputs:  [pad(16)]
+#! Outputs: [owner_prefix, owner_suffix, pad(14)]
+pub proc get_owner
+    exec.owner
+    # [owner_p, owner_s, pad(16)] = 18
+    # Move pad elements up and drop them to reduce to 16
+    movup.2 drop movup.2 drop
+    # [owner_prefix, owner_suffix, pad(14)] = 16 ✓
+end
+
+#! Returns the pending owner AccountId.
+#! Inputs:  [pad(16)]
+#! Outputs: [pending_prefix, pending_suffix, pad(14)]
+pub proc get_pending_owner
+    exec.pending_owner
+    # [pending_p, pending_s, pad(16)] = 18
+    movup.2 drop movup.2 drop
+    # [pending_prefix, pending_suffix, pad(14)] = 16 ✓
+end
+
+#! Initiates ownership transfer to a new account.
+#! Inputs:  [new_owner_prefix, new_owner_suffix, pad(14)]
+#! Outputs: [pad(16)]
+pub proc transfer_ownership
+    # [new_owner_prefix, new_owner_suffix, pad(14)] = 16
+    
+    exec.verify_owner
+    # [new_owner_prefix, new_owner_suffix, pad(14)] = 16
+    
+    exec.owner
+    # [owner_prefix, owner_suffix, new_owner_prefix, new_owner_suffix, pad(14)] = 18
+    # Word order is correct: [owner_p, owner_s, pending_p, pending_s] where pending = new_owner
+    
+    push.OWNERSHIP_SLOT[0..2]
+    # [slot0, slot1, owner_prefix, owner_suffix, new_owner_prefix, new_owner_suffix, pad(14)] = 20
+    
+    exec.native_account::set_item
+    # Consumes 6 (slot + word), returns 4 (old word)
+    # [old_owner_p, old_owner_s, old_pending_p, old_pending_s, pad(14)] = 18
+    
+    dropw
+    # Drop the returned OLD_WORD and return with pad(16)
+end
+
+#! Accepts a pending ownership transfer.
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+pub proc accept_ownership
+    # [pad(16)] = 16
+    
+    exec.active_note::get_sender
+    # [sender_prefix, sender_suffix, pad(16)] = 18
+    
+    exec.ownership_word
+    # [owner_p, owner_s, pending_p, pending_s, sender_p, sender_s, pad(16)] = 22
+    
+    # Check pending exists: duplicate pending_prefix and pending_suffix
+    # Positions: 0=owner_p, 1=owner_s, 2=pending_p, 3=pending_s
+    dup.3 dup.3
+    # After first dup.3: [pending_s, owner_p, owner_s, pending_p, pending_s, ...]
+    # After second dup.3: [pending_p, pending_s, owner_p, owner_s, pending_p, pending_s, ...]
+    # = 24
+    
+    eq.0 swap eq.0 and
+    # [is_zero, owner_p, owner_s, pending_p, pending_s, sender_p, sender_s, pad(16)] = 23
+    
+    not assert.err=ERR_NO_PENDING_OWNER
+    # [owner_p, owner_s, pending_p, pending_s, sender_p, sender_s, pad(16)] = 22
+    
+    # Verify sender == pending_owner
+    # Move sender to top (positions 4 and 5)
+    movup.5 movup.5
+    # [sender_p, sender_s, owner_p, owner_s, pending_p, pending_s, pad(16)] = 22
+    
+    exec.is_pending_owner
+    # is_pending_owner: consumes [sender_p, sender_s], adds [pending_p, pending_s], compares, returns bool
+    # [is_pending, owner_p, owner_s, pending_p, pending_s, pad(16)] = 21
+    
+    assert.err=ERR_SENDER_NOT_PENDING_OWNER
+    # [owner_p, owner_s, pending_p, pending_s, pad(16)] = 20
+    
+    # Build new word: pending becomes owner, clear pending
+    # We want: [pending_p, pending_s, 0, 0] for storage
+    # Which means stack: [pending_p, pending_s, 0, 0]
+    drop drop
+    # [pending_p, pending_s, pad(16)] = 18
+    
+    push.0.0
+    # [0, 0, pending_p, pending_s, pad(16)] = 20
+    
+    # Rearrange: need [pending_p, pending_s, 0, 0]
+    movup.3 movup.3
+    # [pending_p, pending_s, 0, 0, pad(16)] = 20
+    
+    push.OWNERSHIP_SLOT[0..2]
+    # [slot0, slot1, pending_p, pending_s, 0, 0, pad(16)] = 22
+    
+    exec.native_account::set_item
+    # [old_word(4), pad(16)] = 20
+    
+    dropw
+    # [pad(16)] = 16 ✓
+end
+
+#! Cancels a pending ownership transfer.
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+pub proc cancel_transfer
+    # [pad(16)] = 16
+    
+    exec.verify_owner
+    # [pad(16)] = 16
+    
+    exec.owner
+    # [owner_prefix, owner_suffix, pad(16)] = 18
+    
+    # Build word: [owner_p, owner_s, 0, 0]
+    push.0.0
+    # [0, 0, owner_prefix, owner_suffix, pad(16)] = 20
+    
+    movup.3 movup.3
+    # [owner_prefix, owner_suffix, 0, 0, pad(16)] = 20
+    
+    push.OWNERSHIP_SLOT[0..2]
+    # [slot0, slot1, owner_prefix, owner_suffix, 0, 0, pad(16)] = 22
+    
+    exec.native_account::set_item
+    # [old_word(4), pad(16)] = 20
+    
+    dropw
+    # [pad(16)] = 16 ✓
+end
+
+#! Renounces ownership, clearing both owner and pending.
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+pub proc renounce_ownership
+    # [pad(16)] = 16
+    
+    exec.verify_owner
+    # [pad(16)] = 16
+    
+    # Build word of all zeros: [0, 0, 0, 0]
+    push.0.0.0.0
+    # [0, 0, 0, 0, pad(16)] = 20
+    
+    push.OWNERSHIP_SLOT[0..2]
+    # [slot0, slot1, 0, 0, 0, 0, pad(16)] = 22
+    
+    exec.native_account::set_item
+    # [old_word(4), pad(16)] = 20
+    
+    dropw
+    # [pad(16)] = 16 ✓
+end

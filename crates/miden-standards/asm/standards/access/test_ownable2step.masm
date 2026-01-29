@@ -1,0 +1,56 @@
+# miden::standards::access::test_ownable2step
+#
+# Test component that re-exports ownable2step procedures for testing.
+
+use miden::standards::access::ownable2step
+
+# PUBLIC INTERFACE
+# ================================================================================================
+
+#! Returns the owner AccountId.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [owner_prefix, owner_suffix, pad(14)]
+#!
+#! Invocation: call
+pub use ownable2step::get_owner
+
+#! Returns the pending owner AccountId.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pending_prefix, pending_suffix, pad(14)]
+#!
+#! Invocation: call
+pub use ownable2step::get_pending_owner
+
+#! Initiates ownership transfer to a new account.
+#!
+#! Inputs:  [new_owner_prefix, new_owner_suffix, pad(14)]
+#! Outputs: [pad(16)]
+#!
+#! Invocation: call
+pub use ownable2step::transfer_ownership
+
+#! Accepts a pending ownership transfer.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Invocation: call
+pub use ownable2step::accept_ownership
+
+#! Cancels a pending ownership transfer.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Invocation: call
+pub use ownable2step::cancel_transfer
+
+#! Renounces ownership, leaving the component without an owner.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+#!
+#! Invocation: call
+pub use ownable2step::renounce_ownership
