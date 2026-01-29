@@ -334,6 +334,14 @@ impl WellKnownNote {
             _ => Ok(None),
         }
     }
+
+    // HELPERS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns an iterator over all well-known note types.
+    pub fn iter() -> impl Iterator<Item = Self> {
+        <Self as IntoEnumIterator>::iter()
+    }
 }
 
 // HELPER FUNCTIONS
