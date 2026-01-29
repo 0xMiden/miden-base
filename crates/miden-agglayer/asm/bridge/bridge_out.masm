@@ -1,5 +1,6 @@
 use miden::protocol::active_note
 use miden::protocol::note
+use miden::standards::note_tag
 use miden::protocol::output_note
 use miden::core::crypto::hashes::keccak256
 use miden::core::crypto::hashes::rpo256
@@ -56,7 +57,7 @@ proc create_burn_note
     movup.2 drop movup.2 drop
     # => [faucet_id_prefix, faucet_id_suffix, ASSET]
 
-    exec.note::build_note_tag_for_network_account
+    exec.note_tag::create_account_target
     # => [network_faucet_tag, ASSET]
 
     loc_store.5
