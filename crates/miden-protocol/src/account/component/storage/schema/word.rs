@@ -31,6 +31,17 @@ pub enum WordSchema {
 }
 
 impl WordSchema {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a word schema for a native `word` type.
+    pub fn word() -> Self {
+        Self::new_simple(SchemaTypeId::native_word())
+    }
+
+    // GENERAL CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
     pub fn new_simple(r#type: SchemaTypeId) -> Self {
         WordSchema::Simple { r#type, default_value: None }
     }

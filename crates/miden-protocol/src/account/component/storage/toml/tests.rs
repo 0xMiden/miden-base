@@ -960,3 +960,109 @@ fn typed_map_supports_non_numeric_value_types() {
     let expected_value = Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, symbol_felt]);
     assert_eq!(map.get(&key), expected_value);
 }
+
+// ROUNDTRIP TESTS: CODE <-> TOML
+// ================================================================================================
+
+use crate::account::component::storage::schema::{FeltSchema, StorageSchema};
+
+/// Tests that storage schemas created programmatically match those created from TOML,
+/// roundtrip correctly in both directions, and produce identical storage slots.
+#[test]
+fn storage_schema_code_toml_roundtrip() {
+    // Create a comprehensive schema from code with multiple slot types
+    let pubkey_slot = StorageSlotName::new("demo::pubkey").unwrap();
+    let metadata_slot = StorageSlotName::new("demo::metadata").unwrap();
+    let map_slot = StorageSlotName::new("demo::map").unwrap();
+
+    let schema_from_code = StorageSchema::new([
+        (
+            pubkey_slot.clone(),
+            StorageSlotSchema::typed_value(WordSchema::new_simple(
+                SchemaTypeId::new("miden::standards::auth::falcon512_rpo::pub_key")
+                    .expect("type id should be valid"),
+            ))
+            .with_description("Falcon512 RPO public key"),
+        ),
+        (
+            metadata_slot.clone(),
+            StorageSlotSchema::value([
+                FeltSchema::new_typed("felt", "max_supply")
+                    .with_description("Maximum token supply"),
+                FeltSchema::new_typed("u8", "decimals").with_description("Number of decimals"),
+                FeltSchema::new_typed(
+                    "miden::standards::fungible_faucets::metadata::token_symbol",
+                    "symbol",
+                )
+                .with_description("Token symbol"),
+                FeltSchema::new_void(),
+            ]),
+        ),
+        (map_slot.clone(), StorageSlotSchema::map()),
+    ])
+    .unwrap();
+
+    // Create equivalent schema from TOML
+    let toml_str = r#"
+        name = "test"
+        description = "test"
+        version = "0.1.0"
+        supported-types = []
+
+        [[storage.slots]]
+        name = "demo::pubkey"
+        description = "Falcon512 RPO public key"
+        type = "miden::standards::auth::falcon512_rpo::pub_key"
+
+        [[storage.slots]]
+        name = "demo::metadata"
+        type = [
+            { name = "max_supply", type = "felt", description = "Maximum token supply" },
+            { name = "decimals", type = "u8", description = "Number of decimals" },
+            { name = "symbol", type = "miden::standards::fungible_faucets::metadata::token_symbol", description = "Token symbol" },
+            { type = "void" },
+        ]
+
+        [[storage.slots]]
+        name = "demo::map"
+        type = { key = "word", value = "word" }
+    "#;
+    let metadata_from_toml = AccountComponentMetadata::from_toml(toml_str).unwrap();
+    let schema_from_toml = metadata_from_toml.storage_schema();
+
+    // Verify schemas and commitments match
+    assert_eq!(&schema_from_code, schema_from_toml);
+    assert_eq!(schema_from_code.commitment(), schema_from_toml.commitment());
+
+    // Roundtrip: code -> TOML -> code
+    let metadata_from_code = AccountComponentMetadata::builder("test")
+        .description("test")
+        .storage_schema(schema_from_code.clone())
+        .build();
+    let toml_from_code = metadata_from_code.to_toml().unwrap();
+    let roundtrip_from_code = AccountComponentMetadata::from_toml(&toml_from_code).unwrap();
+    assert_eq!(&schema_from_code, roundtrip_from_code.storage_schema());
+
+    // Roundtrip: TOML -> code -> TOML
+    let toml_roundtrip = metadata_from_toml.to_toml().unwrap();
+    let roundtrip_from_toml = AccountComponentMetadata::from_toml(&toml_roundtrip).unwrap();
+    assert_eq!(schema_from_toml, roundtrip_from_toml.storage_schema());
+
+    // Verify both schemas produce identical storage slots with the same init data
+    let init_toml = r#"
+        "demo::pubkey" = "0x1234"
+        "demo::metadata.max_supply" = "1000000"
+        "demo::metadata.decimals" = "8"
+        "demo::metadata.symbol" = "ETH"
+    "#;
+    let init_data = InitStorageData::from_toml(init_toml).unwrap();
+
+    let slots_from_code = schema_from_code.build_storage_slots(&init_data).unwrap();
+    let slots_from_toml = schema_from_toml.build_storage_slots(&init_data).unwrap();
+
+    assert_eq!(slots_from_code.len(), slots_from_toml.len());
+    for (slot_code, slot_toml) in slots_from_code.iter().zip(slots_from_toml.iter()) {
+        assert_eq!(slot_code.name(), slot_toml.name());
+        assert_eq!(slot_code.content(), slot_toml.content());
+    }
+}

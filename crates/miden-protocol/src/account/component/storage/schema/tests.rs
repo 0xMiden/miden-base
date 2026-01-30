@@ -1,4 +1,5 @@
 use alloc::collections::BTreeMap;
+use alloc::string::ToString;
 
 use super::super::{InitStorageData, SchemaTypeId};
 use super::{FeltSchema, MapSlotSchema, ValueSlotSchema, WordSchema};
@@ -35,7 +36,7 @@ fn value_slot_schema_exposes_felt_schema_types() {
         FeltSchema::new_typed(SchemaTypeId::u8(), "a"),
         FeltSchema::new_typed(SchemaTypeId::u16(), "b"),
         FeltSchema::new_typed(SchemaTypeId::u32(), "c"),
-        FeltSchema::new_typed(SchemaTypeId::new("felt").unwrap(), "d"),
+        FeltSchema::new_typed("felt", "d"),
     ];
 
     let slot = ValueSlotSchema::new(None, WordSchema::new_value(felt_values));
@@ -146,4 +147,64 @@ fn map_slot_schema_missing_init_value_defaults_to_empty_map() {
         .try_build_map(&InitStorageData::default(), &"demo::map".parse().unwrap())
         .unwrap();
     assert_eq!(built, StorageMap::new());
+}
+
+#[test]
+fn storage_schema_rejects_unregistered_felt_type() {
+    use super::{StorageSchema, StorageSlotSchema};
+
+    let slot_name: StorageSlotName = "test::slot".parse().unwrap();
+
+    // Create a schema with an unregistered felt type
+    let unregistered_felt = FeltSchema::new_typed("unregistered::type", "field");
+    let word_schema = WordSchema::new_value([
+        unregistered_felt,
+        FeltSchema::new_void(),
+        FeltSchema::new_void(),
+        FeltSchema::new_void(),
+    ]);
+    let slot_schema = StorageSlotSchema::Value(ValueSlotSchema::new(None, word_schema));
+
+    // Creating a StorageSchema should fail because the type is not registered
+    let result = StorageSchema::new([(slot_name, slot_schema)]);
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(error_msg.contains("unregistered::type"));
+}
+
+#[test]
+fn storage_schema_rejects_unregistered_word_type() {
+    use super::{StorageSchema, StorageSlotSchema};
+
+    let slot_name: StorageSlotName = "test::slot".parse().unwrap();
+
+    // Create a schema with an unregistered word type
+    let word_schema = WordSchema::new_simple(SchemaTypeId::new("unregistered::word_type").unwrap());
+    let slot_schema = StorageSlotSchema::Value(ValueSlotSchema::new(None, word_schema));
+
+    // Creating a StorageSchema should fail because the type is not registered
+    let result = StorageSchema::new([(slot_name, slot_schema)]);
+    assert!(result.is_err());
+    let error_msg = result.unwrap_err().to_string();
+    assert!(error_msg.contains("unregistered::word_type"));
+}
+
+#[test]
+fn storage_schema_accepts_registered_types() {
+    use super::{StorageSchema, StorageSlotSchema};
+
+    let slot_name: StorageSlotName = "test::slot".parse().unwrap();
+
+    // Create a schema with registered types
+    let word_schema = WordSchema::new_value([
+        FeltSchema::new_typed("u8", "a"),
+        FeltSchema::new_typed("u16", "b"),
+        FeltSchema::new_typed("u32", "c"),
+        FeltSchema::new_typed("felt", "d"),
+    ]);
+    let slot_schema = StorageSlotSchema::Value(ValueSlotSchema::new(None, word_schema));
+
+    // Creating a StorageSchema should succeed
+    let result = StorageSchema::new([(slot_name, slot_schema)]);
+    assert!(result.is_ok());
 }

@@ -3,6 +3,7 @@ use alloc::sync::Arc;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_processor::crypto::RpoRandomCoin;
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -439,9 +440,11 @@ async fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let auth_code = CodeBuilder::default()
         .compile_component_code("test::auth_component", source_code)
         .context("failed to parse auth component")?;
-    let auth_component = AccountComponent::new(auth_code, vec![])
-        .context("failed to parse auth component")?
-        .with_supports_all_types();
+    let metadata = AccountComponentMetadata::builder("test::auth_component")
+        .supports_all_types()
+        .build();
+    let auth_component = AccountComponent::new(auth_code, vec![], metadata)
+        .context("failed to parse auth component")?;
 
     let account = AccountBuilder::new([42; 32])
         .storage_mode(AccountStorageMode::Private)
@@ -764,11 +767,14 @@ async fn inputs_created_correctly() -> anyhow::Result<()> {
     let component_code = CodeBuilder::default()
         .compile_component_code("test::adv_map_component", account_component_masm)?;
 
+    let metadata = AccountComponentMetadata::builder("test::adv_map_component")
+        .supports_all_types()
+        .build();
     let component = AccountComponent::new(
         component_code.clone(),
         vec![StorageSlot::with_value(StorageSlotName::mock(0), Word::default())],
-    )?
-    .with_supports_all_types();
+        metadata,
+    )?;
 
     let account_code = AccountCode::from_components(
         &[IncrNonceAuthComponent.into(), component.clone()],

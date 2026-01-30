@@ -411,6 +411,7 @@ mod tests {
 
     use super::{AccountCode, Deserializable, Serializable};
     use crate::account::code::build_procedure_commitment;
+    use crate::account::component::AccountComponentMetadata;
     use crate::account::{AccountComponent, AccountType};
     use crate::errors::AccountError;
     use crate::testing::account_code::CODE;
@@ -445,7 +446,10 @@ mod tests {
     #[test]
     fn test_account_code_no_auth_component() {
         let library = Assembler::default().assemble_library([CODE]).unwrap();
-        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
+        let metadata = AccountComponentMetadata::builder("test::component")
+            .supports_all_types()
+            .build();
+        let component = AccountComponent::new(library, vec![], metadata).unwrap();
 
         let err =
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
@@ -480,7 +484,10 @@ mod tests {
         ";
 
         let library = Assembler::default().assemble_library([code_with_multiple_auth]).unwrap();
-        let component = AccountComponent::new(library, vec![]).unwrap().with_supports_all_types();
+        let metadata = AccountComponentMetadata::builder("test::multiple_auth")
+            .supports_all_types()
+            .build();
+        let component = AccountComponent::new(library, vec![], metadata).unwrap();
 
         let err =
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)

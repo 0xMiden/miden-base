@@ -3,6 +3,12 @@ use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::component::{
+    AccountComponentMetadata,
+    FeltSchema,
+    StorageSchema,
+    StorageSlotSchema,
+};
 use miden_protocol::account::{AccountComponent, StorageMap, StorageSlot, StorageSlotName};
 use miden_protocol::errors::AccountError;
 use miden_protocol::utils::sync::LazyLock;
@@ -196,9 +202,42 @@ impl From<AuthFalcon512RpoMultisig> for AccountComponent {
             proc_threshold_roots,
         ));
 
-        AccountComponent::new(falcon_512_rpo_multisig_library(), storage_slots)
-            .expect("Multisig auth component should satisfy the requirements of a valid account component")
-            .with_supports_all_types()
+        let storage_schema = StorageSchema::new([
+            (
+                AuthFalcon512RpoMultisig::threshold_config_slot().clone(),
+                StorageSlotSchema::value([
+                    FeltSchema::new_typed("u32", "threshold")
+                        .with_description("Required number of signatures"),
+                    FeltSchema::new_typed("u32", "num_approvers")
+                        .with_description("Total number of approvers"),
+                    FeltSchema::new_void(),
+                    FeltSchema::new_void(),
+                ]),
+            ),
+            (
+                AuthFalcon512RpoMultisig::approver_public_keys_slot().clone(),
+                StorageSlotSchema::map(),
+            ),
+            (
+                AuthFalcon512RpoMultisig::executed_transactions_slot().clone(),
+                StorageSlotSchema::map(),
+            ),
+            (
+                AuthFalcon512RpoMultisig::procedure_thresholds_slot().clone(),
+                StorageSlotSchema::map(),
+            ),
+        ])
+        .expect("storage schema should be valid");
+
+        let metadata =
+            AccountComponentMetadata::builder("miden::standards::auth::falcon512_rpo_multisig")
+                .description("Falcon512Rpo multisig authentication with threshold signatures")
+                .supports_regular_types()
+                .storage_schema(storage_schema)
+                .build();
+        AccountComponent::new(falcon_512_rpo_multisig_library(), storage_slots, metadata).expect(
+            "Multisig auth component should satisfy the requirements of a valid account component",
+        )
     }
 }
 

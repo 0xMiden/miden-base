@@ -9,6 +9,7 @@ use alloc::vec::Vec;
 use miden_assembly::Library;
 use miden_assembly::utils::Deserializable;
 use miden_core::{Felt, FieldElement, Program, Word};
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -108,9 +109,13 @@ pub fn local_exit_tree_library() -> Library {
 pub fn local_exit_tree_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
     let library = local_exit_tree_library();
 
-    AccountComponent::new(library, storage_slots)
-        .expect("local_exit_tree component should satisfy the requirements of a valid account component")
-        .with_supports_all_types()
+    let metadata = AccountComponentMetadata::builder("miden::agglayer::local_exit_tree")
+        .description("Local exit tree functionality for AggLayer")
+        .supports_all_types()
+        .build();
+    AccountComponent::new(library, storage_slots, metadata).expect(
+        "local_exit_tree component should satisfy the requirements of a valid account component",
+    )
 }
 
 /// Creates a Bridge Out component with the specified storage slots.
@@ -120,9 +125,12 @@ pub fn local_exit_tree_component(storage_slots: Vec<StorageSlot>) -> AccountComp
 pub fn bridge_out_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
     let library = bridge_out_library();
 
-    AccountComponent::new(library, storage_slots)
+    let metadata = AccountComponentMetadata::builder("miden::agglayer::bridge_out")
+        .description("Bridge out functionality for AggLayer")
+        .supports_all_types()
+        .build();
+    AccountComponent::new(library, storage_slots, metadata)
         .expect("bridge_out component should satisfy the requirements of a valid account component")
-        .with_supports_all_types()
 }
 
 /// Returns the Bridge In Library.
@@ -140,9 +148,12 @@ pub fn bridge_in_library() -> Library {
 pub fn bridge_in_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
     let library = bridge_in_library();
 
-    AccountComponent::new(library, storage_slots)
+    let metadata = AccountComponentMetadata::builder("miden::agglayer::bridge_in")
+        .description("Bridge in functionality for AggLayer")
+        .supports_all_types()
+        .build();
+    AccountComponent::new(library, storage_slots, metadata)
         .expect("bridge_in component should satisfy the requirements of a valid account component")
-        .with_supports_all_types()
 }
 
 /// Returns the Agglayer Faucet Library.
@@ -161,9 +172,13 @@ pub fn agglayer_faucet_library() -> Library {
 pub fn agglayer_faucet_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
     let library = agglayer_faucet_library();
 
-    AccountComponent::new(library, storage_slots)
-        .expect("agglayer_faucet component should satisfy the requirements of a valid account component")
-        .with_supports_all_types()
+    let metadata = AccountComponentMetadata::builder("miden::agglayer::faucet")
+        .description("AggLayer faucet with bridge validation")
+        .supports_all_types()
+        .build();
+    AccountComponent::new(library, storage_slots, metadata).expect(
+        "agglayer_faucet component should satisfy the requirements of a valid account component",
+    )
 }
 
 /// Creates a combined Bridge Out component that includes both bridge_out and local_exit_tree
@@ -188,9 +203,13 @@ pub fn bridge_out_with_local_exit_tree_component(
 pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountComponent {
     let library = agglayer_library();
 
-    AccountComponent::new(library, storage_slots)
-        .expect("asset_conversion component should satisfy the requirements of a valid account component")
-        .with_supports_all_types()
+    let metadata = AccountComponentMetadata::builder("miden::agglayer::asset_conversion")
+        .description("Asset conversion between Miden and Ethereum formats")
+        .supports_all_types()
+        .build();
+    AccountComponent::new(library, storage_slots, metadata).expect(
+        "asset_conversion component should satisfy the requirements of a valid account component",
+    )
 }
 
 // AGGLAYER ACCOUNT CREATION HELPERS

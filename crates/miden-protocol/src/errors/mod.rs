@@ -25,10 +25,8 @@ use crate::account::{
     AccountStorage,
     AccountType,
     StorageSlotId,
-    // StorageValueName,
-    // StorageValueNameError,
-    // TemplateTypeError,
     StorageSlotName,
+    StorageSlotType,
 };
 use crate::address::AddressType;
 use crate::asset::AssetVaultKey;
@@ -184,6 +182,18 @@ pub enum AccountError {
     UnsupportedComponentForAccountType {
         account_type: AccountType,
         component_index: usize,
+    },
+    #[error(
+        "component metadata schema describes slot `{slot_name}` which is not present in storage slots"
+    )]
+    ComponentSchemaSlotNotFound { slot_name: StorageSlotName },
+    #[error(
+        "component metadata schema for slot `{slot_name}` has type {schema_type} but storage slot has type {actual_type}"
+    )]
+    ComponentSchemaSlotTypeMismatch {
+        slot_name: StorageSlotName,
+        schema_type: StorageSlotType,
+        actual_type: StorageSlotType,
     },
     #[error(
         "failed to apply full state delta to existing account; full state deltas can be converted to accounts directly"

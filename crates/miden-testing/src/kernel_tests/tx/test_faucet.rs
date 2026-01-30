@@ -1,5 +1,6 @@
 use alloc::sync::Arc;
 
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -740,8 +741,10 @@ fn setup_non_faucet_account() -> anyhow::Result<Account> {
         "pub use ::miden::protocol::faucet::mint
          pub use ::miden::protocol::faucet::burn",
     )?;
-    let faucet_component = AccountComponent::new(faucet_code, vec![])?
-        .with_supported_type(AccountType::RegularAccountUpdatableCode);
+    let metadata = AccountComponentMetadata::builder("test::non_faucet_component")
+        .supported_type(AccountType::RegularAccountUpdatableCode)
+        .build();
+    let faucet_component = AccountComponent::new(faucet_code, vec![], metadata)?;
     Ok(AccountBuilder::new([4; 32])
         .account_type(AccountType::RegularAccountUpdatableCode)
         .with_auth_component(NoopAuthComponent)

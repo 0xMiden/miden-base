@@ -162,6 +162,18 @@ impl SchemaTypeId {
     }
 }
 
+impl From<&str> for SchemaTypeId {
+    /// Creates a [`SchemaTypeId`] from a string slice.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the string is not a valid schema type identifier.
+    /// Use [`SchemaTypeId::new`] for fallible construction.
+    fn from(s: &str) -> Self {
+        SchemaTypeId::new(s).expect("invalid schema type identifier")
+    }
+}
+
 impl Display for SchemaTypeId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())

@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{AccountCode, AccountComponent, AccountStorage, StorageSlot};
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
@@ -54,8 +55,17 @@ impl MockAccountComponent {
 
 impl From<MockAccountComponent> for AccountComponent {
     fn from(mock_component: MockAccountComponent) -> Self {
-        AccountComponent::new(AccountCode::mock_account_library(), mock_component.storage_slots)
-          .expect("mock account component should satisfy the requirements of a valid account component")
-          .with_supports_all_types()
+        let metadata = AccountComponentMetadata::builder("mock::account")
+            .description("Mock account component for testing")
+            .supports_all_types()
+            .build();
+        AccountComponent::new(
+            AccountCode::mock_account_library(),
+            mock_component.storage_slots,
+            metadata,
+        )
+        .expect(
+            "mock account component should satisfy the requirements of a valid account component",
+        )
     }
 }

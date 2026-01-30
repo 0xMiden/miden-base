@@ -30,26 +30,29 @@ pub struct FeltSchema {
 }
 
 impl FeltSchema {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
     /// Creates a new required typed felt field.
-    pub fn new_typed(r#type: SchemaTypeId, name: impl Into<String>) -> Self {
+    pub fn new_typed(r#type: impl Into<SchemaTypeId>, name: impl Into<String>) -> Self {
         FeltSchema {
             name: Some(name.into()),
             description: None,
-            r#type,
+            r#type: r#type.into(),
             default_value: None,
         }
     }
 
     /// Creates a new typed felt field with a default value.
     pub fn new_typed_with_default(
-        r#type: SchemaTypeId,
+        r#type: impl Into<SchemaTypeId>,
         name: impl Into<String>,
         default_value: Felt,
     ) -> Self {
         FeltSchema {
             name: Some(name.into()),
             description: None,
-            r#type,
+            r#type: r#type.into(),
             default_value: Some(default_value),
         }
     }
@@ -63,6 +66,9 @@ impl FeltSchema {
             default_value: None,
         }
     }
+
+    // BUILDER METHODS
+    // --------------------------------------------------------------------------------------------
 
     /// Sets the description of the [`FeltSchema`] and returns `self`.
     pub fn with_description(self, description: impl Into<String>) -> Self {

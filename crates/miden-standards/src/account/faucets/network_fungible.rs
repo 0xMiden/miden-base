@@ -1,3 +1,9 @@
+use miden_protocol::account::component::{
+    AccountComponentMetadata,
+    FeltSchema,
+    StorageSchema,
+    StorageSlotSchema,
+};
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -207,7 +213,7 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
     fn from(network_faucet: NetworkFungibleFaucet) -> Self {
         // Note: data is stored as [a0, a1, a2, a3] but loaded onto the stack as
         // [a3, a2, a1, a0, ...]
-        let metadata = Word::new([
+        let faucet_metadata_word = Word::new([
             network_faucet.faucet.max_supply(),
             Felt::from(network_faucet.faucet.decimals()),
             network_faucet.faucet.symbol().into(),
@@ -223,19 +229,58 @@ impl From<NetworkFungibleFaucet> for AccountComponent {
         ]
         .into();
 
-        let metadata_slot =
-            StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata);
+        let metadata_slot = StorageSlot::with_value(
+            NetworkFungibleFaucet::metadata_slot().clone(),
+            faucet_metadata_word,
+        );
         let owner_slot = StorageSlot::with_value(
             NetworkFungibleFaucet::owner_config_slot().clone(),
             owner_account_id_word,
         );
 
+        // Define storage schema with element-level typing for both slots.
+        let storage_schema = StorageSchema::new([
+            (
+                NetworkFungibleFaucet::metadata_slot().clone(),
+                StorageSlotSchema::value([
+                    FeltSchema::new_typed("felt", "max_supply")
+                        .with_description("Maximum token supply in base units"),
+                    FeltSchema::new_typed("u8", "decimals")
+                        .with_description("Number of decimal places"),
+                    FeltSchema::new_typed(
+                        "miden::standards::fungible_faucets::metadata::token_symbol",
+                        "token_symbol",
+                    )
+                    .with_description("Token symbol identifier"),
+                    FeltSchema::new_void(),
+                ]),
+            ),
+            (
+                NetworkFungibleFaucet::owner_config_slot().clone(),
+                StorageSlotSchema::value([
+                    FeltSchema::new_void(),
+                    FeltSchema::new_void(),
+                    FeltSchema::new_typed("felt", "owner_id_suffix")
+                        .with_description("Owner account ID suffix"),
+                    FeltSchema::new_typed("felt", "owner_id_prefix")
+                        .with_description("Owner account ID prefix"),
+                ]),
+            ),
+        ])
+        .expect("storage schema should be valid");
+
+        let metadata =
+            AccountComponentMetadata::builder("miden::standards::faucets::network_fungible")
+                .description("Network fungible faucet with owner-controlled distribution")
+                .supported_type(AccountType::FungibleFaucet)
+                .storage_schema(storage_schema)
+                .build();
         AccountComponent::new(
             network_fungible_faucet_library(),
-            vec![metadata_slot, owner_slot]
+            vec![metadata_slot, owner_slot],
+            metadata,
         )
             .expect("network fungible faucet component should satisfy the requirements of a valid account component")
-            .with_supported_type(AccountType::FungibleFaucet)
     }
 }
 

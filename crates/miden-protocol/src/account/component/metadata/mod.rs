@@ -10,6 +10,108 @@ use semver::Version;
 use super::{AccountType, SchemaRequirement, StorageSchema, StorageValueName};
 use crate::errors::AccountError;
 
+// ACCOUNT COMPONENT METADATA BUILDER
+// ================================================================================================
+
+/// Builder for constructing [`AccountComponentMetadata`] with a fluent interface.
+///
+/// This builder provides a convenient way to construct component metadata with sensible defaults:
+/// - Empty description
+/// - Version 0.1.0
+/// - Empty supported types set
+/// - Empty storage schema
+///
+/// # Example
+///
+/// ```
+/// use miden_protocol::account::AccountType;
+/// use miden_protocol::account::component::AccountComponentMetadata;
+///
+/// let metadata = AccountComponentMetadata::builder("my_component::name")
+///     .description("A description of the component")
+///     .supports_all_types()
+///     .build();
+///
+/// assert_eq!(metadata.name(), "my_component::name");
+/// assert!(metadata.supported_types().contains(&AccountType::FungibleFaucet));
+/// ```
+#[derive(Debug, Clone)]
+pub struct AccountComponentMetadataBuilder {
+    name: String,
+    description: String,
+    version: Version,
+    supported_types: BTreeSet<AccountType>,
+    storage_schema: StorageSchema,
+}
+
+impl AccountComponentMetadataBuilder {
+    /// Creates a new builder with the given component name and default values.
+    fn new(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            description: String::new(),
+            version: Version::new(0, 1, 0),
+            supported_types: BTreeSet::new(),
+            storage_schema: StorageSchema::default(),
+        }
+    }
+
+    /// Sets the description of the component.
+    pub fn description(mut self, description: impl Into<String>) -> Self {
+        self.description = description.into();
+        self
+    }
+
+    /// Sets the version of the component.
+    pub fn version(mut self, version: Version) -> Self {
+        self.version = version;
+        self
+    }
+
+    /// Adds a single supported account type to the component.
+    pub fn supported_type(mut self, account_type: AccountType) -> Self {
+        self.supported_types.insert(account_type);
+        self
+    }
+
+    /// Sets the component to support all account types.
+    pub fn supports_all_types(mut self) -> Self {
+        self.supported_types.extend([
+            AccountType::FungibleFaucet,
+            AccountType::NonFungibleFaucet,
+            AccountType::RegularAccountImmutableCode,
+            AccountType::RegularAccountUpdatableCode,
+        ]);
+        self
+    }
+
+    /// Sets the component to support only regular account types (immutable and updatable code).
+    pub fn supports_regular_types(mut self) -> Self {
+        self.supported_types.extend([
+            AccountType::RegularAccountImmutableCode,
+            AccountType::RegularAccountUpdatableCode,
+        ]);
+        self
+    }
+
+    /// Sets the storage schema for the component.
+    pub fn storage_schema(mut self, schema: StorageSchema) -> Self {
+        self.storage_schema = schema;
+        self
+    }
+
+    /// Builds the [`AccountComponentMetadata`].
+    pub fn build(self) -> AccountComponentMetadata {
+        AccountComponentMetadata::new(
+            self.name,
+            self.description,
+            self.version,
+            self.supported_types,
+            self.storage_schema,
+        )
+    }
+}
+
 // ACCOUNT COMPONENT METADATA
 // ================================================================================================
 
@@ -106,6 +208,13 @@ pub struct AccountComponentMetadata {
 }
 
 impl AccountComponentMetadata {
+    /// Creates a new builder for [`AccountComponentMetadata`] with the given component name.
+    ///
+    /// See [`AccountComponentMetadataBuilder`] for more details.
+    pub fn builder(name: impl Into<String>) -> AccountComponentMetadataBuilder {
+        AccountComponentMetadataBuilder::new(name)
+    }
+
     /// Create a new [AccountComponentMetadata].
     pub fn new(
         name: String,
