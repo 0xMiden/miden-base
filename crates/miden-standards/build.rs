@@ -3,7 +3,7 @@ use std::path::Path;
 
 use fs_err as fs;
 use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr};
-use miden_assembly::{Assembler, Library, Path as AsmPath};
+use miden_assembly::{Assembler, Library};
 use miden_protocol::transaction::TransactionKernel;
 
 // CONSTANTS
@@ -18,7 +18,6 @@ const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
 const ASM_STANDARDS_DIR: &str = "standards";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
-const ASM_STANDARDS_NOTES_DIR: &str = "notes";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 
 const STANDARDS_LIB_NAMESPACE: &str = "miden::standards";
@@ -59,9 +58,9 @@ fn main() -> Result<()> {
     let mut assembler = TransactionKernel::assembler();
     assembler.link_static_library(standards_lib)?;
 
-    // compile note scripts as libraries from standards/notes directory
+    // compile note scripts as libraries from note_scripts directory
     compile_note_scripts(
-        &source_dir.join(ASM_STANDARDS_DIR).join(ASM_STANDARDS_NOTES_DIR),
+        &source_dir.join(ASM_NOTE_SCRIPTS_DIR),
         &target_dir.join(ASM_NOTE_SCRIPTS_DIR),
         assembler.clone(),
     )?;
@@ -102,22 +101,16 @@ fn compile_standards_lib(
 // COMPILE NOTE SCRIPT LIBRARIES
 // ================================================================================================
 
-/// Reads all MASM files from the "{source_dir}" (standards/notes), compiles each file individually
+/// Reads all MASM files from the "{source_dir}" (note_scripts), compiles each file individually
 /// into a MASL library file, and stores the compiled files into the "{target_dir}".
 ///
-/// Each note script must have a procedure annotated with `@note_script` which will serve as the
+/// Each note script wrapper re-exports the main procedure from the corresponding module in
+/// miden::standards::notes with the `@note_script` annotation, which will serve as the
 /// entrypoint when loaded via `NoteScript::from_library`.
-///
-/// To properly propagate the `@note_script` attribute, each file is compiled using
-/// `assemble_library_from_dir` with a temporary directory structure that includes
-/// the correct namespace.
 fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
     fs::create_dir_all(target_dir)
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
-
-    let build_dir = env::var("OUT_DIR").unwrap();
-    let temp_base = Path::new(&build_dir).join("temp_note_scripts");
 
     for masm_file_path in shared::get_masm_files(source_dir).unwrap() {
         let script_name = masm_file_path
@@ -127,41 +120,20 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
             .expect("file stem should be valid UTF-8")
             .to_owned();
 
-        // Create a temporary directory for this note script
-        // The namespace is "miden::standards::notes" and file is "<script_name>.masm"
-        // so the procedure path will be "miden::standards::notes::<script_name>::main"
-        let temp_dir = temp_base.join(&script_name);
-        if temp_dir.exists() {
-            fs::remove_dir_all(&temp_dir).into_diagnostic()?;
-        }
-        fs::create_dir_all(&temp_dir).into_diagnostic()?;
+        let source_code = fs::read_to_string(&masm_file_path)
+            .expect("reading the note script's MASM source code should succeed");
 
-        // Copy the file to the temp directory with original name
-        let temp_file = temp_dir.join(format!("{}.masm", script_name));
-        fs::copy(&masm_file_path, &temp_file).into_diagnostic()?;
+        let named_source = NamedSource::new(script_name.clone(), source_code);
 
-        // Compile using assemble_library_from_dir with a unique namespace
-        // Using "miden::note_scripts" to avoid collision with standards library
-        // The procedure path will be "miden::note_scripts::<script_name>::main"
-        let namespace =
-            AsmPath::validate("miden::note_scripts").expect("namespace path should be valid");
         let script_library = assembler
             .clone()
-            .assemble_library_from_dir(&temp_dir, namespace)
+            .assemble_library([named_source])
             .expect("library assembly should succeed");
 
         // write the library to a .masl file
         let library_file_path =
             target_dir.join(&script_name).with_extension(Library::LIBRARY_EXTENSION);
         script_library.write_to_file(library_file_path).into_diagnostic()?;
-
-        // Clean up temp directory
-        fs::remove_dir_all(&temp_dir).into_diagnostic()?;
-    }
-
-    // Clean up temp base if empty
-    if temp_base.exists() {
-        let _ = fs::remove_dir(&temp_base);
     }
 
     Ok(())
