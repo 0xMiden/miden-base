@@ -24,7 +24,7 @@ use miden_protocol::{Felt, MAX_NOTE_STORAGE_ITEMS, Word};
 
 // Initialize the MINT note script only once
 static MINT_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/MINT.masl"));
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/mint.masl"));
     let library = Library::read_from_bytes(bytes).expect("Shipped MINT library is well-formed");
     NoteScript::from_library(&library).expect("MINT library contains note script procedure")
 });

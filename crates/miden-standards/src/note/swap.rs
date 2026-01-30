@@ -28,7 +28,7 @@ use super::P2idNote;
 
 // Initialize the SWAP note script only once
 static SWAP_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/SWAP.masl"));
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/swap.masl"));
     let library = Library::read_from_bytes(bytes).expect("Shipped SWAP library is well-formed");
     NoteScript::from_library(&library).expect("SWAP library contains note script procedure")
 });

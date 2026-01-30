@@ -26,7 +26,7 @@ use miden_protocol::{Felt, Word};
 
 // Initialize the P2IDE note script only once
 static P2IDE_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDE.masl"));
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/p2ide.masl"));
     let library = Library::read_from_bytes(bytes).expect("Shipped P2IDE library is well-formed");
     NoteScript::from_library(&library).expect("P2IDE library contains note script procedure")
 });
