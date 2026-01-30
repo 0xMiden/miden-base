@@ -724,7 +724,7 @@ pub proc remove_asset_from_vault
     # => [ASSET]
 end
 
-#! Returns the ASSET associated with the provided faucet_id in the active account's vault.
+#! Returns the ASSET associated with the provided asset vault key in the active account's vault.
 #!
 #! Inputs:  [ASSET_KEY]
 #! Outputs: [ASSET]
@@ -746,8 +746,8 @@ pub proc get_asset
     # => [ASSET]
 end
 
-#! Returns the ASSET associated with the provided faucet_id in the active account's vault at the
-#! beginning of the transaction.
+#! Returns the ASSET associated with the provided asset vault key in the active account's vault at
+#! the beginning of the transaction.
 #!
 #! Inputs:  [ASSET_KEY]
 #! Outputs: [ASSET]
