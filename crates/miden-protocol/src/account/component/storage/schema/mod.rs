@@ -19,6 +19,9 @@ pub use felt::FeltSchema;
 mod map_slot;
 pub use map_slot::MapSlotSchema;
 
+mod parse;
+pub(crate) use parse::parse_storage_value_with_schema;
+
 mod slot;
 pub use slot::StorageSlotSchema;
 

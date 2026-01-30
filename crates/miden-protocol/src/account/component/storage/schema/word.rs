@@ -162,7 +162,7 @@ impl WordSchema {
                 }
                 match slot_value {
                     Some(value) => {
-                        super::map_slot::parse_storage_value_with_schema(self, value, &slot_prefix)
+                        super::parse_storage_value_with_schema(self, value, &slot_prefix)
                     },
                     None => {
                         if *r#type == SchemaTypeId::void() {
@@ -183,11 +183,7 @@ impl WordSchema {
                             "expected a single value, got both value and field entries".into(),
                         ));
                     }
-                    return super::map_slot::parse_storage_value_with_schema(
-                        self,
-                        value,
-                        &slot_prefix,
-                    );
+                    return super::parse_storage_value_with_schema(self, value, &slot_prefix);
                 }
 
                 let mut result = [Felt::ZERO; 4];
