@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_processor::{ExecutionError, Word};
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::delta::AccountUpdateDetails;
 use miden_protocol::account::{
     Account,
@@ -1495,9 +1496,14 @@ async fn transaction_executor_account_code_using_custom_library() -> anyhow::Res
             call.account_module::custom_setter
           end";
 
-    let account_component =
-        AccountComponent::new(account_component_lib.clone(), AccountStorage::mock_storage_slots())?
-            .with_supports_all_types();
+    let metadata = AccountComponentMetadata::builder("account_component")
+        .supports_all_types()
+        .build();
+    let account_component = AccountComponent::new(
+        account_component_lib.clone(),
+        AccountStorage::mock_storage_slots(),
+        metadata,
+    )?;
 
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
@@ -1542,8 +1548,10 @@ async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
 
     let faulty_auth_code =
         CodeBuilder::default().compile_component_code("test::faulty_auth", source_code)?;
-    let faulty_auth_component =
-        AccountComponent::new(faulty_auth_code, vec![])?.with_supports_all_types();
+    let metadata = AccountComponentMetadata::builder("test::faulty_auth")
+        .supports_all_types()
+        .build();
+    let faulty_auth_component = AccountComponent::new(faulty_auth_code, vec![], metadata)?;
     let account = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
         .with_component(MockAccountComponent::with_empty_slots())
@@ -1828,9 +1836,11 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
 
     impl From<CustomComponent1> for AccountComponent {
         fn from(component: CustomComponent1) -> AccountComponent {
-            AccountComponent::new(COMPONENT_1_LIBRARY.clone(), vec![component.slot])
+            let metadata = AccountComponentMetadata::builder("component1::interface")
+                .supports_all_types()
+                .build();
+            AccountComponent::new(COMPONENT_1_LIBRARY.clone(), vec![component.slot], metadata)
                 .expect("should be valid")
-                .with_supports_all_types()
         }
     }
 
@@ -1838,9 +1848,11 @@ async fn merging_components_with_same_mast_root_succeeds() -> anyhow::Result<()>
 
     impl From<CustomComponent2> for AccountComponent {
         fn from(_component: CustomComponent2) -> AccountComponent {
-            AccountComponent::new(COMPONENT_2_LIBRARY.clone(), vec![])
+            let metadata = AccountComponentMetadata::builder("component2::interface")
+                .supports_all_types()
+                .build();
+            AccountComponent::new(COMPONENT_2_LIBRARY.clone(), vec![], metadata)
                 .expect("should be valid")
-                .with_supports_all_types()
         }
     }
 

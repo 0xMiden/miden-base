@@ -1,5 +1,6 @@
 //! Tests for the Array utility `get` and `set` procedures.
 
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{
     AccountBuilder,
     AccountComponent,
@@ -57,6 +58,9 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
 
     // Create the wrapper account component with a storage map to hold the array data
     let initial_value = Word::from([42u32, 42, 42, 42]);
+    let metadata = AccountComponentMetadata::builder("wrapper::component")
+        .supports_all_types()
+        .build();
     let wrapper_component = AccountComponent::new(
         wrapper_library.clone(),
         vec![StorageSlot::with_map(
@@ -66,8 +70,8 @@ async fn test_array_get_and_set() -> anyhow::Result<()> {
                 initial_value,
             )])?,
         )],
-    )?
-    .with_supports_all_types();
+        metadata,
+    )?;
 
     // Build an account with the wrapper component that uses the array utility
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())

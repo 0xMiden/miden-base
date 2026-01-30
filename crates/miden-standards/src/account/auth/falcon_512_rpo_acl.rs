@@ -2,6 +2,14 @@ use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::account::auth::PublicKeyCommitment;
+use miden_protocol::account::component::{
+    AccountComponentMetadata,
+    FeltSchema,
+    SchemaTypeId,
+    StorageSchema,
+    StorageSlotSchema,
+    WordSchema,
+};
 use miden_protocol::account::{
     AccountCode,
     AccountComponent,
@@ -212,11 +220,43 @@ impl From<AuthFalcon512RpoAcl> for AccountComponent {
             StorageMap::with_entries(map_entries).unwrap(),
         ));
 
-        AccountComponent::new(falcon_512_rpo_acl_library(), storage_slots)
-            .expect(
-                "ACL auth component should satisfy the requirements of a valid account component",
-            )
-            .with_supports_all_types()
+        let storage_schema = StorageSchema::new([
+            (
+                AuthFalcon512RpoAcl::public_key_slot().clone(),
+                StorageSlotSchema::typed_value(WordSchema::new_simple(
+                    SchemaTypeId::new("miden::standards::auth::falcon512_rpo::pub_key")
+                        .expect("type id should be valid"),
+                ))
+                .with_description("Falcon512 RPO public key"),
+            ),
+            (
+                AuthFalcon512RpoAcl::config_slot().clone(),
+                StorageSlotSchema::value([
+                    FeltSchema::new_typed("u32", "num_trigger_procs")
+                        .with_description("Number of trigger procedures"),
+                    FeltSchema::new_typed("u32", "allow_unauthorized_output_notes")
+                        .with_description("Allow output notes without auth"),
+                    FeltSchema::new_typed("u32", "allow_unauthorized_input_notes")
+                        .with_description("Allow input notes without auth"),
+                    FeltSchema::new_void(),
+                ]),
+            ),
+            (
+                AuthFalcon512RpoAcl::trigger_procedure_roots_slot().clone(),
+                StorageSlotSchema::map(),
+            ),
+        ])
+        .expect("storage schema should be valid");
+
+        let metadata =
+            AccountComponentMetadata::builder("miden::standards::auth::falcon512_rpo_acl")
+                .description("Falcon512Rpo ACL authentication with procedure-based access control")
+                .supports_all_types()
+                .storage_schema(storage_schema)
+                .build();
+        AccountComponent::new(falcon_512_rpo_acl_library(), storage_slots, metadata).expect(
+            "ACL auth component should satisfy the requirements of a valid account component",
+        )
     }
 }
 

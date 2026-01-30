@@ -1,5 +1,6 @@
 use alloc::string::String;
 
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{AccountComponent, AccountComponentCode};
 use miden_protocol::utils::sync::LazyLock;
 
@@ -50,8 +51,11 @@ pub struct ConditionalAuthComponent;
 
 impl From<ConditionalAuthComponent> for AccountComponent {
     fn from(_: ConditionalAuthComponent) -> Self {
-        AccountComponent::new(CONDITIONAL_AUTH_LIBRARY.clone(), vec![])
+        let metadata = AccountComponentMetadata::builder("mock::conditional_auth")
+            .description("Conditional authentication for testing")
+            .supports_all_types()
+            .build();
+        AccountComponent::new(CONDITIONAL_AUTH_LIBRARY.clone(), vec![], metadata)
             .expect("component should be valid")
-            .with_supports_all_types()
     }
 }

@@ -1,9 +1,9 @@
 use alloc::collections::BTreeMap;
 
 use miden_protocol::Word;
-use miden_protocol::account::component::StorageSchema;
+use miden_protocol::account::component::{AccountComponentMetadata, StorageSchema};
 use miden_protocol::account::{AccountComponent, StorageSlot, StorageSlotName};
-use miden_protocol::errors::AccountComponentTemplateError;
+use miden_protocol::errors::AccountError;
 use miden_protocol::utils::sync::LazyLock;
 
 use crate::account::components::storage_schema_library;
@@ -37,16 +37,14 @@ impl AccountSchemaCommitment {
     /// # Errors
     ///
     /// Returns an error if the schemas contain conflicting definitions for the same slot name.
-    pub fn new(schemas: &[StorageSchema]) -> Result<Self, AccountComponentTemplateError> {
+    pub fn new(schemas: &[StorageSchema]) -> Result<Self, AccountError> {
         Ok(Self {
             schema_commitment: compute_schema_commitment(schemas)?,
         })
     }
 
     /// Creates a new [`AccountSchemaCommitment`] component from a [`StorageSchema`].
-    pub fn from_schema(
-        storage_schema: &StorageSchema,
-    ) -> Result<Self, AccountComponentTemplateError> {
+    pub fn from_schema(storage_schema: &StorageSchema) -> Result<Self, AccountError> {
         Self::new(core::slice::from_ref(storage_schema))
     }
 
@@ -58,17 +56,22 @@ impl AccountSchemaCommitment {
 
 impl From<AccountSchemaCommitment> for AccountComponent {
     fn from(schema_commitment: AccountSchemaCommitment) -> Self {
+        let metadata =
+            AccountComponentMetadata::builder("miden::standards::metadata::storage_schema")
+                .description("Exposes the account storage schema commitment")
+                .supports_all_types()
+                .build();
         AccountComponent::new(
             storage_schema_library(),
             vec![StorageSlot::with_value(
                 AccountSchemaCommitment::schema_commitment_slot().clone(),
                 schema_commitment.schema_commitment,
             )],
+            metadata,
         )
         .expect(
             "AccountSchemaCommitment component should satisfy the requirements of a valid account component",
         )
-        .with_supports_all_types()
     }
 }
 
@@ -76,9 +79,7 @@ impl From<AccountSchemaCommitment> for AccountComponent {
 ///
 /// The account schema commitment is computed from the merged schema commitment.
 /// If the passed list of schemas is empty, [`Word::empty()`] is returned.
-fn compute_schema_commitment(
-    schemas: &[StorageSchema],
-) -> Result<Word, AccountComponentTemplateError> {
+fn compute_schema_commitment(schemas: &[StorageSchema]) -> Result<Word, AccountError> {
     if schemas.is_empty() {
         return Ok(Word::empty());
     }
@@ -93,7 +94,7 @@ fn compute_schema_commitment(
                 // Slot exists, check if the schema is the same before erroring
                 Some(existing) => {
                     if existing != slot_schema {
-                        return Err(AccountComponentTemplateError::InvalidSchema(format!(
+                        return Err(AccountError::other(format!(
                             "conflicting definitions for storage slot `{slot_name}`",
                         )));
                     }
@@ -102,7 +103,8 @@ fn compute_schema_commitment(
         }
     }
 
-    let merged_schema = StorageSchema::new(merged_slots)?;
+    let merged_schema = StorageSchema::new(merged_slots)
+        .map_err(|err| AccountError::other_with_source("failed to create merged schema", err))?;
 
     Ok(merged_schema.commitment())
 }

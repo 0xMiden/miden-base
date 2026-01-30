@@ -1,6 +1,7 @@
 use alloc::string::String;
 
 use miden_protocol::Word;
+use miden_protocol::account::component::AccountComponentMetadata;
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -80,9 +81,13 @@ impl BasicWallet {
 
 impl From<BasicWallet> for AccountComponent {
     fn from(_: BasicWallet) -> Self {
-        AccountComponent::new(basic_wallet_library(), vec![])
-          .expect("basic wallet component should satisfy the requirements of a valid account component")
-          .with_supports_all_types()
+        let metadata = AccountComponentMetadata::builder("miden::standards::wallets::basic")
+            .description("Basic wallet with receive_asset and move_asset_to_note procedures")
+            .supports_all_types()
+            .build();
+        AccountComponent::new(basic_wallet_library(), vec![], metadata).expect(
+            "basic wallet component should satisfy the requirements of a valid account component",
+        )
     }
 }
 

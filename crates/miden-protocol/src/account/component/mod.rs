@@ -12,7 +12,7 @@ pub use storage::*;
 mod code;
 pub use code::AccountComponentCode;
 
-use crate::account::{AccountType, StorageSlot};
+use crate::account::{AccountType, StorageSlot, StorageSlotName};
 use crate::assembly::Path;
 use crate::errors::AccountError;
 use crate::{MastForest, Word};
@@ -33,22 +33,20 @@ use crate::{MastForest, Word};
 /// Components define the [`AccountType`]s they support, meaning whether the component can be used
 /// to instantiate an account of that type. For example, a component implementing a fungible faucet
 /// would only specify support for [`AccountType::FungibleFaucet`]. Using it to instantiate a
-/// regular account would fail. By default, the set of supported types is empty, so each component
-/// is forced to explicitly define what it supports.
+/// regular account would fail. Supported types are specified via the component's metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountComponent {
     pub(super) code: AccountComponentCode,
     pub(super) storage_slots: Vec<StorageSlot>,
-    pub(super) metadata: Option<AccountComponentMetadata>,
-    pub(super) supported_types: BTreeSet<AccountType>,
+    pub(super) metadata: AccountComponentMetadata,
 }
 
 impl AccountComponent {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [`AccountComponent`] constructed from the provided `library` and
-    /// `storage_slots`.
+    /// Returns a new [`AccountComponent`] constructed from the provided `code`, `storage_slots`,
+    /// and `metadata`.
     ///
     /// All procedures exported from the provided code will become members of the account's public
     /// interface when added to an [`AccountCode`](crate::account::AccountCode).
@@ -61,20 +59,67 @@ impl AccountComponent {
     ///
     /// Returns an error if:
     /// - The number of given [`StorageSlot`]s exceeds 255.
+    /// - The metadata's storage schema describes a slot that is not present in `storage_slots`.
+    /// - The metadata's storage schema describes a slot with a different type than the actual slot.
+    /// - The metadata's storage schema uses types that are not registered in the type registry.
     pub fn new(
         code: impl Into<AccountComponentCode>,
         storage_slots: Vec<StorageSlot>,
+        metadata: AccountComponentMetadata,
     ) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))?;
 
+        // Validate that the metadata's storage schema uses registered types.
+        metadata
+            .storage_schema()
+            .validate()
+            .map_err(|err| AccountError::other_with_source("invalid storage schema", err))?;
+
+        // Validate that the metadata's storage schema is consistent with the provided storage
+        // slots.
+        Self::validate_schema_against_slots(metadata.storage_schema(), &storage_slots)?;
+
         Ok(Self {
             code: code.into(),
             storage_slots,
-            metadata: None,
-            supported_types: BTreeSet::new(),
+            metadata,
         })
+    }
+
+    /// Validates that all slots described in the storage schema exist in the provided storage slots
+    /// and that their types match.
+    fn validate_schema_against_slots(
+        schema: &StorageSchema,
+        storage_slots: &[StorageSlot],
+    ) -> Result<(), AccountError> {
+        // Build a map of slot names to their types for efficient lookup.
+        let slot_map: alloc::collections::BTreeMap<&StorageSlotName, _> =
+            storage_slots.iter().map(|slot| (slot.name(), slot.slot_type())).collect();
+
+        // Check each slot in the schema.
+        for (slot_name, slot_schema) in schema.iter() {
+            match slot_map.get(slot_name) {
+                None => {
+                    return Err(AccountError::ComponentSchemaSlotNotFound {
+                        slot_name: slot_name.clone(),
+                    });
+                },
+                Some(&actual_type) => {
+                    let schema_type = slot_schema.slot_type();
+                    if schema_type != actual_type {
+                        return Err(AccountError::ComponentSchemaSlotTypeMismatch {
+                            slot_name: slot_name.clone(),
+                            schema_type,
+                            actual_type,
+                        });
+                    }
+                },
+            }
+        }
+
+        Ok(())
     }
 
     /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
@@ -147,8 +192,7 @@ impl AccountComponent {
                 AccountError::other_with_source("failed to instantiate account component", err)
             })?;
 
-        Ok(AccountComponent::new(library.clone(), storage_slots)?
-            .with_metadata(account_component_metadata.clone()))
+        AccountComponent::new(library.clone(), storage_slots, account_component_metadata.clone())
     }
 
     // ACCESSORS
@@ -175,24 +219,24 @@ impl AccountComponent {
         self.storage_slots.as_slice()
     }
 
-    /// Returns the component metadata, if any.
-    pub fn metadata(&self) -> Option<&AccountComponentMetadata> {
-        self.metadata.as_ref()
-    }
-
-    /// Returns the storage schema associated with this component, if any.
-    pub fn storage_schema(&self) -> Option<&StorageSchema> {
-        self.metadata.as_ref().map(AccountComponentMetadata::storage_schema)
+    /// Returns the component metadata.
+    pub fn metadata(&self) -> &AccountComponentMetadata {
+        &self.metadata
     }
 
     /// Returns a reference to the supported [`AccountType`]s.
     pub fn supported_types(&self) -> &BTreeSet<AccountType> {
-        &self.supported_types
+        self.metadata.supported_types()
     }
 
     /// Returns `true` if this component supports the given `account_type`, `false` otherwise.
     pub fn supports_type(&self, account_type: AccountType) -> bool {
-        self.supported_types.contains(&account_type)
+        self.metadata.supported_types().contains(&account_type)
+    }
+
+    /// Returns the storage schema for this component.
+    pub fn storage_schema(&self) -> &StorageSchema {
+        self.metadata.storage_schema()
     }
 
     /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
@@ -211,45 +255,6 @@ impl AccountComponent {
     /// in this component's library or its library path is malformed.
     pub fn get_procedure_root_by_path(&self, proc_name: impl AsRef<Path>) -> Option<Word> {
         self.code.as_library().get_procedure_root_by_path(proc_name)
-    }
-
-    // MUTATORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Adds `supported_type` to the set of [`AccountType`]s supported by this component.
-    ///
-    /// This function has the semantics of [`BTreeSet::insert`], i.e. adding a type twice is fine
-    /// and it can be called multiple times with different account types.
-    pub fn with_supported_type(mut self, supported_type: AccountType) -> Self {
-        self.supported_types.insert(supported_type);
-        self
-    }
-
-    /// Overwrites any previously set supported types with the given set.
-    ///
-    /// This can be used to reset the supported types of a component to a chosen set, which may be
-    /// useful after cloning an existing component.
-    pub fn with_supported_types(mut self, supported_types: BTreeSet<AccountType>) -> Self {
-        self.supported_types = supported_types;
-        self
-    }
-
-    /// Attaches metadata to this component for downstream schema commitments and introspection.
-    pub fn with_metadata(mut self, metadata: AccountComponentMetadata) -> Self {
-        self.supported_types = metadata.supported_types().clone();
-        self.metadata = Some(metadata);
-        self
-    }
-
-    /// Sets the [`AccountType`]s supported by this component to all account types.
-    pub fn with_supports_all_types(mut self) -> Self {
-        self.supported_types.extend([
-            AccountType::FungibleFaucet,
-            AccountType::NonFungibleFaucet,
-            AccountType::RegularAccountImmutableCode,
-            AccountType::RegularAccountUpdatableCode,
-        ]);
-        self
     }
 }
 

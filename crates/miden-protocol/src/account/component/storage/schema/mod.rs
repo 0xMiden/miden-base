@@ -125,8 +125,11 @@ impl StorageSchema {
         }
     }
 
-    /// Validates schema-level invariants across all slots.
-    fn validate(&self) -> Result<(), AccountComponentTemplateError> {
+    /// Validates schema-level invariants across all slots, including:
+    /// - No reserved slot names are used
+    /// - All types used in the schema are registered in the type registry
+    /// - No duplicate init value names
+    pub(crate) fn validate(&self) -> Result<(), AccountComponentTemplateError> {
         let mut init_values = BTreeMap::new();
 
         for (slot_name, schema) in self.slots.iter() {
