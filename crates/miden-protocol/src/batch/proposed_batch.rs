@@ -12,8 +12,8 @@ use crate::transaction::{
     InputNoteCommitment,
     InputNotes,
     OrderedTransactionHeaders,
-    OutputNote,
     PartialBlockchain,
+    ProvenOutputNote,
     ProvenTransaction,
     TransactionHeader,
 };
@@ -52,8 +52,9 @@ pub struct ProposedBatch {
     /// [`InputNoteCommitment::nullifier`].
     input_notes: InputNotes<InputNoteCommitment>,
     /// The output notes of this batch. This consists of all notes created by transactions in the
-    /// batch that are not consumed within the same batch. These are sorted by [`OutputNote::id`].
-    output_notes: Vec<OutputNote>,
+    /// batch that are not consumed within the same batch. These are sorted by
+    /// [`ProvenOutputNote::id`].
+    output_notes: Vec<ProvenOutputNote>,
 }
 
 impl ProposedBatch {
@@ -348,7 +349,7 @@ impl ProposedBatch {
     ///
     /// This is the aggregation of all output notes by the transactions in the batch, except the
     /// ones that were consumed within the batch itself.
-    pub fn output_notes(&self) -> &[OutputNote] {
+    pub fn output_notes(&self) -> &[ProvenOutputNote] {
         &self.output_notes
     }
 
@@ -364,7 +365,7 @@ impl ProposedBatch {
         BatchId,
         BTreeMap<AccountId, BatchAccountUpdate>,
         InputNotes<InputNoteCommitment>,
-        Vec<OutputNote>,
+        Vec<ProvenOutputNote>,
         BlockNumber,
     ) {
         (
