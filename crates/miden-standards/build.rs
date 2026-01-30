@@ -2,8 +2,8 @@ use std::env;
 use std::path::Path;
 
 use fs_err as fs;
-use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, Result, WrapErr};
-use miden_assembly::{Assembler, Library, Path as AsmPath};
+use miden_assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr};
+use miden_assembly::{Assembler, Library};
 use miden_protocol::transaction::TransactionKernel;
 
 // CONSTANTS
@@ -112,50 +112,28 @@ fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembl
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
-    let build_dir = env::var("OUT_DIR").unwrap();
-    let temp_base = Path::new(&build_dir).join("temp_note_scripts");
-
     for masm_file_path in shared::get_masm_files(source_dir).unwrap() {
         let script_name = masm_file_path
             .file_stem()
-            .ok_or_else(|| Report::msg("masm file should have a file stem"))?
+            .expect("masm file should have a file stem")
             .to_str()
-            .ok_or_else(|| Report::msg("file stem should be valid UTF-8"))?;
+            .expect("file stem should be valid UTF-8")
+            .to_owned();
 
-        // Lowercase the script name for the library path (e.g., BURN -> burn)
-        let script_name_lower = script_name.to_lowercase();
+        let source_code = fs::read_to_string(&masm_file_path)
+            .expect("reading the note script's MASM source code should succeed");
 
-        // Create a temporary directory for this note script
-        let temp_dir = temp_base.join(&script_name_lower);
-        if temp_dir.exists() {
-            fs::remove_dir_all(&temp_dir).into_diagnostic()?;
-        }
-        fs::create_dir_all(&temp_dir).into_diagnostic()?;
+        let named_source = NamedSource::new(script_name.clone(), source_code);
 
-        // Copy the file to the temp directory with lowercase name
-        let temp_file = temp_dir.join(format!("{}.masm", script_name_lower));
-        fs::copy(&masm_file_path, &temp_file).into_diagnostic()?;
-
-        // Compile using assemble_library_from_dir with miden::standards::note_scripts namespace
-        let namespace = AsmPath::validate("miden::standards::note_scripts")
-            .expect("namespace path should be valid");
         let script_library = assembler
             .clone()
-            .assemble_library_from_dir(&temp_dir, namespace)
-            .wrap_err("failed to assemble note script library")?;
+            .assemble_library([named_source])
+            .expect("library assembly should succeed");
 
-        // write the library to a .masl file (use lowercase name)
+        // write the library to a .masl file
         let library_file_path =
-            target_dir.join(&script_name_lower).with_extension(Library::LIBRARY_EXTENSION);
+            target_dir.join(&script_name).with_extension(Library::LIBRARY_EXTENSION);
         script_library.write_to_file(library_file_path).into_diagnostic()?;
-
-        // Clean up temp directory
-        fs::remove_dir_all(&temp_dir).into_diagnostic()?;
-    }
-
-    // Clean up temp base if empty
-    if temp_base.exists() {
-        let _ = fs::remove_dir(&temp_base);
     }
 
     Ok(())
