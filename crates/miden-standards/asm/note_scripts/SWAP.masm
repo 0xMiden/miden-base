@@ -1,1 +1,6 @@
-pub use ::miden::standards::notes::swap::main
+use miden::standards::notes::swap
+
+@note_script
+pub proc main
+    exec.swap::main
+end
