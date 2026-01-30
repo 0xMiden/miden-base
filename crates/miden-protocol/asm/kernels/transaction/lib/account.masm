@@ -134,42 +134,42 @@ const ACCOUNT_SLOT_VALUE_OFFSET=4
 # =================================================================================================
 
 # Event emitted before a foreign account is loaded from the advice inputs.
-const ACCOUNT_BEFORE_FOREIGN_LOAD_EVENT=event("miden::account::before_foreign_load")
+const ACCOUNT_BEFORE_FOREIGN_LOAD_EVENT=event("miden::protocol::account::before_foreign_load")
 
 # Event emitted before an asset is added to the account vault.
-const ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=event("miden::account::vault_before_add_asset")
+const ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=event("miden::protocol::account::vault_before_add_asset")
 # Event emitted after an asset is added to the account vault.
-const ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT=event("miden::account::vault_after_add_asset")
+const ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT=event("miden::protocol::account::vault_after_add_asset")
 
 # Event emitted before an asset is removed from the account vault.
-const ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT=event("miden::account::vault_before_remove_asset")
+const ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT=event("miden::protocol::account::vault_before_remove_asset")
 # Event emitted after an asset is removed from the account vault.
-const ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=event("miden::account::vault_after_remove_asset")
+const ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=event("miden::protocol::account::vault_after_remove_asset")
 
 # Event emitted before an asset is fetched from the account vault.
-const ACCOUNT_VAULT_BEFORE_GET_ASSET_EVENT=event("miden::account::vault_before_get_asset")
+const ACCOUNT_VAULT_BEFORE_GET_ASSET_EVENT=event("miden::protocol::account::vault_before_get_asset")
 
 # Event emitted before an account storage item is updated.
-const ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT=event("miden::account::storage_before_set_item")
+const ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT=event("miden::protocol::account::storage_before_set_item")
 # Event emitted after an account storage item is updated.
-const ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT=event("miden::account::storage_after_set_item")
+const ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT=event("miden::protocol::account::storage_after_set_item")
 
 # Event emitted before an account storage map item is accessed.
-const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT=event("miden::account::storage_before_get_map_item")
+const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT=event("miden::protocol::account::storage_before_get_map_item")
 
 # Event emitted before an account storage map item is updated.
-const ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT=event("miden::account::storage_before_set_map_item")
+const ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT=event("miden::protocol::account::storage_before_set_map_item")
 # Event emitted after an account storage map item is updated.
-const ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT=event("miden::account::storage_after_set_map_item")
+const ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT=event("miden::protocol::account::storage_after_set_map_item")
 
 # Event emitted before an account nonce is incremented.
-const ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT=event("miden::account::before_increment_nonce")
+const ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT=event("miden::protocol::account::before_increment_nonce")
 # Event emitted after an account nonce is incremented.
-const ACCOUNT_AFTER_INCREMENT_NONCE_EVENT=event("miden::account::after_increment_nonce")
+const ACCOUNT_AFTER_INCREMENT_NONCE_EVENT=event("miden::protocol::account::after_increment_nonce")
 
 # Event emitted to push the index of the account procedure at the top of the operand stack onto
 # the advice stack.
-const ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT=event("miden::account::push_procedure_index")
+const ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT=event("miden::protocol::account::push_procedure_index")
 
 # CONSTANT ACCESSORS
 # =================================================================================================

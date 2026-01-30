@@ -292,10 +292,6 @@ pub enum AccountTreeError {
 
 #[derive(Debug, Error)]
 pub enum AddressError {
-    #[error("tag length {0} should be {expected} bits for network accounts",
-        expected = NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH
-    )]
-    CustomTagLengthNotAllowedForNetworkAccounts(u8),
     #[error("tag length {0} is too large, must be less than or equal to {max}",
         max = NoteTag::MAX_ACCOUNT_TARGET_TAG_LENGTH
     )]
@@ -311,7 +307,7 @@ pub enum AddressError {
     #[error("{error_msg}")]
     DecodeError {
         error_msg: Box<str>,
-        // thiserror will return this when calling Error::source on NoteError.
+        // thiserror will return this when calling Error::source on AddressError.
         source: Option<Box<dyn Error + Send + Sync + 'static>>,
     },
     #[error("found unknown routing parameter key {0}")]

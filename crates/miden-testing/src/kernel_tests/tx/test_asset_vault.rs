@@ -85,7 +85,7 @@ async fn peek_asset_returns_correct_asset() -> anyhow::Result<()> {
 
             # emit an event to fetch the merkle path for the asset since peek_asset does not do
             # that
-            emit.event("miden::account::vault_before_get_asset")
+            emit.event("miden::protocol::account::vault_before_get_asset")
             # => [ASSET_KEY, account_vault_root_ptr]
 
             exec.asset_vault::peek_asset
