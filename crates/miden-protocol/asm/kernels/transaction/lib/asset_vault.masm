@@ -58,11 +58,15 @@ end
 #! manipulation from a malicious host. Therefore this should only be used when the inclusion of the
 #! peeked asset is verified at a later point.
 #!
+#! To get the verified asset, use get_asset. peek_asset is useful when updating a value in an SMT
+#! with smt::set, which returns the previous value. As long as that previous value is the same as
+#! the peeked value, using peek_asset is safe from manipulation. Using smt::get instead would work
+#! as well, but since both smt::get and smt::set prove inclusion of the current/previous value,
+#! this is unnecessary double work that can be skipped by peeking.
+#!
 #! WARNING: This is a generic vault procedure and so it cannot emit an event to lazy load asset
 #! merkle paths from the merkle store, since this is only possible for the account vault. Ensure
 #! that the merkle paths are present prior to calling.
-#!
-#! To get the verified asset, use get_asset.
 #!
 #! Inputs:  [ASSET_KEY, vault_root_ptr]
 #! Outputs: [ASSET]
