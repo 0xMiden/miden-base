@@ -158,4 +158,3 @@ pub proc bridge_out
     exec.create_burn_note
     # => []
 end
-
