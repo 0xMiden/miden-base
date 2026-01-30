@@ -1,6 +1,0 @@
-use miden::standards::notes::mint
-
-@note_script
-pub proc main
-    exec.mint::main
-end

@@ -1,6 +1,0 @@
-use miden::standards::notes::burn
-
-@note_script
-pub proc main
-    exec.burn::main
-end

@@ -1,6 +1,0 @@
-use miden::standards::notes::p2id
-
-@note_script
-pub proc main
-    exec.p2id::main
-end

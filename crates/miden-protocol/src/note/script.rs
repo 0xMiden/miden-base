@@ -1,3 +1,4 @@
+use alloc::string::ToString;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt::Display;
@@ -5,8 +6,8 @@ use core::fmt::Display;
 use miden_processor::MastNodeExt;
 
 use super::Felt;
-use crate::assembly::Library;
 use crate::assembly::mast::{MastForest, MastNodeId};
+use crate::assembly::{Library, Path};
 use crate::errors::NoteError;
 use crate::utils::serde::{
     ByteReader,
@@ -92,6 +93,41 @@ impl NoteScript {
         Ok(Self {
             mast: library.mast_forest().clone(),
             entrypoint,
+        })
+    }
+
+    /// Returns a new [NoteScript] instantiated from the provided library using a specific
+    /// procedure path.
+    ///
+    /// This method is useful when a library contains multiple note scripts and you need to
+    /// extract a specific one by its fully qualified path (e.g.,
+    /// `miden::standards::notes::burn::main`).
+    ///
+    /// The procedure at the specified path must have the `@note_script` attribute.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The library does not contain a procedure at the specified path.
+    /// - The procedure at the specified path does not have the `@note_script` attribute.
+    pub fn from_library_with_path(library: &Library, path: &Path) -> Result<Self, NoteError> {
+        // Find the export matching the path
+        let export = library
+            .exports()
+            .find(|e| e.path().as_ref() == path)
+            .ok_or_else(|| NoteError::NoteScriptProcedureNotFound(path.to_string().into()))?;
+
+        // Get the procedure export and verify it has the @note_script attribute
+        let proc_export = export
+            .as_procedure()
+            .ok_or_else(|| NoteError::NoteScriptProcedureNotFound(path.to_string().into()))?;
+
+        if !proc_export.attributes.has(NOTE_SCRIPT_ATTRIBUTE) {
+            return Err(NoteError::NoteScriptProcedureMissingAttribute(path.to_string().into()));
+        }
+
+        Ok(Self {
+            mast: library.mast_forest().clone(),
+            entrypoint: proc_export.node,
         })
     }
 
