@@ -9,8 +9,6 @@ use $kernel::util::asset::FUNGIBLE_ASSET_MAX_AMOUNT
 # ERRORS
 # =================================================================================================
 
-const ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="peek_balance can only be called on a fungible asset"
-
 const ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding the fungible asset to the vault would exceed the max amount of 9223372036854775807"
 
 const ERR_VAULT_ADD_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID="failed to add fungible asset to the asset vault due to the initial value being invalid"
@@ -54,42 +52,31 @@ pub proc get_asset
     # => [ASSET]
 end
 
-#! Returns the _peeked_ balance of a fungible asset associated with the provided faucet_id.
+#! Returns the _peeked_ asset issued by the provided faucet_id.
 #!
-#! WARNING: Peeked means the balance is loaded from the advice provider, which is susceptible to
+#! WARNING: Peeked means the asset is loaded from the advice provider, which is susceptible to
 #! manipulation from a malicious host. Therefore this should only be used when the inclusion of the
-#! peeked balance is verified at a later point.
+#! peeked asset is verified at a later point.
 #!
 #! WARNING: This is a generic vault procedure and so it cannot emit an event to lazy load asset
 #! merkle paths from the merkle store, since this is only possible for the account vault. Ensure
 #! that the merkle paths are present prior to calling.
 #!
-#! To get the verified balance, use get_balance.
+#! To get the verified asset, use get_asset.
 #!
-#! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
-#! Outputs: [balance]
+#! Inputs:  [ASSET_KEY, vault_root_ptr]
+#! Outputs: [ASSET]
 #!
 #! Where:
 #! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
-#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
-#! - balance is the vault balance of the fungible asset.
-#!
-#! Panics if:
-#! - the asset is not a fungible asset.
-pub proc peek_balance
-    # assert that the faucet id is a fungible faucet
-    dup exec.account_id::is_fungible_faucet
-    assert.err=ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
-    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
-
+#! - ASSET_KEY is the asset vault key of the asset to fetch.
+#! - ASSET is the retrieved ASSET.
+pub proc peek_asset
     # load the asset vault root from memory
-    padw movup.6 mem_loadw_be
-    # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
+    padw movup.8 mem_loadw_be
+    # => [ASSET_VAULT_ROOT, ASSET_KEY]
 
-    # prepare the vault key for fungible asset lookup (pad least significant elements with zeros)
-    push.0.0 movup.7 movup.7
-    # => [faucet_id_prefix, faucet_id_suffix, 0, 0, ASSET_VAULT_ROOT]
+    swapw
     # => [ASSET_KEY, ASSET_VAULT_ROOT]
 
     # lookup asset
@@ -105,10 +92,6 @@ pub proc peek_balance
     adv_loadw
     # OS => [ASSET]
     # AS => []
-
-    # extract the asset's balance
-    exec.::$kernel::util::asset::get_balance_from_fungible_asset
-    # => [balance]
 end
 
 # ADD ASSET
@@ -462,41 +445,6 @@ end
 
 # HELPER PROCEDURES
 # =================================================================================================
-
-#! Returns the _peeked_ asset associated with the provided faucet_id.
-#!
-#! Note that ASSET can be the EMPTY_WORD if the value at the provided ASSET_KEY does not exist.
-#!
-#! Inputs:  [ASSET_KEY, vault_root_ptr]
-#! Outputs: [ASSET]
-#!
-#! Where:
-#! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
-#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
-#!   asset of interest.
-#! - asset is the peeked asset from the vault.
-proc peek_asset
-    # load the asset vault root from memory
-    padw movup.8 mem_loadw_be
-    # => [ASSET_VAULT_ROOT, ASSET_KEY]
-
-    swapw
-    # => [ASSET_KEY, ASSET_VAULT_ROOT]
-
-    # lookup asset
-    exec.smt::peek
-    # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
-    # AS => [ASSET]
-
-    dropw
-    # OS => [ASSET_VAULT_ROOT]
-    # AS => [ASSET]
-
-    # this overwrites the vault root
-    adv_loadw
-    # OS => [ASSET]
-    # AS => []
-end
 
 #! Builds the vault key of a non fungible asset. The asset is NOT validated and therefore must
 #! be a valid non-fungible asset.

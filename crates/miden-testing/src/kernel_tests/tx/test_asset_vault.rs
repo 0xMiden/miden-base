@@ -63,9 +63,9 @@ async fn get_balance_returns_correct_amount() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that asset_vault::peek_balance returns the correct amount.
+/// Tests that asset_vault::peek_asset returns the correct asset.
 #[tokio::test]
-async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
+async fn peek_asset_returns_correct_asset() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let asset_key = AssetVaultKey::from_account_id(faucet_id).unwrap();
@@ -79,36 +79,30 @@ async fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # emit an event to fetch the merkle path for the asset since peek_balance does not do
-            # that
             exec.memory::get_account_vault_root_ptr
             push.{ASSET_KEY}
             # => [ASSET_KEY, account_vault_root_ptr]
 
+            # emit an event to fetch the merkle path for the asset since peek_asset does not do
+            # that
             emit.event("miden::account::vault_before_get_asset")
-            # => [ASSET_KEY, account_vault_root_ptr, balance]
+            # => [ASSET_KEY, account_vault_root_ptr]
 
-            # replace the asset key with the faucet ID for peek_balance
-            dropw
-            push.{suffix} push.{prefix}
-            # => [prefix, suffix, account_vault_root_ptr, balance]
-            exec.asset_vault::peek_balance
-            # => [peeked_balance]
+            exec.asset_vault::peek_asset
+            # => [PEEKED_ASSET]
 
             # truncate the stack
-            swap drop
+            swapw dropw
         end
             "#,
-        prefix = faucet_id.prefix().as_felt(),
-        suffix = faucet_id.suffix(),
         ASSET_KEY = asset_key
     );
 
     let exec_output = tx_context.execute_code(&code).await?;
 
     assert_eq!(
-        exec_output.get_stack_element(0).as_int(),
-        tx_context.account().vault().get_balance(faucet_id).unwrap()
+        exec_output.get_stack_word_be(0),
+        Word::from(tx_context.account().vault().get(asset_key).unwrap())
     );
 
     Ok(())
