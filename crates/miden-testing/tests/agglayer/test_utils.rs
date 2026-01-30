@@ -41,7 +41,7 @@ pub async fn execute_program_with_default_host(
     processor.execute(&program, &mut host).await
 }
 
-/// Execute a MASM script with optional advice inputs
+/// Execute a MASM script with the default host
 pub async fn execute_masm_script(script_code: &str) -> Result<ExecutionOutput, ExecutionError> {
     let asset_conversion_lib = agglayer_library();
 
