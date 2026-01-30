@@ -41,6 +41,8 @@ end
 #! The tag is a u32 constructed by taking the `tag_len` most significant bits of the account ID
 #! prefix and setting the remaining bits to zero.
 #!
+#! See the Rust `NoteTag` documentation for what changing the tag length means.
+#!
 #! Inputs:  [tag_len, account_id_prefix]
 #! Outputs: [note_tag]
 #!
