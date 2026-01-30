@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 
 use miden_assembly::Library;
 use miden_assembly::utils::Deserializable;
-use miden_core::{Felt, FieldElement, Program, Word};
+use miden_core::{Felt, Program, Word};
 use miden_protocol::account::{
     Account,
     AccountBuilder,
@@ -213,7 +213,7 @@ pub fn create_bridge_account_component() -> AccountComponent {
 /// Creates an agglayer faucet account component with the specified configuration.
 ///
 /// This function creates all the necessary storage slots for an agglayer faucet:
-/// - Network faucet metadata slot (max_supply, decimals, token_symbol)
+/// - Network faucet metadata slot (token_supply, max_supply, decimals, token_symbol)
 /// - Bridge account reference slot for FPI validation
 ///
 /// # Parameters
@@ -233,10 +233,10 @@ pub fn create_agglayer_faucet_component(
     max_supply: Felt,
     bridge_account_id: AccountId,
 ) -> AccountComponent {
-    // Create network faucet metadata slot: [max_supply, decimals, token_symbol, 0]
+    // Create network faucet metadata slot: [token_supply, max_supply, decimals, token_symbol]
     let token_symbol = TokenSymbol::new(token_symbol).expect("Token symbol should be valid");
     let metadata_word =
-        Word::new([FieldElement::ZERO, max_supply, Felt::from(decimals), token_symbol.into()]);
+        Word::new([Felt::ZERO, max_supply, Felt::from(decimals), token_symbol.into()]);
     let metadata_slot =
         StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
 
@@ -614,4 +614,65 @@ pub fn claim_note_test_inputs(
         amount_u256,
         metadata,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use miden_protocol::account::AccountIdVersion;
+    use miden_standards::account::faucets::BasicFungibleFaucet;
+
+    #[test]
+    fn agglayer_faucet_metadata_matches_faucet_layout() {
+        let token_symbol_str = "AGG";
+        let decimals = 8u8;
+        let max_supply = Felt::new(1_000_000);
+        let bridge_account_id = AccountId::dummy(
+            [0x11; 15],
+            AccountIdVersion::Version0,
+            AccountType::RegularAccountImmutableCode,
+            AccountStorageMode::Public,
+        );
+
+        let agglayer_component = create_agglayer_faucet_component(
+            token_symbol_str,
+            decimals,
+            max_supply,
+            bridge_account_id,
+        );
+        let metadata_slot = agglayer_component
+            .storage_slots()
+            .iter()
+            .find(|slot| slot.name() == NetworkFungibleFaucet::metadata_slot())
+            .expect("agglayer faucet metadata slot should be present");
+        let token_symbol =
+            TokenSymbol::new(token_symbol_str).expect("token symbol should be valid");
+        let expected_metadata = Word::new([
+            Felt::ZERO,
+            max_supply,
+            Felt::from(decimals),
+            token_symbol.into(),
+        ]);
+        assert_eq!(metadata_slot.value(), expected_metadata);
+
+        let basic_component: AccountComponent =
+            BasicFungibleFaucet::new(token_symbol, decimals, max_supply)
+                .expect("basic faucet should be valid")
+                .into();
+        let basic_metadata_slot = basic_component
+            .storage_slots()
+            .iter()
+            .find(|slot| slot.name() == BasicFungibleFaucet::metadata_slot())
+            .expect("basic faucet metadata slot should be present");
+        assert_eq!(metadata_slot.value(), basic_metadata_slot.value());
+
+        let wrong_order = Word::new([
+            max_supply,
+            Felt::from(decimals),
+            token_symbol.into(),
+            Felt::ZERO,
+        ]);
+        assert_ne!(metadata_slot.value(), wrong_order);
+    }
 }
