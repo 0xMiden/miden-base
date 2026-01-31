@@ -204,7 +204,7 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
 
     let to_exclude = BTreeSet::from_iter(["exec_kernel_proc"]);
     let offsets_filename =
-        Path::new(ASM_DIR).join(ASM_PROTOCOL_DIR).join("kernel_proc_offsets.masm");
+        Path::new(ASM_DIR).join(SHARED_UTILS_DIR).join("util").join("kernel_proc_offsets.masm");
     let offsets = parse_proc_offsets(&offsets_filename)?;
 
     let generated_procs: BTreeMap<usize, String> = module_info
@@ -251,7 +251,7 @@ pub const KERNEL_PROCEDURES: [Word; {proc_count}] = [
 }
 
 fn parse_proc_offsets(filename: impl AsRef<Path>) -> Result<BTreeMap<String, usize>> {
-    let regex: Regex = Regex::new(r"^const\s*(?P<name>\w+)_OFFSET\s*=\s*(?P<offset>\d+)").unwrap();
+    let regex: Regex = Regex::new(r"^(?:pub\s+)?const\s*(?P<name>\w+)_OFFSET\s*=\s*(?P<offset>\d+)").unwrap();
     let mut result = BTreeMap::new();
     for line in fs::read_to_string(filename).into_diagnostic()?.lines() {
         if let Some(captures) = regex.captures(line) {
