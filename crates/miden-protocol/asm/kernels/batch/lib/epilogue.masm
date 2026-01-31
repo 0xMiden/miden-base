@@ -1,0 +1,23 @@
+#! Batch Kernel Epilogue
+#!
+#! Finalizes the batch and prepares output stack.
+
+use $kernel::memory
+use miden::core::sys
+
+# EPILOGUE
+# =================================================================================================
+
+#! Computes output commitments and builds the output stack.
+#!
+#! Output stack layout:
+#! [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_SMT_ROOT, batch_expiration_block_num, ...]
+#!
+#! Inputs: []
+#! Outputs: [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_SMT_ROOT, batch_expiration_block_num, ...]
+pub proc finalize_batch
+    exec.memory::get_batch_expiration_block_num
+    padw  # TODO: compute OUTPUT_NOTES_SMT_ROOT
+    padw  # TODO: compute INPUT_NOTES_COMMITMENT
+    exec.sys::truncate_stack
+end

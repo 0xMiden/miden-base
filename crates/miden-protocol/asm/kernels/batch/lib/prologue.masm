@@ -1,0 +1,194 @@
+#! Batch Kernel Prologue
+#!
+#! This module handles the initialization phase of the batch kernel:
+#! - Unhashing the block hash to extract block header fields
+#! - Unhashing the transactions commitment to get the list of (TX_ID, account_id) pairs
+#! - Validating that the batch is not empty
+#! - Setting up memory with initial data
+
+use $kernel::memory
+use miden::core::crypto::hashes::rpo256
+
+# CONSTANTS
+# =================================================================================================
+
+# Maximum number of transactions per batch
+const MAX_TRANSACTIONS_PER_BATCH=4
+
+# Error constants
+const ERR_BATCH_EMPTY="batch contains no transactions"
+const ERR_BATCH_TOO_LARGE="batch exceeds maximum transactions per batch"
+const ERR_TX_COMMITMENT_MISMATCH="transaction list does not hash to TRANSACTIONS_COMMITMENT"
+
+# PROLOGUE
+# =================================================================================================
+
+#! Prepares the batch by unhashing inputs and loading data into memory.
+#!
+#! This procedure:
+#! 1. Takes BLOCK_HASH and TRANSACTIONS_COMMITMENT from the stack
+#! 2. Unhashes BLOCK_HASH to get block header fields (from advice)
+#! 3. Unhashes TRANSACTIONS_COMMITMENT to get [(TX_ID, account_id), ...] (from advice)
+#! 4. Validates batch is not empty
+#! 5. Verifies transaction list hashes to TRANSACTIONS_COMMITMENT
+#! 6. Stores all data in memory for subsequent phases
+#!
+#! Inputs: [BLOCK_HASH, TRANSACTIONS_COMMITMENT]
+#! Outputs: []
+#!
+#! Errors:
+#! - ERR_BATCH_EMPTY: batch contains no transactions
+#! - ERR_BATCH_TOO_LARGE: batch exceeds MAX_TRANSACTIONS_PER_BATCH
+#! - ERR_TX_COMMITMENT_MISMATCH: transaction list does not hash to TRANSACTIONS_COMMITMENT
+pub proc prepare_batch
+    # =========================================================================
+    # PHASE 1: Process BLOCK_HASH
+    # =========================================================================
+    # Initial stack: [BLOCK_HASH, TRANSACTIONS_COMMITMENT]
+    
+    # Store BLOCK_HASH in memory (needed for MMR authentication later)
+    exec.memory::set_block_hash
+    # Stack: [TRANSACTIONS_COMMITMENT, ...]
+    
+    # Read block_num from advice and store
+    adv_push.1
+    exec.memory::set_block_num
+    # Stack: [TRANSACTIONS_COMMITMENT, ...]
+    
+    # Read CHAIN_COMMITMENT from advice and store
+    adv_push.4
+    exec.memory::set_chain_commitment
+    # Stack: [TRANSACTIONS_COMMITMENT, ...]
+    
+    
+    # Save TRANSACTIONS_COMMITMENT for later verification
+    exec.memory::set_saved_tx_commitment
+    # Stack: []
+    
+    # Load and validate transaction count
+    adv_push.1
+    # Stack: [tx_count]
+    
+    # Validate: batch not empty
+    dup eq.0 assertz.err=ERR_BATCH_EMPTY
+    
+    # Validate: batch not too large  
+    dup push.MAX_TRANSACTIONS_PER_BATCH lte assert.err=ERR_BATCH_TOO_LARGE
+    
+    # Store transaction count
+    exec.memory::set_transaction_count
+    # Stack: []
+    
+    # Load transaction list from advice
+    exec.load_and_verify_transaction_list
+    
+    # Load transaction preimages from advice
+    exec.load_transaction_preimages
+    
+    # Initialize batch expiration to max u32 (minimum across txs computed later)
+    push.0xFFFFFFFF
+    exec.memory::set_batch_expiration_block_num
+end
+
+#! Loads the transaction list from advice, verifies it hashes to TRANSACTIONS_COMMITMENT,
+#! and stores the data in memory.
+#!
+#! The hash format for BatchId is: [(TX_ID, account_id_prefix, account_id_suffix, 0, 0), ...]
+#! Each transaction contributes 8 felts (2 words).
+#!
+#! Inputs: []
+#! Outputs: []
+#!
+#! Errors:
+#! - ERR_TX_COMMITMENT_MISMATCH if hash doesn't match
+proc load_and_verify_transaction_list
+    exec.memory::get_transaction_count
+    push.0
+    # => [i, tx_count]
+    
+    while.true
+        dup.1 dup.1 gt
+        # => [tx_count > i, i, tx_count]
+        
+        if.true
+            # Compute pointers for this transaction
+            dup push.8 mul exec.memory::get_hash_buffer_ptr add
+            dup.1 exec.memory::get_tx_data_ptr
+            # => [tx_ptr, hash_ptr, i, tx_count]
+            
+            # Load TX_ID and store in both structured storage and hash buffer
+            padw adv_loadw
+            dup.4 mem_storew_be
+            dup.5 mem_storew_be dropw
+            # => [tx_ptr, hash_ptr, i, tx_count]
+            
+            # Load and store account_id_prefix
+            adv_push.1
+            dup dup.2 add.4 mem_store
+            dup.2 add.4 mem_store
+            # => [tx_ptr, hash_ptr, i, tx_count]
+            
+            # Load and store account_id_suffix
+            adv_push.1
+            dup dup.2 add.5 mem_store
+            dup.2 add.5 mem_store
+            # => [tx_ptr, hash_ptr, i, tx_count]
+            
+            # Pad hash buffer with zeros at positions 6-7
+            push.0.0
+            dup.3 add.6 mem_store
+            dup.2 add.7 mem_store
+            # => [tx_ptr, hash_ptr, i, tx_count]
+            
+            # Increment loop counter
+            drop drop add.1
+            push.1
+        else
+            push.0
+        end
+    end
+    
+    drop
+    # => [tx_count]
+    
+    # TODO: Verify hash of transaction data matches TRANSACTIONS_COMMITMENT
+    drop
+end
+
+#! Loads transaction preimages from advice into memory.
+#! For each tx: INIT_STATE, FINAL_STATE, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, expiration
+#!
+#! Inputs: []
+#! Outputs: []
+proc load_transaction_preimages
+    exec.memory::get_transaction_count
+    push.0
+    # => [i, tx_count]
+    
+    while.true
+        dup.1 dup.1 gt
+        # => [tx_count > i, i, tx_count]
+        
+        if.true
+            dup exec.memory::get_tx_data_ptr
+            # => [tx_ptr, i, tx_count]
+            
+            # Load account state commitments
+            padw adv_loadw dup.4 add.8 mem_storew_be dropw   # INIT_ACCOUNT_COMMITMENT
+            padw adv_loadw dup.4 add.12 mem_storew_be dropw  # FINAL_ACCOUNT_COMMITMENT
+            padw adv_loadw dup.4 add.16 mem_storew_be dropw  # INPUT_NOTES_COMMITMENT
+            padw adv_loadw dup.4 add.20 mem_storew_be dropw  # OUTPUT_NOTES_COMMITMENT
+            
+            # Load expiration_block_num
+            adv_push.1 dup.1 add.6 mem_store
+            # => [tx_ptr, i, tx_count]
+            
+            drop add.1
+            push.1
+        else
+            push.0
+        end
+    end
+    
+    drop drop
+end

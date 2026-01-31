@@ -1,0 +1,44 @@
+#! Batch Kernel Transaction Module
+#!
+#! This module handles transaction processing:
+#! - Loading transaction data from advice provider
+#! - Validating transaction expiration
+#! - Tracking minimum expiration for batch
+#!
+#! NOTE: Recursive STARK proof verification is NOT implemented yet.
+#! Transaction IDs serve as commitments to proven transactions.
+
+use $kernel::memory
+
+# CONSTANTS
+# =================================================================================================
+
+# Error: transaction has expired
+const ERR_BATCH_TX_EXPIRED="transaction has expired relative to batch reference block"
+
+# TRANSACTION PROCESSING
+# =================================================================================================
+
+#! Processes all transactions in the batch.
+#!
+#! For each transaction:
+#! 1. Load transaction data from advice (tx_id is the commitment)
+#! 2. Validate transaction hasn't expired
+#! 3. Track minimum expiration for batch expiration
+#!
+#! NOTE: Recursive STARK verification is NOT implemented yet.
+#!
+#! Inputs: []
+#! Outputs: []
+#!
+#! Errors:
+#! - ERR_BATCH_TX_EXPIRED: transaction expired before batch reference block
+pub proc process_transactions
+    # TODO: Implement transaction processing loop
+    # 1. Get transaction count from memory
+    # 2. Loop over each transaction
+    # 3. For each: load data, validate expiration, track min expiration
+    
+    # For now, this is a placeholder that does nothing
+    push.0 drop
+end
