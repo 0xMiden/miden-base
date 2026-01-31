@@ -4,7 +4,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_processor::fast::ExecutionOutput;
-use miden_processor::{ExecutionError, FutureMaybeSend, MastForest, MastForestStore, Word};
+use miden_processor::{FutureMaybeSend, MastForest, MastForestStore, Word};
 use miden_protocol::account::{
     Account,
     AccountId,
@@ -43,6 +43,7 @@ use miden_tx::{
 
 use crate::executor::CodeExecutor;
 use crate::mock_host::MockHost;
+use crate::tx_context::ExecError;
 
 // TRANSACTION CONTEXT
 // ================================================================================================
@@ -73,10 +74,6 @@ impl TransactionContext {
     /// is run on a modified [`TransactionExecutorHost`] which is loaded with the procedures exposed
     /// by the transaction kernel, and also individual kernel functions (not normally exposed).
     ///
-    /// To improve the error message quality, convert the returned [`ExecutionError`] into a
-    /// [`Report`](miden_protocol::assembly::diagnostics::Report) or use `?` with
-    /// [`miden_protocol::assembly::diagnostics::Result`].
-    ///
     /// # Errors
     ///
     /// Returns an error if the assembly or execution of the provided code fails.
@@ -84,7 +81,7 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
-    pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecutionError> {
+    pub async fn execute_code(&self, code: &str) -> Result<ExecutionOutput, ExecError> {
         // Fetch all witnesses for note assets and the fee asset.
         let mut asset_vault_keys = self
             .tx_inputs
