@@ -45,6 +45,172 @@ pub mod utils;
 pub use eth_address::EthAddressFormat;
 use utils::bytes32_to_felts;
 
+// STORAGE SLOT NAMES
+// ================================================================================================
+
+static AGGLAYER_FAUCET_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::agglayer::faucet")
+        .expect("agglayer faucet storage slot name should be valid")
+});
+
+static AGGLAYER_BRIDGE_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
+    StorageSlotName::new("miden::agglayer::bridge")
+        .expect("agglayer bridge storage slot name should be valid")
+});
+
+// AGGLAYER FAUCET
+// ================================================================================================
+
+/// An [`AccountComponent`] implementing an AggLayer faucet.
+///
+/// This component combines network faucet functionality with bridge validation
+/// via Foreign Procedure Invocation (FPI). It provides a "claim" procedure that
+/// validates CLAIM notes against a bridge MMR account before minting assets.
+///
+/// ## Storage Layout
+///
+/// - [`NetworkFungibleFaucet::metadata_slot`]: Fungible faucet metadata (max_supply, decimals,
+///   token_symbol).
+/// - [`Self::bridge_slot`]: The bridge account ID for FPI validation.
+pub struct AggLayerFaucet {
+    token_symbol: TokenSymbol,
+    decimals: u8,
+    max_supply: Felt,
+    bridge_account_id: AccountId,
+}
+
+impl AggLayerFaucet {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`AggLayerFaucet`] component from the given configuration.
+    ///
+    /// # Parameters
+    /// - `token_symbol`: The symbol for the fungible token (e.g., "AGG")
+    /// - `decimals`: Number of decimal places for the token
+    /// - `max_supply`: Maximum supply of the token
+    /// - `bridge_account_id`: The account ID of the bridge account for validation
+    pub fn new(
+        token_symbol: TokenSymbol,
+        decimals: u8,
+        max_supply: Felt,
+        bridge_account_id: AccountId,
+    ) -> Self {
+        Self {
+            token_symbol,
+            decimals,
+            max_supply,
+            bridge_account_id,
+        }
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`StorageSlotName`] where the bridge account ID is stored.
+    pub fn bridge_slot() -> &'static StorageSlotName {
+        &AGGLAYER_FAUCET_SLOT_NAME
+    }
+
+    /// Returns the token symbol of the faucet.
+    pub fn token_symbol(&self) -> TokenSymbol {
+        self.token_symbol
+    }
+
+    /// Returns the number of decimals for the token.
+    pub fn decimals(&self) -> u8 {
+        self.decimals
+    }
+
+    /// Returns the maximum supply of the token.
+    pub fn max_supply(&self) -> Felt {
+        self.max_supply
+    }
+
+    /// Returns the bridge account ID used for FPI validation.
+    pub fn bridge_account_id(&self) -> AccountId {
+        self.bridge_account_id
+    }
+}
+
+impl From<AggLayerFaucet> for AccountComponent {
+    fn from(faucet: AggLayerFaucet) -> Self {
+        // Create network faucet metadata slot: [max_supply, decimals, token_symbol, 0]
+        let metadata_word = Word::new([
+            faucet.max_supply,
+            Felt::from(faucet.decimals),
+            faucet.token_symbol.into(),
+            FieldElement::ZERO,
+        ]);
+        let metadata_slot =
+            StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
+
+        // Create agglayer-specific bridge storage slot
+        // Storage format: [0, 0, suffix, prefix]
+        let bridge_account_id_word = Word::new([
+            Felt::new(0),
+            Felt::new(0),
+            faucet.bridge_account_id.suffix(),
+            faucet.bridge_account_id.prefix().as_felt(),
+        ]);
+        let bridge_slot =
+            StorageSlot::with_value(AggLayerFaucet::bridge_slot().clone(), bridge_account_id_word);
+
+        // Combine all storage slots for the agglayer faucet component
+        let storage_slots = vec![metadata_slot, bridge_slot];
+
+        AccountComponent::new(agglayer_faucet_library(), storage_slots)
+            .expect("agglayer faucet component should satisfy the requirements of a valid account component")
+            .with_supports_all_types()
+    }
+}
+
+// AGGLAYER BRIDGE
+// ================================================================================================
+
+/// An [`AccountComponent`] implementing an AggLayer bridge.
+///
+/// This component provides bridge functionality for managing the MMR (Merkle Mountain Range)
+/// that tracks bridged assets. It uses an empty map storage slot for the bridge state.
+///
+/// ## Storage Layout
+///
+/// - [`Self::bridge_slot`]: An empty map for bridge state management.
+pub struct AggLayerBridge;
+
+impl AggLayerBridge {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`AggLayerBridge`] component.
+    pub fn new() -> Self {
+        Self
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`StorageSlotName`] where the bridge state map is stored.
+    pub fn bridge_slot() -> &'static StorageSlotName {
+        &AGGLAYER_BRIDGE_SLOT_NAME
+    }
+}
+
+impl Default for AggLayerBridge {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<AggLayerBridge> for AccountComponent {
+    fn from(_bridge: AggLayerBridge) -> Self {
+        let bridge_storage_slots =
+            vec![StorageSlot::with_empty_map(AggLayerBridge::bridge_slot().clone())];
+
+        bridge_out_component(bridge_storage_slots)
+    }
+}
+
 // AGGLAYER NOTE SCRIPTS
 // ================================================================================================
 
@@ -198,23 +364,19 @@ pub fn asset_conversion_component(storage_slots: Vec<StorageSlot>) -> AccountCom
 
 /// Creates a bridge account component with the standard bridge storage slot.
 ///
-/// This is a convenience function that creates the bridge storage slot with the standard
-/// name "miden::agglayer::bridge" and returns the bridge_out component.
+/// This is a convenience function that creates an [`AggLayerBridge`] and converts it
+/// to an [`AccountComponent`].
 ///
 /// # Returns
 /// Returns an [`AccountComponent`] configured for bridge operations with MMR validation.
 pub fn create_bridge_account_component() -> AccountComponent {
-    let bridge_storage_slot_name = StorageSlotName::new("miden::agglayer::bridge")
-        .expect("Bridge storage slot name should be valid");
-    let bridge_storage_slots = vec![StorageSlot::with_empty_map(bridge_storage_slot_name)];
-    bridge_out_component(bridge_storage_slots)
+    AggLayerBridge::new().into()
 }
 
 /// Creates an agglayer faucet account component with the specified configuration.
 ///
-/// This function creates all the necessary storage slots for an agglayer faucet:
-/// - Network faucet metadata slot (max_supply, decimals, token_symbol)
-/// - Bridge account reference slot for FPI validation
+/// This is a convenience function that creates an [`AggLayerFaucet`] and converts it
+/// to an [`AccountComponent`].
 ///
 /// # Parameters
 /// - `token_symbol`: The symbol for the fungible token (e.g., "AGG")
@@ -226,34 +388,15 @@ pub fn create_bridge_account_component() -> AccountComponent {
 /// Returns an [`AccountComponent`] configured for agglayer faucet operations.
 ///
 /// # Panics
-/// Panics if the token symbol is invalid or storage slot names are malformed.
+/// Panics if the token symbol is invalid.
 pub fn create_agglayer_faucet_component(
     token_symbol: &str,
     decimals: u8,
     max_supply: Felt,
     bridge_account_id: AccountId,
 ) -> AccountComponent {
-    // Create network faucet metadata slot: [max_supply, decimals, token_symbol, 0]
     let token_symbol = TokenSymbol::new(token_symbol).expect("Token symbol should be valid");
-    let metadata_word =
-        Word::new([max_supply, Felt::from(decimals), token_symbol.into(), FieldElement::ZERO]);
-    let metadata_slot =
-        StorageSlot::with_value(NetworkFungibleFaucet::metadata_slot().clone(), metadata_word);
-
-    // Create agglayer-specific bridge storage slot
-    let bridge_account_id_word = Word::new([
-        Felt::new(0),
-        Felt::new(0),
-        bridge_account_id.suffix(),
-        bridge_account_id.prefix().as_felt(),
-    ]);
-    let agglayer_storage_slot_name = StorageSlotName::new("miden::agglayer::faucet")
-        .expect("Agglayer faucet storage slot name should be valid");
-    let bridge_slot = StorageSlot::with_value(agglayer_storage_slot_name, bridge_account_id_word);
-
-    // Combine all storage slots for the agglayer faucet component
-    let agglayer_storage_slots = vec![metadata_slot, bridge_slot];
-    agglayer_faucet_component(agglayer_storage_slots)
+    AggLayerFaucet::new(token_symbol, decimals, max_supply, bridge_account_id).into()
 }
 
 /// Creates a complete bridge account builder with the standard configuration.
