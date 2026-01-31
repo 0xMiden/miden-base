@@ -96,8 +96,8 @@ impl NoteScript {
         })
     }
 
-    /// Returns a new [NoteScript] instantiated from the provided library using a specific
-    /// procedure path.
+    /// Returns a new [NoteScript] containing only a reference to a procedure in the provided
+    /// library.
     ///
     /// This method is useful when a library contains multiple note scripts and you need to
     /// extract a specific one by its fully qualified path (e.g.,
@@ -113,7 +113,7 @@ impl NoteScript {
     /// Returns an error if:
     /// - The library does not contain a procedure at the specified path.
     /// - The procedure at the specified path does not have the `@note_script` attribute.
-    pub fn from_library_with_path(library: &Library, path: &Path) -> Result<Self, NoteError> {
+    pub fn from_library_reference(library: &Library, path: &Path) -> Result<Self, NoteError> {
         // Find the export matching the path
         let export = library
             .exports()
@@ -299,8 +299,8 @@ impl Display for NoteScript {
 /// Creates a minimal [MastForest] containing only an external node referencing the given digest.
 ///
 /// This is useful for creating lightweight references to procedures without copying entire
-/// libraries. The external node acts as a placeholder that will be resolved at runtime via
-/// the `MastForestStore`.
+/// libraries. The external reference will be resolved at runtime, assuming the source library
+/// is loaded into the VM's MastForestStore.
 fn create_external_node_forest(digest: Word) -> (MastForest, MastNodeId) {
     let mut mast = MastForest::new();
     let node_id = ExternalNodeBuilder::new(digest)
