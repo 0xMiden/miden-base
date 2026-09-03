@@ -68,6 +68,11 @@
 ### Fixes
 
 - Fixed `RoleBasedAccessControl` role administration becoming permanently unmanageable when a role's admin was delegated to a memberless role ([#3476](https://github.com/0xMiden/protocol/pull/3476)).
+- `NoteConsumptionChecker` now groups input notes into bundles that must be consumed together and searches over those bundles, so a feature note and the `FEE_SPONSORSHIP` notes bound to it are kept as a unit instead of being dropped alongside an unrelated note whose fee is uncovered ([#3710](https://github.com/0xMiden/protocol/issues/3710)).
+- Fixed `AuthNetworkAccount` accepting empty fee-only transactions, which let callers drain the account's native fee-asset vault ([#3729](https://github.com/0xMiden/protocol/pull/3729)).
+- [BREAKING] AggLayer bridge token registration now rejects keys owned by another faucet, and token-key cleanup verifies ownership before clearing a mapping ([#3754](https://github.com/0xMiden/protocol/pull/3754)).
+- [BREAKING] AggLayer bridges now allow faucet deregistration while paused, so compromised faucets can be revoked without resuming claims and bridge-outs ([#3750](https://github.com/0xMiden/protocol/pull/3753)).
+- Generated constant fee schedules now assign `FEE_SPONSORSHIP` an explicit zero fee, matching the fee-collection exemption while keeping the note allowlisted ([#3580](https://github.com/0xMiden/protocol/issues/3580)).
 - [BREAKING] Bound the non-fungible MINT note to its faucet the same way the fungible one is bound: the note now stores the full asset and `non_fungible::mint_and_send` asserts the stored `ASSET_ID` against the asset it derives for the active faucet, unifying the two MINT note storage layouts and collapsing `MintNoteStorage` to `Private` / `Public` ([#3482](https://github.com/0xMiden/protocol/pull/3482)).
 - Documented that `authority::assert_authorized` is a no-op under `Authority::AuthControlled` ([#3500](https://github.com/0xMiden/protocol/pull/3500)).
 - [BREAKING] Added canonical enforcement for `RoleSymbol` encodings in the `RBAC` entrypoints ([#3524](https://github.com/0xMiden/protocol/pull/3524)).
