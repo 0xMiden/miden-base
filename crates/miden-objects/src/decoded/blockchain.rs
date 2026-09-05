@@ -30,3 +30,13 @@ impl Verify for BlockNumber {
         Ok(self.block_num.into())
     }
 }
+
+pub use proto::blockchain::DecodedFeeParameters as FeeParameters;
+
+impl Verify for FeeParameters {
+    type Verified = miden_protocol::block::FeeParameters;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(self.verification_base_fee))
+    }
+}

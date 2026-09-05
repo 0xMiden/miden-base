@@ -256,3 +256,16 @@ fn block_number_verifies() {
         u32::MAX
     );
 }
+
+#[test]
+fn fee_parameters_verify() {
+    assert_eq!(
+        proto::blockchain::FeeParameters { verification_base_fee: 7 }
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .unwrap()
+            .verification_base_fee(),
+        7
+    );
+}
