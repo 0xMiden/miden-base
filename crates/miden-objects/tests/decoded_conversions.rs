@@ -156,3 +156,17 @@ fn partial_smt_node_verifies() {
         (7, Word::empty())
     );
 }
+
+#[test]
+fn partial_smt_level_verifies_nested_nodes() {
+    let decoded = proto::primitives::PartialSmtNodeLevel {
+        depth: 2,
+        nodes: vec![proto::primitives::PartialSmtNode {
+            index: 3,
+            digest: Some(Word::empty().into()),
+        }],
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap(), (2, vec![(3, Word::empty())]));
+}
