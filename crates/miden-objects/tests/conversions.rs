@@ -401,6 +401,7 @@ fn account_witness_conversion_preserves_account_tree_error_source() {
     assert_matches!(
         error
             .source()
+            .and_then(core::error::Error::source)
             .and_then(|source| source.downcast_ref::<miden_protocol::errors::AccountTreeError>()),
         Some(
             miden_protocol::errors::AccountTreeError::WitnessMerklePathDepthDoesNotMatchAccountTreeDepth(0)

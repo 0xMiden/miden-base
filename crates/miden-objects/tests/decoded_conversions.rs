@@ -419,3 +419,27 @@ fn mmr_delta_verifies_forest_size_after_decoding() {
         .unwrap();
     assert!(invalid.verify().is_err());
 }
+
+#[test]
+fn account_witness_defers_path_depth_verification() {
+    use miden_protocol::account::{AccountId, AccountIdVersion, AccountType, AssetCallbackFlag};
+    let id = AccountId::dummy(
+        [7; 15],
+        AccountIdVersion::Version1,
+        AccountType::Private,
+        AssetCallbackFlag::Disabled,
+    );
+    for (mask, valid) in [(0, false), (u64::MAX, true)] {
+        let decoded = proto::account::AccountWitness {
+            witness_id: Some(id.into()),
+            commitment: Some(Word::empty().into()),
+            path: Some(proto::primitives::SparseMerklePath {
+                empty_nodes_mask: mask,
+                siblings: vec![],
+            }),
+        }
+        .decode_fields()
+        .unwrap();
+        assert_eq!(decoded.verify().is_ok(), valid);
+    }
+}

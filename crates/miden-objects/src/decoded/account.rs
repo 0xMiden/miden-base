@@ -61,3 +61,30 @@ impl TryFrom<proto::account::AccountCode> for miden_protocol::account::AccountCo
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountWitness as AccountWitness;
+
+impl Verify for AccountWitness {
+    type Verified = miden_protocol::block::account_tree::AccountWitness;
+    type Error = AccountWitnessError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(self.witness_id, self.commitment, self.path.verify()?)?)
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum AccountWitnessError {
+    #[error("invalid witness path: {0}")]
+    Path(#[from] miden_protocol::crypto::merkle::MerkleError),
+    #[error("invalid account witness: {0}")]
+    Witness(#[from] miden_protocol::errors::AccountTreeError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountWitness>
+    for miden_protocol::block::account_tree::AccountWitness
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountWitness) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
