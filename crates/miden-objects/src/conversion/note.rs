@@ -23,7 +23,7 @@ use miden_protocol::note::{
     NoteType,
     PartialNoteMetadata,
 };
-use miden_protocol::{Felt, MastNodeId, Word};
+use miden_protocol::{MastNodeId, Word};
 
 use super::{MessageDecodeExt, MessageDecoder, required};
 use crate::{ConversionError, ConversionResultExt, proto};
@@ -185,21 +185,6 @@ impl From<&NoteStorage> for proto::note::NoteStorage {
         Self {
             items: storage.items().iter().map(Into::into).collect(),
         }
-    }
-}
-
-impl TryFrom<proto::note::NoteStorage> for NoteStorage {
-    type Error = ConversionError;
-
-    fn try_from(storage: proto::note::NoteStorage) -> Result<Self, Self::Error> {
-        let items = storage
-            .items
-            .into_iter()
-            .map(Felt::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .context("items")?;
-
-        NoteStorage::new(items).map_err(ConversionError::new).context("items")
     }
 }
 

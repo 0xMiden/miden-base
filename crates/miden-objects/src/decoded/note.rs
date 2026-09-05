@@ -25,3 +25,21 @@ impl TryFrom<proto::note::NoteId> for miden_protocol::note::NoteId {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedNoteStorage as NoteStorage;
+
+impl Verify for NoteStorage {
+    type Verified = miden_protocol::note::NoteStorage;
+    type Error = miden_protocol::errors::NoteError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Self::Verified::new(self.items)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteStorage> for miden_protocol::note::NoteStorage {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteStorage) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

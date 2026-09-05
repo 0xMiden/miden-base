@@ -299,3 +299,13 @@ fn account_code_defers_procedure_validation() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn note_storage_defers_length_validation() {
+    let decoded = proto::note::NoteStorage {
+        items: vec![miden_protocol::Felt::ZERO.into(); miden_protocol::MAX_NOTE_STORAGE_ITEMS + 1],
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}
