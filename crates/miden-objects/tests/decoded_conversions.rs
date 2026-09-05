@@ -496,3 +496,15 @@ fn vault_patch_verifies_duplicate_ids_and_asset_values() {
             .is_err()
     );
 }
+
+#[test]
+fn transaction_script_defers_entrypoint_validation() {
+    let decoded = proto::transaction::TransactionScript {
+        entrypoint: 1,
+        mast: Some(miden_protocol::MastForest::new().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.entrypoint, 1);
+    assert!(decoded.verify().is_err());
+}

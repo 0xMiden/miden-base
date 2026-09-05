@@ -293,11 +293,7 @@ fn transaction_script_rejects_missing_mast_and_invalid_entrypoint() {
     };
     let error =
         miden_protocol::transaction::TransactionScript::try_from(invalid_entrypoint).unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .starts_with("failed to deserialize transaction_script.entrypoint: ")
-    );
+    assert!(error.to_string().starts_with("invalid script entrypoint: "));
     assert_matches!(
         error
             .source()

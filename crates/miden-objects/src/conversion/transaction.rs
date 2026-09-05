@@ -1,8 +1,8 @@
 use alloc::collections::BTreeMap;
 use alloc::format;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::account::{AccountId, AccountUpdateDetails};
 use miden_protocol::note::{NoteHeader, NoteId, Nullifier};
 use miden_protocol::transaction::{
@@ -18,7 +18,6 @@ use miden_protocol::transaction::{
     TransactionScript,
     TxAccountUpdate,
 };
-use miden_protocol::{MastForest, MastNodeId, Word};
 
 use super::{MessageDecodeExt, required};
 use crate::{ConversionError, ConversionResultExt, proto};
@@ -32,20 +31,6 @@ impl From<&TransactionScript> for proto::transaction::TransactionScript {
             entrypoint: value.entrypoint().into(),
             mast: Some(value.mast().as_ref().into()),
         }
-    }
-}
-
-impl TryFrom<proto::transaction::TransactionScript> for TransactionScript {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::transaction::TransactionScript) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let mast: MastForest = required!(decoder, value.mast)?;
-        let entrypoint = MastNodeId::from_u32_safe(value.entrypoint, &mast).map_err(|error| {
-            ConversionError::deserialization("transaction_script.entrypoint", error)
-        })?;
-
-        Self::from_parts(Arc::new(mast), entrypoint).map_err(ConversionError::new)
     }
 }
 

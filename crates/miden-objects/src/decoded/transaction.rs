@@ -18,3 +18,33 @@ impl TryFrom<proto::transaction::TransactionId> for miden_protocol::transaction:
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedTransactionScript as TransactionScript;
+
+impl Verify for TransactionScript {
+    type Verified = miden_protocol::transaction::TransactionScript;
+    type Error = ScriptError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &self.mast)?;
+        Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), entrypoint)
+            .map_err(|error| ScriptError::Script(alloc::boxed::Box::new(error)))
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum ScriptError {
+    #[error("invalid script entrypoint: {0}")]
+    Entrypoint(#[from] miden_protocol::utils::serde::DeserializationError),
+    #[error("invalid transaction script: {0}")]
+    // The constructor's error type is not publicly nameable.
+    Script(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::TransactionScript>
+    for miden_protocol::transaction::TransactionScript
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::TransactionScript) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
