@@ -243,3 +243,16 @@ fn tracked_mmr_leaf_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap(), (2, Word::empty(), vec![]));
 }
+
+#[test]
+fn block_number_verifies() {
+    assert_eq!(
+        proto::blockchain::BlockNumber { block_num: u32::MAX }
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .unwrap()
+            .as_u32(),
+        u32::MAX
+    );
+}

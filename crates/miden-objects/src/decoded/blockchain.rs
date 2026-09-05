@@ -20,3 +20,13 @@ impl TryFrom<proto::blockchain::TrackedMmrLeaf>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedBlockNumber as BlockNumber;
+
+impl Verify for BlockNumber {
+    type Verified = miden_protocol::block::BlockNumber;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(self.block_num.into())
+    }
+}
