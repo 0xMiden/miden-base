@@ -57,6 +57,8 @@ impl Verify for NoteAttachment {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("invalid inclusion path: {0}")]
+    Path(#[from] miden_protocol::crypto::merkle::MerkleError),
     #[error("invalid script entrypoint: {0}")]
     Entrypoint(#[from] miden_protocol::utils::serde::DeserializationError),
     #[error("{0}")]
@@ -130,6 +132,33 @@ impl Verify for NoteRecipient {
 impl TryFrom<proto::note::NoteRecipient> for miden_protocol::note::NoteRecipient {
     type Error = ConversionError;
     fn try_from(value: proto::note::NoteRecipient) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::note::DecodedNoteInclusionProof as NoteInclusionProof;
+
+impl Verify for NoteInclusionProof {
+    type Verified = (miden_protocol::note::NoteId, miden_protocol::note::NoteInclusionProof);
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((
+            self.note_id.verify().expect("infallible note ID"),
+            miden_protocol::note::NoteInclusionProof::new(
+                self.block_num.verify().expect("infallible block number"),
+                self.note_index_in_block.try_into()?,
+                self.inclusion_path.verify()?,
+            )?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteInclusionProof>
+    for (miden_protocol::note::NoteId, miden_protocol::note::NoteInclusionProof)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteInclusionProof) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

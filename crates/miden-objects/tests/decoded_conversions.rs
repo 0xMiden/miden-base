@@ -571,3 +571,24 @@ fn foreign_account_slot_name_defers_name_and_id_validation() {
         Err(miden_objects::decoded::transaction::ForeignAccountSlotNameError::IdMismatch { .. })
     ));
 }
+
+#[test]
+fn note_inclusion_proof_defers_index_and_path_checks() {
+    let id = miden_protocol::note::NoteId::from_raw(Word::empty());
+    let wire = proto::note::NoteInclusionProof {
+        note_id: Some((&id).into()),
+        block_num: Some(miden_protocol::block::BlockNumber::from(0_u32).into()),
+        note_index_in_block: u32::MAX,
+        inclusion_path: Some(proto::primitives::SparseMerklePath {
+            empty_nodes_mask: 0,
+            siblings: vec![],
+        }),
+    };
+    let decoded = wire.clone().decode_fields().unwrap();
+    assert_eq!(decoded.note_index_in_block, u32::MAX);
+    assert!(decoded.verify().is_err());
+    let error = proto::note::NoteInclusionProof { inclusion_path: None, ..wire }
+        .decode_fields()
+        .unwrap_err();
+    assert!(error.to_string().starts_with("inclusion_path: "), "{error}");
+}

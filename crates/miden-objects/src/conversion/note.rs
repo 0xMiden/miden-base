@@ -257,25 +257,8 @@ impl From<(&NoteId, &NoteInclusionProof)> for proto::note::NoteInclusionProof {
 
 impl TryFrom<&proto::note::NoteInclusionProof> for (NoteId, NoteInclusionProof) {
     type Error = ConversionError;
-
-    fn try_from(
-        proof: &proto::note::NoteInclusionProof,
-    ) -> Result<(NoteId, NoteInclusionProof), Self::Error> {
-        let proof = proof.clone();
-        let decoder = proof.decoder();
-        let inclusion_path = required!(decoder, proof.inclusion_path)?;
-        let note_id = required!(decoder, proof.note_id)?;
-        let block_num = required!(decoder, proof.block_num).context("block_num")?;
-
-        Ok((
-            NoteId::from_raw(note_id),
-            NoteInclusionProof::new(
-                block_num,
-                proof.note_index_in_block.try_into().context("note_index_in_block")?,
-                inclusion_path,
-            )
-            .map_err(ConversionError::new)?,
-        ))
+    fn try_from(value: &proto::note::NoteInclusionProof) -> Result<Self, Self::Error> {
+        value.clone().try_into()
     }
 }
 
