@@ -30,6 +30,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out_dir = PathBuf::from(env::var("OUT_DIR")?);
     std::fs::write(out_dir.join("miden_objects_descriptor.bin"), descriptors.encode_to_vec())?;
 
-    prost_build::Config::new().out_dir(out_dir).compile_fds(descriptors)?;
+    let mut prost = prost_build::Config::new();
+    prost.out_dir(out_dir);
+    miden_protobuf::build::configure_proto_decode_fields(
+        &mut prost,
+        &descriptors,
+        [".protocol_config.KernelConfig"],
+    )?;
+    prost.compile_fds(descriptors)?;
     Ok(())
 }

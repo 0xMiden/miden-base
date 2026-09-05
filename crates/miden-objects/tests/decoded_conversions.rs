@@ -1,4 +1,4 @@
-use miden_objects::{DecodeMessage, proto};
+use miden_objects::{DecodeMessage, Verify, proto};
 use miden_protocol::Word;
 
 #[test]
@@ -33,4 +33,19 @@ fn execution_proof_atomic_decode() {
 #[test]
 fn account_id_atomic_decode() {
     assert!(proto::account::AccountId { id: vec![] }.decode_fields().is_err());
+}
+
+#[test]
+fn kernel_verification_is_deferred() {
+    let decoded = proto::protocol_config::KernelConfig {
+        main_proc: Some(Word::empty().into()),
+        kernel_procs: vec![
+            Word::empty().into();
+            miden_protocol::protocol_config::KernelConfig::MAX_NUM_KERNEL_PROCEDURES
+                + 1
+        ],
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
 }

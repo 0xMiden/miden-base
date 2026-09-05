@@ -1,6 +1,3 @@
-use alloc::format;
-use alloc::vec::Vec;
-
 use miden_protocol::Word;
 use miden_protocol::asset::AssetId;
 use miden_protocol::protocol_config::{
@@ -12,23 +9,6 @@ use miden_protocol::protocol_config::{
 
 use super::{MessageDecodeExt, required};
 use crate::{ConversionError, ConversionResultExt, proto};
-
-impl TryFrom<proto::protocol_config::KernelConfig> for KernelConfig {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::protocol_config::KernelConfig) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let main_proc = required!(decoder, message.main_proc)?;
-        let kernel_procs = message
-            .kernel_procs
-            .into_iter()
-            .enumerate()
-            .map(|(index, root)| Word::try_from(root).context(format!("kernel_procs[{index}]")))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        KernelConfig::new(main_proc, kernel_procs).map_err(ConversionError::new)
-    }
-}
 
 impl From<&KernelConfig> for proto::protocol_config::KernelConfig {
     fn from(config: &KernelConfig) -> Self {

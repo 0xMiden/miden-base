@@ -3,6 +3,7 @@
 extern crate alloc;
 
 pub mod conversion;
+pub mod decoded;
 pub mod error;
 
 pub use error::{ConversionError, ConversionResultExt};
