@@ -592,3 +592,12 @@ fn note_inclusion_proof_defers_index_and_path_checks() {
         .unwrap_err();
     assert!(error.to_string().starts_with("inclusion_path: "), "{error}");
 }
+
+#[test]
+fn private_account_update_verifies_empty_payload() {
+    let decoded = proto::account::PrivateAccountUpdate {}.decode_fields().unwrap();
+    assert_eq!(
+        decoded.verify().unwrap(),
+        miden_protocol::account::AccountUpdateDetails::Private
+    );
+}
