@@ -108,3 +108,35 @@ impl TryFrom<proto::account::AccountVaultPatchEntry>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountVaultPatch as AccountVaultPatch;
+
+impl Verify for AccountVaultPatch {
+    type Verified = miden_protocol::account::AccountVaultPatch;
+    type Error = VaultPatchError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let mut entries = alloc::collections::BTreeMap::new();
+        for entry in self.entries {
+            let (id, value) = entry.verify()?;
+            if entries.insert(id, value).is_some() {
+                return Err(VaultPatchError::DuplicateAssetId(id));
+            }
+        }
+        Ok(Self::Verified::new(entries)?)
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum VaultPatchError {
+    #[error("invalid vault asset: {0}")]
+    Asset(#[from] miden_protocol::errors::AssetError),
+    #[error("duplicate vault asset ID {0}")]
+    DuplicateAssetId(miden_protocol::asset::AssetId),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountVaultPatch> for miden_protocol::account::AccountVaultPatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountVaultPatch) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

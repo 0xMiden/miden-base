@@ -17,7 +17,6 @@ use miden_protocol::account::{
     StorageSlotPatch,
     StorageValuePatch,
 };
-use miden_protocol::asset::AssetId;
 
 use super::{MessageDecodeExt, required};
 use crate::{ConversionError, ConversionResultExt, proto};
@@ -243,30 +242,6 @@ impl From<&AccountVaultPatch> for proto::account::AccountVaultPatch {
                 })
                 .collect(),
         }
-    }
-}
-
-impl TryFrom<proto::account::AccountVaultPatch> for AccountVaultPatch {
-    type Error = ConversionError;
-
-    fn try_from(patch: proto::account::AccountVaultPatch) -> Result<Self, Self::Error> {
-        let mut entries = BTreeMap::new();
-        for (index, entry) in patch.entries.into_iter().enumerate() {
-            let decoder = entry.decoder();
-            let asset_id: Word =
-                required!(decoder, entry.asset_id).context(format!("entries[{index}]"))?;
-            let asset_id = AssetId::try_from(asset_id)
-                .map_err(ConversionError::new)
-                .context("asset_id")
-                .context(format!("entries[{index}]"))?;
-            let value = required!(decoder, entry.value).context(format!("entries[{index}]"))?;
-            if entries.insert(asset_id, value).is_some() {
-                return Err(ConversionError::message("duplicate vault asset ID")
-                    .context(format!("entries[{index}].asset_id")));
-            }
-        }
-
-        AccountVaultPatch::new(entries).map_err(ConversionError::new).context("entries")
     }
 }
 

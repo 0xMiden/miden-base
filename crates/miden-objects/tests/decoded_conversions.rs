@@ -455,3 +455,44 @@ fn vault_patch_entry_defers_asset_id_validation() {
     assert_eq!(decoded.asset_id, Word::empty());
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn vault_patch_verifies_duplicate_ids_and_asset_values() {
+    use miden_protocol::account::{AccountId, AccountIdVersion, AccountType, AssetCallbackFlag};
+    let id = miden_protocol::asset::AssetId::new_fungible(AccountId::dummy(
+        [7; 15],
+        AccountIdVersion::Version1,
+        AccountType::Private,
+        AssetCallbackFlag::Disabled,
+    ));
+    let entry = proto::account::AccountVaultPatchEntry {
+        asset_id: Some(id.to_word().into()),
+        value: Some(Word::from([2_u32, 0, 0, 0]).into()),
+    };
+    assert!(
+        proto::account::AccountVaultPatch { entries: vec![entry.clone()] }
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .is_ok()
+    );
+    let decoded = proto::account::AccountVaultPatch {
+        entries: vec![entry.clone(), entry.clone()],
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(
+        matches!(decoded.verify(), Err(miden_objects::decoded::account::VaultPatchError::DuplicateAssetId(actual)) if actual == id)
+    );
+    let invalid = proto::account::AccountVaultPatchEntry {
+        value: Some(Word::from([1_u32, 2, 0, 0]).into()),
+        ..entry
+    };
+    assert!(
+        proto::account::AccountVaultPatch { entries: vec![invalid] }
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .is_err()
+    );
+}
