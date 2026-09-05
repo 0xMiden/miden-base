@@ -338,3 +338,18 @@ fn note_script_defers_entrypoint_validation() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn note_recipient_defers_nested_script_verification() {
+    let decoded = proto::note::NoteRecipient {
+        serial_num: Some(Word::empty().into()),
+        script: Some(proto::note::NoteScript {
+            entrypoint: 1,
+            mast: Some(miden_protocol::MastForest::new().into()),
+        }),
+        storage: Some(proto::note::NoteStorage { items: vec![] }),
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}

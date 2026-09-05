@@ -111,3 +111,25 @@ impl TryFrom<proto::note::NoteScript> for miden_protocol::note::NoteScript {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedNoteRecipient as NoteRecipient;
+
+impl Verify for NoteRecipient {
+    type Verified = miden_protocol::note::NoteRecipient;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.serial_num,
+            self.script.verify()?,
+            self.storage.verify()?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteRecipient> for miden_protocol::note::NoteRecipient {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteRecipient) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
