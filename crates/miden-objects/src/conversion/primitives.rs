@@ -170,19 +170,6 @@ impl From<&AdviceStack> for proto::primitives::AdviceStack {
     }
 }
 
-impl TryFrom<proto::primitives::AdviceStack> for AdviceStack {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::AdviceStack) -> Result<Self, Self::Error> {
-        value
-            .values
-            .into_iter()
-            .enumerate()
-            .map(|(index, value)| Felt::try_from(value).context(format!("values[{index}]")))
-            .collect::<Result<AdviceStack, _>>()
-    }
-}
-
 impl From<&AdviceMap> for proto::primitives::AdviceMap {
     fn from(value: &AdviceMap) -> Self {
         Self {
@@ -383,6 +370,26 @@ impl TryFrom<&proto::primitives::Signature> for Signature {
     }
 }
 
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::primitives::Word {
+    type Decoded = miden_protocol::Word;
+}
+
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::primitives::Felt {
+    type Decoded = miden_protocol::Felt;
+}
+
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::primitives::MastForest {
+    type Decoded = miden_protocol::MastForest;
+}
+
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::primitives::ExecutionProof {
+    type Decoded = miden_protocol::vm::ExecutionProof;
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::string::ToString;
@@ -537,24 +544,4 @@ mod tests {
         let encoded = proto::primitives::MastForest::from(&mast);
         assert_eq!(MastForest::try_from(encoded).unwrap(), mast);
     }
-}
-
-// Canonical representation adapter; domain interpretation is left to the containing record.
-impl crate::DecodeMessage for proto::primitives::Word {
-    type Decoded = miden_protocol::Word;
-}
-
-// Canonical representation adapter; domain interpretation is left to the containing record.
-impl crate::DecodeMessage for proto::primitives::Felt {
-    type Decoded = miden_protocol::Felt;
-}
-
-// Canonical representation adapter; domain interpretation is left to the containing record.
-impl crate::DecodeMessage for proto::primitives::MastForest {
-    type Decoded = miden_protocol::MastForest;
-}
-
-// Canonical representation adapter; domain interpretation is left to the containing record.
-impl crate::DecodeMessage for proto::primitives::ExecutionProof {
-    type Decoded = miden_protocol::vm::ExecutionProof;
 }

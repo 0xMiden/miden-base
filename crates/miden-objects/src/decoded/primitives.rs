@@ -177,3 +177,21 @@ impl TryFrom<proto::primitives::AdviceMapEntry>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedAdviceStack as AdviceStack;
+
+impl Verify for AdviceStack {
+    type Verified = miden_protocol::vm::AdviceStack;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(self.values.into_iter().collect())
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::AdviceStack> for miden_protocol::vm::AdviceStack {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::AdviceStack) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

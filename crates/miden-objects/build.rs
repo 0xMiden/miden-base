@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".primitives.AdviceStack",
             ".blockchain.FeeParameters",
             ".blockchain.BlockNumber",
             ".blockchain.TrackedMmrLeaf",

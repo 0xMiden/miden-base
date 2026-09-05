@@ -269,3 +269,16 @@ fn fee_parameters_verify() {
         7
     );
 }
+
+#[test]
+fn advice_stack_verifies_in_order() {
+    let decoded = proto::primitives::AdviceStack {
+        values: vec![miden_protocol::Felt::ONE.into(), miden_protocol::Felt::ZERO.into()],
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(
+        decoded.verify().unwrap().iter().copied().collect::<Vec<_>>(),
+        vec![miden_protocol::Felt::ONE, miden_protocol::Felt::ZERO]
+    );
+}
