@@ -282,3 +282,9 @@ fn advice_stack_verifies_in_order() {
         vec![miden_protocol::Felt::ONE, miden_protocol::Felt::ZERO]
     );
 }
+
+#[test]
+fn note_id_verifies() {
+    let decoded = proto::note::NoteId { id: Some(Word::empty().into()) }.decode_fields().unwrap();
+    assert_eq!(decoded.verify().unwrap(), miden_protocol::note::NoteId::from_raw(Word::empty()));
+}

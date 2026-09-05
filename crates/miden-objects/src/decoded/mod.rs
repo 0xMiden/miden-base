@@ -11,3 +11,5 @@ pub mod asset;
 pub mod transaction;
 
 pub mod blockchain;
+
+pub mod note;

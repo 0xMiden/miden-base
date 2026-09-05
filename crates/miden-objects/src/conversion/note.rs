@@ -305,15 +305,6 @@ impl From<Word> for proto::note::NoteId {
     }
 }
 
-impl TryFrom<proto::note::NoteId> for Word {
-    type Error = ConversionError;
-
-    fn try_from(note_id: proto::note::NoteId) -> Result<Self, Self::Error> {
-        let decoder = note_id.decoder();
-        required!(decoder, note_id.id)
-    }
-}
-
 impl From<&NoteId> for proto::note::NoteId {
     fn from(note_id: &NoteId) -> Self {
         Self { id: Some(note_id.as_word().into()) }
