@@ -157,3 +157,23 @@ impl TryFrom<proto::primitives::MerkleStoreNode> for miden_protocol::crypto::mer
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedAdviceMapEntry as AdviceMapEntry;
+
+impl Verify for AdviceMapEntry {
+    type Verified = (miden_protocol::Word, alloc::vec::Vec<miden_protocol::Felt>);
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.key, self.values))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::AdviceMapEntry>
+    for (miden_protocol::Word, alloc::vec::Vec<miden_protocol::Felt>)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::AdviceMapEntry) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

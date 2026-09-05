@@ -209,3 +209,14 @@ fn merkle_store_node_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap().value, Word::empty());
 }
+
+#[test]
+fn advice_map_entry_verifies() {
+    let decoded = proto::primitives::AdviceMapEntry {
+        key: Some(Word::empty().into()),
+        values: vec![miden_protocol::Felt::ONE.into()],
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap(), (Word::empty(), vec![miden_protocol::Felt::ONE]));
+}
