@@ -40,3 +40,24 @@ impl Verify for FeeParameters {
         Ok(Self::Verified::new(self.verification_base_fee))
     }
 }
+
+pub use proto::blockchain::DecodedNextProtocolConfig as NextProtocolConfig;
+
+impl Verify for NextProtocolConfig {
+    type Verified = miden_protocol::protocol_config::NextProtocolConfig;
+    type Error = miden_protocol::errors::ProtocolConfigError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let effective_from = self.effective_from.verify().expect("infallible block number");
+        Self::Verified::new(effective_from, self.protocol_config)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::NextProtocolConfig>
+    for miden_protocol::protocol_config::NextProtocolConfig
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::NextProtocolConfig) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

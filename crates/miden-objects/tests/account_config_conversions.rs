@@ -403,3 +403,15 @@ fn protocol_config_decodes_all_fields_before_verification() {
     assert_eq!(decoded.tx_kernel.kernel_procs, config.tx_kernel().kernel_procs());
     assert_eq!(decoded.verify().unwrap(), config);
 }
+
+#[test]
+fn next_protocol_config_defers_effective_block_validation() {
+    use miden_objects::{DecodeMessage, Verify};
+    let decoded = proto::blockchain::NextProtocolConfig {
+        effective_from: Some(proto::blockchain::BlockNumber { block_num: 0 }),
+        protocol_config: Some(dummy_protocol_config().to_commitment().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}
