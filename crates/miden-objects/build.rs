@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".note.NoteAttachment",
             ".note.NoteStorage",
             ".account.AccountCode",
             ".blockchain.NextProtocolConfig",

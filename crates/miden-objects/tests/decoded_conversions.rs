@@ -309,3 +309,11 @@ fn note_storage_defers_length_validation() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn attachment_defers_scheme_validation() {
+    let decoded = proto::note::NoteAttachment { scheme: u32::MAX, words: vec![] }
+        .decode_fields()
+        .unwrap();
+    assert!(decoded.verify().is_err());
+}

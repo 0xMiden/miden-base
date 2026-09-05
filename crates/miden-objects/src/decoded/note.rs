@@ -43,3 +43,30 @@ impl TryFrom<proto::note::NoteStorage> for miden_protocol::note::NoteStorage {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedNoteAttachment as NoteAttachment;
+
+impl Verify for NoteAttachment {
+    type Verified = miden_protocol::note::NoteAttachment;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let scheme = miden_protocol::note::NoteAttachmentScheme::new(self.scheme.try_into()?)?;
+        Ok(Self::Verified::with_words(scheme, self.words)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VerificationError {
+    #[error("{0}")]
+    Note(#[from] miden_protocol::errors::NoteError),
+    #[error("numeric value is out of range: {0}")]
+    Number(#[from] core::num::TryFromIntError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteAttachment> for miden_protocol::note::NoteAttachment {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteAttachment) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

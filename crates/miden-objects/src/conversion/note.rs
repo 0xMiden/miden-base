@@ -119,27 +119,6 @@ impl From<&NoteAttachment> for proto::note::NoteAttachment {
     }
 }
 
-impl TryFrom<proto::note::NoteAttachment> for NoteAttachment {
-    type Error = ConversionError;
-
-    fn try_from(attachment: proto::note::NoteAttachment) -> Result<Self, Self::Error> {
-        let scheme = u16::try_from(attachment.scheme).context("scheme")?;
-        let scheme = NoteAttachmentScheme::new(scheme)
-            .map_err(ConversionError::new)
-            .context("scheme")?;
-        let words = attachment
-            .words
-            .into_iter()
-            .map(Word::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .context("words")?;
-
-        NoteAttachment::with_words(scheme, words)
-            .map_err(ConversionError::new)
-            .context("words")
-    }
-}
-
 impl From<NoteAttachments> for proto::note::NoteAttachments {
     fn from(attachments: NoteAttachments) -> Self {
         Self::from(&attachments)
