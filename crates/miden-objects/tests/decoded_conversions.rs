@@ -231,3 +231,15 @@ fn storage_map_entry_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap().1, Word::empty());
 }
+
+#[test]
+fn tracked_mmr_leaf_verifies() {
+    let decoded = proto::blockchain::TrackedMmrLeaf {
+        position: 2,
+        leaf: Some(Word::empty().into()),
+        path: vec![],
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap(), (2, Word::empty(), vec![]));
+}
