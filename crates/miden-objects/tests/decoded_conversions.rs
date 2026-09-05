@@ -8,3 +8,12 @@ fn word_atomic_decode() {
         Word::empty()
     );
 }
+
+#[test]
+fn felt_atomic_decode() {
+    assert!(
+        proto::primitives::Felt { value: miden_protocol::Felt::ORDER }
+            .decode_fields()
+            .is_err()
+    );
+}

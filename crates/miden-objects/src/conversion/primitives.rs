@@ -543,3 +543,8 @@ mod tests {
 impl crate::DecodeMessage for proto::primitives::Word {
     type Decoded = miden_protocol::Word;
 }
+
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::primitives::Felt {
+    type Decoded = miden_protocol::Felt;
+}
