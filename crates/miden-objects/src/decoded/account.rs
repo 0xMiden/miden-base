@@ -38,3 +38,26 @@ impl TryFrom<proto::account::StorageMapEntry>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountCode as AccountCode;
+
+impl Verify for AccountCode {
+    type Verified = miden_protocol::account::AccountCode;
+    type Error = miden_protocol::errors::AccountError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let roots = self
+            .procedure_roots
+            .into_iter()
+            .map(miden_protocol::account::AccountProcedureRoot::from_raw)
+            .collect();
+        Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), roots)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountCode> for miden_protocol::account::AccountCode {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountCode) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

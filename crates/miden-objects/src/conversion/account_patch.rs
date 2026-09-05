@@ -1,14 +1,12 @@
 use alloc::borrow::ToOwned;
 use alloc::collections::BTreeMap;
 use alloc::format;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::account::{
     AccountCode,
     AccountPatch,
-    AccountProcedureRoot,
     AccountStoragePatch,
     AccountUpdateDetails,
     AccountVaultPatch,
@@ -39,27 +37,6 @@ impl From<&AccountCode> for proto::account::AccountCode {
 impl From<AccountCode> for proto::account::AccountCode {
     fn from(code: AccountCode) -> Self {
         Self::from(&code)
-    }
-}
-
-impl TryFrom<proto::account::AccountCode> for AccountCode {
-    type Error = ConversionError;
-
-    fn try_from(code: proto::account::AccountCode) -> Result<Self, Self::Error> {
-        let decoder = code.decoder();
-        let mast = required!(decoder, code.mast)?;
-        let procedure_roots = code
-            .procedure_roots
-            .into_iter()
-            .enumerate()
-            .map(|(index, root)| {
-                Word::try_from(root)
-                    .map(AccountProcedureRoot::from_raw)
-                    .context(format!("procedure_roots[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        AccountCode::from_parts(Arc::new(mast), procedure_roots).map_err(ConversionError::new)
     }
 }
 

@@ -288,3 +288,14 @@ fn note_id_verifies() {
     let decoded = proto::note::NoteId { id: Some(Word::empty().into()) }.decode_fields().unwrap();
     assert_eq!(decoded.verify().unwrap(), miden_protocol::note::NoteId::from_raw(Word::empty()));
 }
+
+#[test]
+fn account_code_defers_procedure_validation() {
+    let decoded = proto::account::AccountCode {
+        mast: Some(miden_protocol::MastForest::new().into()),
+        procedure_roots: vec![],
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}
