@@ -27,6 +27,9 @@ can still fail and must document the invariants the caller must ensure. None of 
 is invoked automatically by field decoding, and verification errors do not get generated wire
 paths. Existing conversion APIs are retained as compatibility bridges during migration.
 
+The current coverage and complete list of skipped messages are in
+[Decoded Conversion Migration](DECODED_MIGRATION.md).
+
 ## License
 
 This project is [MIT licensed](../../LICENSE).
