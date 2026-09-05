@@ -1,5 +1,4 @@
 use miden_protocol::Word;
-use miden_protocol::asset::AssetId;
 use miden_protocol::protocol_config::{
     KernelConfig,
     ProofSecurityPolicy,
@@ -7,8 +6,7 @@ use miden_protocol::protocol_config::{
     ProtocolConfig,
 };
 
-use super::{MessageDecodeExt, required};
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::proto;
 
 impl From<&KernelConfig> for proto::protocol_config::KernelConfig {
     fn from(config: &KernelConfig) -> Self {
@@ -53,23 +51,6 @@ impl From<&ProofVerificationConfig> for proto::protocol_config::ProofVerificatio
 impl From<ProofVerificationConfig> for proto::protocol_config::ProofVerificationConfig {
     fn from(config: ProofVerificationConfig) -> Self {
         (&config).into()
-    }
-}
-
-impl TryFrom<proto::protocol_config::ProtocolConfig> for ProtocolConfig {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::protocol_config::ProtocolConfig) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let fee_asset_id: Word = required!(decoder, message.fee_asset_id)?;
-        let fee_asset_id = AssetId::try_from(fee_asset_id).context("fee_asset_id")?;
-        let tx_kernel = required!(decoder, message.tx_kernel)?;
-        let batch_kernel = required!(decoder, message.batch_kernel)?;
-        let block_kernel = required!(decoder, message.block_kernel)?;
-        let proof_verification = required!(decoder, message.proof_verification)?;
-
-        ProtocolConfig::new(fee_asset_id, tx_kernel, batch_kernel, block_kernel, proof_verification)
-            .map_err(ConversionError::new)
     }
 }
 

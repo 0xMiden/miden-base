@@ -394,3 +394,12 @@ fn proof_security_policy_preserves_zero_bits_validation_source() {
         Some(ProtocolConfigError::MinimumSecurityBitsMustBeNonZero)
     );
 }
+
+#[test]
+fn protocol_config_decodes_all_fields_before_verification() {
+    use miden_objects::{DecodeMessage, Verify};
+    let config = dummy_protocol_config();
+    let decoded = proto::protocol_config::ProtocolConfig::from(&config).decode_fields().unwrap();
+    assert_eq!(decoded.tx_kernel.kernel_procs, config.tx_kernel().kernel_procs());
+    assert_eq!(decoded.verify().unwrap(), config);
+}

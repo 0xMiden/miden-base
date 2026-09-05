@@ -36,6 +36,8 @@ impl Verify for ProofSecurityPolicy {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("invalid fee asset ID: {0}")]
+    FeeAssetId(#[from] miden_protocol::errors::AssetError),
     #[error("{0}")]
     Config(#[from] miden_protocol::errors::ProtocolConfigError),
     #[error("minimum security bits do not fit in a u8: {0}")]
@@ -74,6 +76,32 @@ impl TryFrom<proto::protocol_config::ProofVerificationConfig>
     fn try_from(
         value: proto::protocol_config::ProofVerificationConfig,
     ) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::protocol_config::DecodedProtocolConfig as ProtocolConfig;
+
+impl Verify for ProtocolConfig {
+    type Verified = miden_protocol::protocol_config::ProtocolConfig;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            miden_protocol::asset::AssetId::try_from(self.fee_asset_id)?,
+            self.tx_kernel.verify()?,
+            self.batch_kernel.verify()?,
+            self.block_kernel.verify()?,
+            self.proof_verification.verify()?,
+        )?)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::protocol_config::ProtocolConfig>
+    for miden_protocol::protocol_config::ProtocolConfig
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::protocol_config::ProtocolConfig) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

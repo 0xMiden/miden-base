@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".protocol_config.ProtocolConfig",
             ".protocol_config.ProofVerificationConfig",
             ".protocol_config.ProofSecurityPolicy",
             ".protocol_config.KernelConfig",
