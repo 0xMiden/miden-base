@@ -3,7 +3,7 @@ use alloc::format;
 use alloc::vec::Vec;
 
 use miden_protocol::Word;
-use miden_protocol::crypto::merkle::mmr::{Forest, MmrDelta};
+use miden_protocol::crypto::merkle::mmr::MmrDelta;
 use miden_protocol::crypto::merkle::smt::{
     LeafIndex,
     PartialSmt,
@@ -63,24 +63,6 @@ impl From<MmrDelta> for proto::primitives::MmrDelta {
             forest: value.forest.num_leaves() as u64,
             update_data,
         }
-    }
-}
-
-impl TryFrom<proto::primitives::MmrDelta> for MmrDelta {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::MmrDelta) -> Result<Self, Self::Error> {
-        let data: Vec<_> = value
-            .update_data
-            .into_iter()
-            .map(Word::try_from)
-            .collect::<Result<_, _>>()
-            .context("update_data")?;
-
-        let forest_size = value.forest.try_into().context("forest size does not fit in usize")?;
-        let forest = Forest::new(forest_size).context("forest size out of range")?;
-
-        Ok(MmrDelta { forest, data })
     }
 }
 

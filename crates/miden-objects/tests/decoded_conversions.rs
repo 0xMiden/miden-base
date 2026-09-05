@@ -402,3 +402,20 @@ fn advice_inputs_decode_nested_records_before_verification() {
     .unwrap_err();
     assert!(error.to_string().starts_with("advice_map.entries[0].key: "), "{error}");
 }
+
+#[test]
+fn mmr_delta_verifies_forest_size_after_decoding() {
+    let decoded = proto::primitives::MmrDelta {
+        forest: 3,
+        update_data: vec![Word::empty().into()],
+    }
+    .decode_fields()
+    .unwrap();
+    let delta = decoded.verify().unwrap();
+    assert_eq!(delta.forest.num_leaves(), 3);
+    assert_eq!(delta.data, vec![Word::empty()]);
+    let invalid = proto::primitives::MmrDelta { forest: u64::MAX, update_data: vec![] }
+        .decode_fields()
+        .unwrap();
+    assert!(invalid.verify().is_err());
+}
