@@ -317,3 +317,13 @@ fn attachment_defers_scheme_validation() {
         .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn attachments_defer_nested_verification() {
+    let decoded = proto::note::NoteAttachments {
+        attachments: vec![proto::note::NoteAttachment { scheme: u32::MAX, words: vec![] }],
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}

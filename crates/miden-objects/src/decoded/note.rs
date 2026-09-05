@@ -70,3 +70,23 @@ impl TryFrom<proto::note::NoteAttachment> for miden_protocol::note::NoteAttachme
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedNoteAttachments as NoteAttachments;
+
+impl Verify for NoteAttachments {
+    type Verified = miden_protocol::note::NoteAttachments;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let attachments =
+            self.attachments.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
+        Ok(Self::Verified::new(attachments)?)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteAttachments> for miden_protocol::note::NoteAttachments {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteAttachments) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
