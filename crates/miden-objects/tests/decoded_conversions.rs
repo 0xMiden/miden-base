@@ -86,3 +86,14 @@ fn merkle_path_verifies() {
         .unwrap();
     assert_eq!(decoded.verify().unwrap().nodes(), &[Word::empty()]);
 }
+
+#[test]
+fn sparse_path_defers_depth_validation() {
+    let decoded = proto::primitives::SparseMerklePath {
+        empty_nodes_mask: 0,
+        siblings: vec![Word::empty().into(); 65],
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}

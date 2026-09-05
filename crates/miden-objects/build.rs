@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".primitives.SparseMerklePath",
             ".primitives.MerklePath",
             ".protocol_config.ProtocolConfig",
             ".protocol_config.ProofVerificationConfig",
