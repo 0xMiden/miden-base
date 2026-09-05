@@ -119,3 +119,14 @@ fn storage_slot_id_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap().suffix(), miden_protocol::Felt::ONE);
 }
+
+#[test]
+fn asset_class_verifies() {
+    let decoded = proto::asset::AssetClass {
+        suffix: Some(miden_protocol::Felt::ONE.into()),
+        prefix: Some(miden_protocol::Felt::ZERO.into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap().suffix(), miden_protocol::Felt::ONE);
+}

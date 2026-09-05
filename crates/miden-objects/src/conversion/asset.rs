@@ -20,18 +20,6 @@ impl From<AssetClass> for proto::asset::AssetClass {
     }
 }
 
-impl TryFrom<proto::asset::AssetClass> for AssetClass {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::asset::AssetClass) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let suffix = required!(decoder, message.suffix)?;
-        let prefix = required!(decoder, message.prefix)?;
-
-        Ok(Self::new(suffix, prefix))
-    }
-}
-
 fn decode_asset_version(version: i32) -> Result<(), ConversionError> {
     match proto::asset::AssetVersion::try_from(version) {
         Ok(proto::asset::AssetVersion::V1) => Ok(()),
