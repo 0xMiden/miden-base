@@ -548,3 +548,8 @@ impl crate::DecodeMessage for proto::primitives::Word {
 impl crate::DecodeMessage for proto::primitives::Felt {
     type Decoded = miden_protocol::Felt;
 }
+
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::primitives::MastForest {
+    type Decoded = miden_protocol::MastForest;
+}
