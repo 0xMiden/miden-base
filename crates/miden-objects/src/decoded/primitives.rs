@@ -195,3 +195,32 @@ impl TryFrom<proto::primitives::AdviceStack> for miden_protocol::vm::AdviceStack
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedAdviceMap as AdviceMap;
+
+impl Verify for AdviceMap {
+    type Verified = miden_protocol::vm::AdviceMap;
+    type Error = AdviceError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let mut entries = alloc::collections::BTreeMap::new();
+        for entry in self.entries {
+            if entries.insert(entry.key, entry.values).is_some() {
+                return Err(AdviceError::DuplicateMapKey(entry.key));
+            }
+        }
+        Ok(entries.into())
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum AdviceError {
+    #[error("duplicate advice map key {0}")]
+    DuplicateMapKey(miden_protocol::Word),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::AdviceMap> for miden_protocol::vm::AdviceMap {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::AdviceMap) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

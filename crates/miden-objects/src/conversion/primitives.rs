@@ -184,33 +184,6 @@ impl From<&AdviceMap> for proto::primitives::AdviceMap {
     }
 }
 
-impl TryFrom<proto::primitives::AdviceMap> for AdviceMap {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::AdviceMap) -> Result<Self, Self::Error> {
-        let mut entries = BTreeMap::new();
-        for (index, entry) in value.entries.into_iter().enumerate() {
-            let decoder = entry.decoder();
-            let entry_context = format!("entries[{index}]");
-            let key = required!(decoder, entry.key).context(&entry_context)?;
-            let values = entry
-                .values
-                .into_iter()
-                .enumerate()
-                .map(|(value_index, value)| {
-                    Felt::try_from(value).context(format!("{entry_context}.values[{value_index}]"))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            if entries.insert(key, values).is_some() {
-                return Err(ConversionError::message("duplicate advice map key")
-                    .context(format!("{entry_context}.key")));
-            }
-        }
-
-        Ok(entries.into())
-    }
-}
-
 impl From<&MerkleStore> for proto::primitives::MerkleStore {
     fn from(value: &MerkleStore) -> Self {
         let default_nodes = MerkleStore::new()

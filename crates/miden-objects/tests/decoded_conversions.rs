@@ -353,3 +353,18 @@ fn note_recipient_defers_nested_script_verification() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn advice_map_verification_rejects_duplicates_after_decoding() {
+    let entry = proto::primitives::AdviceMapEntry {
+        key: Some(Word::empty().into()),
+        values: vec![],
+    };
+    let decoded = proto::primitives::AdviceMap { entries: vec![entry.clone(), entry] }
+        .decode_fields()
+        .unwrap();
+    assert_eq!(decoded.entries.len(), 2);
+    assert!(
+        matches!(decoded.verify(), Err(miden_objects::decoded::primitives::AdviceError::DuplicateMapKey(key)) if key == Word::empty())
+    );
+}

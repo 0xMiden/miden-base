@@ -199,7 +199,7 @@ fn advice_inputs_require_nested_messages_and_reject_duplicate_map_keys() {
         ],
     };
     let error = AdviceMap::try_from(duplicate).unwrap_err();
-    assert_eq!(error.to_string(), "entries[1].key: duplicate advice map key");
+    assert_eq!(error.to_string(), format!("duplicate advice map key {}", dummy_word(1)));
 }
 
 #[test]
