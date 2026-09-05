@@ -185,3 +185,15 @@ fn indexed_digest_verifies() {
         (5, Word::empty())
     );
 }
+
+#[test]
+fn smt_entry_list_verifies() {
+    assert!(
+        proto::primitives::SmtLeafEntryList { entries: vec![] }
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .unwrap()
+            .is_empty()
+    );
+}
