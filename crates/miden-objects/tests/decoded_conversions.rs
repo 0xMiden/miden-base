@@ -141,3 +141,18 @@ fn transaction_id_verifies() {
         miden_protocol::transaction::TransactionId::from_raw(Word::empty())
     );
 }
+
+#[test]
+fn partial_smt_node_verifies() {
+    assert_eq!(
+        proto::primitives::PartialSmtNode {
+            index: 7,
+            digest: Some(Word::empty().into())
+        }
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .unwrap(),
+        (7, Word::empty())
+    );
+}

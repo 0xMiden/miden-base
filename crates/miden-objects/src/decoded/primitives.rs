@@ -56,3 +56,21 @@ impl TryFrom<proto::primitives::SmtLeafEntry> for (miden_protocol::Word, miden_p
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedPartialSmtNode as PartialSmtNode;
+
+impl Verify for PartialSmtNode {
+    type Verified = (u64, miden_protocol::Word);
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.index, self.digest))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::PartialSmtNode> for (u64, miden_protocol::Word) {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::PartialSmtNode) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
