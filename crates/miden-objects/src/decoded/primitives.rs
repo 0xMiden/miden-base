@@ -215,12 +215,43 @@ impl Verify for AdviceMap {
 pub enum AdviceError {
     #[error("duplicate advice map key {0}")]
     DuplicateMapKey(miden_protocol::Word),
+    #[error("duplicate Merkle store parent {0}")]
+    DuplicateMerkleParent(miden_protocol::Word),
 }
 
 // Compatibility bridge for callers using the combined conversion API.
 impl TryFrom<proto::primitives::AdviceMap> for miden_protocol::vm::AdviceMap {
     type Error = ConversionError;
     fn try_from(value: proto::primitives::AdviceMap) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::primitives::DecodedMerkleStore as MerkleStore;
+
+impl Verify for MerkleStore {
+    type Verified = miden_protocol::crypto::merkle::store::MerkleStore;
+    type Error = AdviceError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let mut nodes = alloc::collections::BTreeMap::new();
+        for node in self.nodes {
+            let node = node.verify().expect("infallible Merkle store node");
+            if nodes.insert(node.value, node.clone()).is_some() {
+                return Err(AdviceError::DuplicateMerkleParent(node.value));
+            }
+        }
+        let mut store = Self::Verified::new();
+        store.extend(nodes.into_values());
+        Ok(store)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::MerkleStore>
+    for miden_protocol::crypto::merkle::store::MerkleStore
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::MerkleStore) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

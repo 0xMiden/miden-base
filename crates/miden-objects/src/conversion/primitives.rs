@@ -3,7 +3,6 @@ use alloc::format;
 use alloc::vec::Vec;
 
 use miden_protocol::crypto::dsa::ecdsa_k256_keccak::{PublicKey, Signature};
-use miden_protocol::crypto::merkle::InnerNodeInfo;
 use miden_protocol::crypto::merkle::store::MerkleStore;
 use miden_protocol::utils::serde::{Deserializable, Serializable};
 use miden_protocol::vm::{AdviceInputs, AdviceMap, AdviceStack, ExecutionProof};
@@ -206,33 +205,6 @@ impl From<&MerkleStore> for proto::primitives::MerkleStore {
                 })
                 .collect(),
         }
-    }
-}
-
-impl TryFrom<proto::primitives::MerkleStore> for MerkleStore {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::MerkleStore) -> Result<Self, Self::Error> {
-        let mut nodes = BTreeMap::new();
-        for (index, node) in value.nodes.into_iter().enumerate() {
-            let decoder = node.decoder();
-            let node_context = format!("nodes[{index}]");
-            let parent = required!(decoder, node.value).context(&node_context)?;
-            let left = required!(decoder, node.left).context(&node_context)?;
-            let right = required!(decoder, node.right).context(&node_context)?;
-            if nodes.insert(parent, (left, right)).is_some() {
-                return Err(ConversionError::message("duplicate Merkle store parent")
-                    .context(format!("{node_context}.value")));
-            }
-        }
-
-        let mut store = MerkleStore::new();
-        store.extend(nodes.into_iter().map(|(value, (left, right))| InnerNodeInfo {
-            value,
-            left,
-            right,
-        }));
-        Ok(store)
     }
 }
 

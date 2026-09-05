@@ -368,3 +368,19 @@ fn advice_map_verification_rejects_duplicates_after_decoding() {
         matches!(decoded.verify(), Err(miden_objects::decoded::primitives::AdviceError::DuplicateMapKey(key)) if key == Word::empty())
     );
 }
+
+#[test]
+fn merkle_store_verification_rejects_duplicates_after_decoding() {
+    let node = proto::primitives::MerkleStoreNode {
+        value: Some(Word::empty().into()),
+        left: Some(Word::empty().into()),
+        right: Some(Word::empty().into()),
+    };
+    let decoded = proto::primitives::MerkleStore { nodes: vec![node.clone(), node] }
+        .decode_fields()
+        .unwrap();
+    assert_eq!(decoded.nodes.len(), 2);
+    assert!(
+        matches!(decoded.verify(), Err(miden_objects::decoded::primitives::AdviceError::DuplicateMerkleParent(key)) if key == Word::empty())
+    );
+}

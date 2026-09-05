@@ -226,7 +226,7 @@ fn merkle_store_rejects_duplicate_parents_and_preserves_invalid_word_source() {
     };
     let duplicate = proto::primitives::MerkleStore { nodes: vec![node.clone(), node] };
     let error = MerkleStore::try_from(duplicate).unwrap_err();
-    assert_eq!(error.to_string(), "nodes[1].value: duplicate Merkle store parent");
+    assert_eq!(error.to_string(), format!("duplicate Merkle store parent {}", dummy_word(1)));
 
     let invalid = proto::primitives::MerkleStore {
         nodes: vec![proto::primitives::MerkleStoreNode {
