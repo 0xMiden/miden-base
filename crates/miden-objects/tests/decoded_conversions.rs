@@ -108,3 +108,14 @@ fn smt_leaf_entry_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap(), (Word::empty(), Word::empty()));
 }
+
+#[test]
+fn storage_slot_id_verifies() {
+    let decoded = proto::account::StorageSlotId {
+        suffix: Some(miden_protocol::Felt::ONE.into()),
+        prefix: Some(miden_protocol::Felt::ZERO.into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap().suffix(), miden_protocol::Felt::ONE);
+}
