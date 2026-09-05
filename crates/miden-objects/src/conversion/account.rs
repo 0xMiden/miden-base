@@ -411,3 +411,8 @@ impl From<AccountWitness> for proto::account::AccountWitness {
         (&witness).into()
     }
 }
+
+// Canonical representation adapter; domain interpretation is left to the containing record.
+impl crate::DecodeMessage for proto::account::AccountId {
+    type Decoded = miden_protocol::account::AccountId;
+}

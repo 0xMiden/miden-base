@@ -29,3 +29,8 @@ fn execution_proof_atomic_decode() {
     let proof = miden_protocol::testing::dummy_execution_proof();
     assert_eq!(proto::primitives::ExecutionProof::from(&proof).decode_fields().unwrap(), proof);
 }
+
+#[test]
+fn account_id_atomic_decode() {
+    assert!(proto::account::AccountId { id: vec![] }.decode_fields().is_err());
+}
