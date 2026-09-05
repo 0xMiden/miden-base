@@ -109,3 +109,42 @@ impl TryFrom<proto::transaction::TransactionArgs> for miden_protocol::transactio
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedForeignAccountSlotName as ForeignAccountSlotName;
+
+impl Verify for ForeignAccountSlotName {
+    type Verified =
+        (miden_protocol::account::StorageSlotId, miden_protocol::account::StorageSlotName);
+    type Error = ForeignAccountSlotNameError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let id = self.slot_id.verify().expect("infallible storage slot ID");
+        let name = miden_protocol::account::StorageSlotName::new(self.slot_name)?;
+        if name.id() != id {
+            return Err(ForeignAccountSlotNameError::IdMismatch {
+                expected: name.id(),
+                actual: id,
+            });
+        }
+        Ok((id, name))
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum ForeignAccountSlotNameError {
+    #[error("invalid storage slot name: {0}")]
+    Name(#[from] miden_protocol::errors::StorageSlotNameError),
+    #[error("storage slot ID {actual} does not match the name's ID {expected}")]
+    IdMismatch {
+        expected: miden_protocol::account::StorageSlotId,
+        actual: miden_protocol::account::StorageSlotId,
+    },
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::ForeignAccountSlotName>
+    for (miden_protocol::account::StorageSlotId, miden_protocol::account::StorageSlotName)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::ForeignAccountSlotName) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
