@@ -40,25 +40,6 @@ impl From<ProofSecurityPolicy> for proto::protocol_config::ProofSecurityPolicy {
     }
 }
 
-impl TryFrom<proto::protocol_config::ProofVerificationConfig> for ProofVerificationConfig {
-    type Error = ConversionError;
-
-    fn try_from(
-        message: proto::protocol_config::ProofVerificationConfig,
-    ) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let vm_verifier_root = required!(decoder, message.vm_verifier_root)?;
-        let precompile_verifier_root = required!(decoder, message.precompile_verifier_root)?;
-        let security_policy = required!(decoder, message.security_policy)?;
-
-        Ok(ProofVerificationConfig::new(
-            vm_verifier_root,
-            precompile_verifier_root,
-            security_policy,
-        ))
-    }
-}
-
 impl From<&ProofVerificationConfig> for proto::protocol_config::ProofVerificationConfig {
     fn from(config: &ProofVerificationConfig) -> Self {
         Self {

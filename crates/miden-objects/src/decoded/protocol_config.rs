@@ -51,3 +51,29 @@ impl TryFrom<proto::protocol_config::ProofSecurityPolicy>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::protocol_config::DecodedProofVerificationConfig as ProofVerificationConfig;
+
+impl Verify for ProofVerificationConfig {
+    type Verified = miden_protocol::protocol_config::ProofVerificationConfig;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.vm_verifier_root,
+            self.precompile_verifier_root,
+            self.security_policy.verify()?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::protocol_config::ProofVerificationConfig>
+    for miden_protocol::protocol_config::ProofVerificationConfig
+{
+    type Error = ConversionError;
+    fn try_from(
+        value: proto::protocol_config::ProofVerificationConfig,
+    ) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

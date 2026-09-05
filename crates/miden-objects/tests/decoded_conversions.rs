@@ -63,3 +63,18 @@ fn security_policy_verification_is_deferred() {
         assert!(decoded.verify().is_err());
     }
 }
+
+#[test]
+fn proof_verification_config_defers_nested_policy_checks() {
+    let decoded = proto::protocol_config::ProofVerificationConfig {
+        vm_verifier_root: Some(Word::empty().into()),
+        precompile_verifier_root: Some(Word::empty().into()),
+        security_policy: Some(proto::protocol_config::ProofSecurityPolicy {
+            security_estimator_root: Some(Word::empty().into()),
+            minimum_bits: 0,
+        }),
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}
