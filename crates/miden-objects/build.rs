@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".primitives.IndexedDigest",
             ".primitives.PartialSmtNodeLevel",
             ".primitives.PartialSmtNode",
             ".transaction.TransactionId",

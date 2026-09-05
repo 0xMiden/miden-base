@@ -97,3 +97,21 @@ impl TryFrom<proto::primitives::PartialSmtNodeLevel>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedIndexedDigest as IndexedDigest;
+
+impl Verify for IndexedDigest {
+    type Verified = (u64, miden_protocol::Word);
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.index, self.value))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::IndexedDigest> for (u64, miden_protocol::Word) {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::IndexedDigest) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

@@ -170,3 +170,18 @@ fn partial_smt_level_verifies_nested_nodes() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap(), (2, vec![(3, Word::empty())]));
 }
+
+#[test]
+fn indexed_digest_verifies() {
+    assert_eq!(
+        proto::primitives::IndexedDigest {
+            index: 5,
+            value: Some(Word::empty().into())
+        }
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .unwrap(),
+        (5, Word::empty())
+    );
+}
