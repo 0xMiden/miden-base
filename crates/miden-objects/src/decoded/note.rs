@@ -57,6 +57,8 @@ impl Verify for NoteAttachment {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("invalid script entrypoint: {0}")]
+    Entrypoint(#[from] miden_protocol::utils::serde::DeserializationError),
     #[error("{0}")]
     Note(#[from] miden_protocol::errors::NoteError),
     #[error("numeric value is out of range: {0}")]
@@ -87,6 +89,25 @@ impl Verify for NoteAttachments {
 impl TryFrom<proto::note::NoteAttachments> for miden_protocol::note::NoteAttachments {
     type Error = ConversionError;
     fn try_from(value: proto::note::NoteAttachments) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::note::DecodedNoteScript as NoteScript;
+
+impl Verify for NoteScript {
+    type Verified = miden_protocol::note::NoteScript;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &self.mast)?;
+        Ok(Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), entrypoint)?)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteScript> for miden_protocol::note::NoteScript {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteScript) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

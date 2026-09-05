@@ -1,7 +1,7 @@
 use alloc::format;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::asset::Asset;
 use miden_protocol::note::{
     Note,
@@ -23,7 +23,6 @@ use miden_protocol::note::{
     NoteType,
     PartialNoteMetadata,
 };
-use miden_protocol::{MastNodeId, Word};
 
 use super::{MessageDecodeExt, MessageDecoder, required};
 use crate::{ConversionError, ConversionResultExt, proto};
@@ -335,20 +334,6 @@ impl From<&NoteScript> for proto::note::NoteScript {
             entrypoint: script.entrypoint().into(),
             mast: Some(script.mast().as_ref().into()),
         }
-    }
-}
-
-impl TryFrom<proto::note::NoteScript> for NoteScript {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::note::NoteScript) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let mast = required!(decoder, value.mast)?;
-        let entrypoint = value.entrypoint;
-        let entrypoint = MastNodeId::from_u32_safe(entrypoint, &mast)
-            .map_err(|err| ConversionError::deserialization("note_script.entrypoint", err))?;
-
-        Self::from_parts(Arc::new(mast), entrypoint).map_err(ConversionError::new)
     }
 }
 

@@ -327,3 +327,14 @@ fn attachments_defer_nested_verification() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn note_script_defers_entrypoint_validation() {
+    let decoded = proto::note::NoteScript {
+        entrypoint: 1,
+        mast: Some(miden_protocol::MastForest::new().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}
