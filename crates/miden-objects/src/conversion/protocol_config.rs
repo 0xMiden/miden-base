@@ -25,19 +25,6 @@ impl From<KernelConfig> for proto::protocol_config::KernelConfig {
     }
 }
 
-impl TryFrom<proto::protocol_config::ProofSecurityPolicy> for ProofSecurityPolicy {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::protocol_config::ProofSecurityPolicy) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let security_estimator_root = required!(decoder, message.security_estimator_root)?;
-        let minimum_bits = u8::try_from(message.minimum_bits).context("minimum_bits")?;
-
-        ProofSecurityPolicy::new(security_estimator_root, minimum_bits)
-            .map_err(ConversionError::new)
-    }
-}
-
 impl From<&ProofSecurityPolicy> for proto::protocol_config::ProofSecurityPolicy {
     fn from(policy: &ProofSecurityPolicy) -> Self {
         Self {

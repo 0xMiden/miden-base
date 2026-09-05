@@ -81,7 +81,14 @@ fn dummy_protocol_config() -> ProtocolConfig {
 }
 
 fn error_source<E: Error + 'static>(error: &ConversionError) -> Option<&E> {
-    error.source().and_then(|source| source.downcast_ref::<E>())
+    let mut source = error.source();
+    while let Some(error) = source {
+        if let Some(error) = error.downcast_ref::<E>() {
+            return Some(error);
+        }
+        source = error.source();
+    }
+    None
 }
 
 #[test]

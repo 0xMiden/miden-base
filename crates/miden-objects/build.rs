@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     miden_protobuf::build::configure_proto_decode_fields(
         &mut prost,
         &descriptors,
-        [".protocol_config.KernelConfig"],
+        [".protocol_config.ProofSecurityPolicy", ".protocol_config.KernelConfig"],
     )?;
     prost.compile_fds(descriptors)?;
     Ok(())

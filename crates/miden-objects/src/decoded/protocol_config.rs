@@ -20,3 +20,34 @@ impl TryFrom<proto::protocol_config::KernelConfig>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::protocol_config::DecodedProofSecurityPolicy as ProofSecurityPolicy;
+
+impl Verify for ProofSecurityPolicy {
+    type Verified = miden_protocol::protocol_config::ProofSecurityPolicy;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.security_estimator_root,
+            self.minimum_bits.try_into()?,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VerificationError {
+    #[error("{0}")]
+    Config(#[from] miden_protocol::errors::ProtocolConfigError),
+    #[error("minimum security bits do not fit in a u8: {0}")]
+    MinimumBits(#[from] core::num::TryFromIntError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::protocol_config::ProofSecurityPolicy>
+    for miden_protocol::protocol_config::ProofSecurityPolicy
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::protocol_config::ProofSecurityPolicy) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

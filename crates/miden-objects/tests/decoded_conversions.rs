@@ -49,3 +49,17 @@ fn kernel_verification_is_deferred() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn security_policy_verification_is_deferred() {
+    for minimum_bits in [0, u32::MAX] {
+        let decoded = proto::protocol_config::ProofSecurityPolicy {
+            security_estimator_root: Some(Word::empty().into()),
+            minimum_bits,
+        }
+        .decode_fields()
+        .unwrap();
+        assert_eq!(decoded.minimum_bits, minimum_bits);
+        assert!(decoded.verify().is_err());
+    }
+}
