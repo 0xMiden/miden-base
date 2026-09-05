@@ -135,3 +135,25 @@ impl TryFrom<proto::primitives::SmtLeafEntryList>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedMerkleStoreNode as MerkleStoreNode;
+
+impl Verify for MerkleStoreNode {
+    type Verified = miden_protocol::crypto::merkle::InnerNodeInfo;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified {
+            value: self.value,
+            left: self.left,
+            right: self.right,
+        })
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::MerkleStoreNode> for miden_protocol::crypto::merkle::InnerNodeInfo {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::MerkleStoreNode) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

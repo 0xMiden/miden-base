@@ -197,3 +197,15 @@ fn smt_entry_list_verifies() {
             .is_empty()
     );
 }
+
+#[test]
+fn merkle_store_node_verifies() {
+    let decoded = proto::primitives::MerkleStoreNode {
+        value: Some(Word::empty().into()),
+        left: Some(Word::empty().into()),
+        right: Some(Word::empty().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap().value, Word::empty());
+}
