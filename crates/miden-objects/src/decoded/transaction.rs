@@ -48,3 +48,23 @@ impl TryFrom<proto::transaction::TransactionScript>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedNoteArgument as NoteArgument;
+
+impl Verify for NoteArgument {
+    type Verified = (miden_protocol::note::NoteId, miden_protocol::Word);
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.note_id.verify()?, self.args))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::NoteArgument>
+    for (miden_protocol::note::NoteId, miden_protocol::Word)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::NoteArgument) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

@@ -508,3 +508,19 @@ fn transaction_script_defers_entrypoint_validation() {
     assert_eq!(decoded.entrypoint, 1);
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn note_argument_verifies_into_tuple() {
+    let id = miden_protocol::note::NoteId::from_raw(Word::empty());
+    let decoded = proto::transaction::NoteArgument {
+        note_id: Some((&id).into()),
+        args: Some(Word::from([1_u32, 2, 3, 4]).into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap(), (id, Word::from([1_u32, 2, 3, 4])));
+    let error = proto::transaction::NoteArgument { note_id: None, args: None }
+        .decode_fields()
+        .unwrap_err();
+    assert!(error.to_string().starts_with("note_id: "), "{error}");
+}
