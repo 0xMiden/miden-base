@@ -68,3 +68,44 @@ impl TryFrom<proto::transaction::NoteArgument>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedTransactionArgs as TransactionArgs;
+
+impl Verify for TransactionArgs {
+    type Verified = miden_protocol::transaction::TransactionArgs;
+    type Error = TransactionArgsError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let tx_script = self.tx_script.map(Verify::verify).transpose()?;
+        let mut note_args = alloc::collections::BTreeMap::new();
+        for argument in self.note_args {
+            let (id, args) = argument.verify().expect("infallible note argument");
+            if note_args.insert(id, args).is_some() {
+                return Err(TransactionArgsError::DuplicateNoteArgument(id));
+            }
+        }
+        Ok(Self::Verified::from_parts(
+            tx_script,
+            self.tx_script_args,
+            note_args,
+            self.advice_inputs.verify()?,
+            self.auth_args,
+        ))
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum TransactionArgsError {
+    #[error("invalid transaction script: {0}")]
+    Script(#[from] ScriptError),
+    #[error("invalid advice inputs: {0}")]
+    Advice(#[from] super::primitives::AdviceError),
+    #[error("duplicate note argument {0}")]
+    DuplicateNoteArgument(miden_protocol::note::NoteId),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::TransactionArgs> for miden_protocol::transaction::TransactionArgs {
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::TransactionArgs) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

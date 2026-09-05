@@ -278,7 +278,7 @@ fn transaction_args_require_nested_messages_and_reject_duplicate_note_ids() {
         auth_args: Some(dummy_word(5).into()),
     };
     let error = TransactionArgs::try_from(duplicate).unwrap_err();
-    assert_eq!(error.to_string(), "note_args[1].note_id: duplicate note argument");
+    assert_eq!(error.to_string(), format!("duplicate note argument {note}"));
 }
 
 #[test]

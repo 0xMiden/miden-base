@@ -524,3 +524,29 @@ fn note_argument_verifies_into_tuple() {
         .unwrap_err();
     assert!(error.to_string().starts_with("note_id: "), "{error}");
 }
+
+#[test]
+fn transaction_args_decode_optional_script_without_verifying_it() {
+    let input = miden_protocol::transaction::TransactionArgs::from_parts(
+        None,
+        Word::empty(),
+        Default::default(),
+        Default::default(),
+        Word::empty(),
+    );
+    let wire = proto::transaction::TransactionArgs::from(&input);
+    let decoded = wire.clone().decode_fields().unwrap();
+    assert!(decoded.tx_script.is_none());
+    assert_eq!(decoded.verify().unwrap(), input);
+    let decoded = proto::transaction::TransactionArgs {
+        tx_script: Some(proto::transaction::TransactionScript {
+            entrypoint: 1,
+            mast: Some(miden_protocol::MastForest::new().into()),
+        }),
+        ..wire
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.tx_script.is_some());
+    assert!(decoded.verify().is_err());
+}

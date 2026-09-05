@@ -1,10 +1,8 @@
-use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::vec::Vec;
 
-use miden_protocol::Word;
 use miden_protocol::account::{AccountId, AccountUpdateDetails};
-use miden_protocol::note::{NoteHeader, NoteId, Nullifier};
+use miden_protocol::note::{NoteHeader, Nullifier};
 use miden_protocol::transaction::{
     InputNoteCommitment,
     InputNotes,
@@ -56,33 +54,6 @@ impl From<&TransactionArgs> for proto::transaction::TransactionArgs {
 impl From<TransactionArgs> for proto::transaction::TransactionArgs {
     fn from(value: TransactionArgs) -> Self {
         (&value).into()
-    }
-}
-
-impl TryFrom<proto::transaction::TransactionArgs> for TransactionArgs {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::transaction::TransactionArgs) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let tx_script = value.tx_script.map(TryInto::try_into).transpose()?;
-        let tx_script_args = required!(decoder, value.tx_script_args)?;
-        let mut note_args = BTreeMap::new();
-        for (index, note_arg) in value.note_args.into_iter().enumerate() {
-            let decoder = note_arg.decoder();
-            let note_arg_context = format!("note_args[{index}]");
-            let note_id_word: Word =
-                required!(decoder, note_arg.note_id).context(&note_arg_context)?;
-            let note_id = NoteId::from_raw(note_id_word);
-            let args = required!(decoder, note_arg.args).context(&note_arg_context)?;
-            if note_args.insert(note_id, args).is_some() {
-                return Err(ConversionError::message("duplicate note argument")
-                    .context(format!("{note_arg_context}.note_id")));
-            }
-        }
-        let advice_inputs = required!(decoder, value.advice_inputs)?;
-        let auth_args = required!(decoder, value.auth_args)?;
-
-        Ok(Self::from_parts(tx_script, tx_script_args, note_args, advice_inputs, auth_args))
     }
 }
 
