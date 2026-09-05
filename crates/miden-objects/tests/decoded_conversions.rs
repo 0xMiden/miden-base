@@ -220,3 +220,14 @@ fn advice_map_entry_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap(), (Word::empty(), vec![miden_protocol::Felt::ONE]));
 }
+
+#[test]
+fn storage_map_entry_verifies() {
+    let decoded = proto::account::StorageMapEntry {
+        key: Some(Word::empty().into()),
+        value: Some(Word::empty().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap().1, Word::empty());
+}

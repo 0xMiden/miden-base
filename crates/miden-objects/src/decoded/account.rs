@@ -18,3 +18,23 @@ impl TryFrom<proto::account::StorageSlotId> for miden_protocol::account::Storage
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedStorageMapEntry as StorageMapEntry;
+
+impl Verify for StorageMapEntry {
+    type Verified = (miden_protocol::account::StorageMapKey, miden_protocol::Word);
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((miden_protocol::account::StorageMapKey::from_raw(self.key), self.value))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::StorageMapEntry>
+    for (miden_protocol::account::StorageMapKey, miden_protocol::Word)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::account::StorageMapEntry) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
