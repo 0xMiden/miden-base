@@ -384,3 +384,21 @@ fn merkle_store_verification_rejects_duplicates_after_decoding() {
         matches!(decoded.verify(), Err(miden_objects::decoded::primitives::AdviceError::DuplicateMerkleParent(key)) if key == Word::empty())
     );
 }
+
+#[test]
+fn advice_inputs_decode_nested_records_before_verification() {
+    let input = miden_protocol::vm::AdviceInputs::default();
+    let decoded = proto::primitives::AdviceInputs::from(&input).decode_fields().unwrap();
+    assert!(decoded.advice_map.entries.is_empty());
+    assert_eq!(decoded.verify().unwrap(), input);
+    let error = proto::primitives::AdviceInputs {
+        advice_stack: Some(proto::primitives::AdviceStack { values: vec![] }),
+        advice_map: Some(proto::primitives::AdviceMap {
+            entries: vec![proto::primitives::AdviceMapEntry { key: None, values: vec![] }],
+        }),
+        merkle_store: Some(proto::primitives::MerkleStore { nodes: vec![] }),
+    }
+    .decode_fields()
+    .unwrap_err();
+    assert!(error.to_string().starts_with("advice_map.entries[0].key: "), "{error}");
+}

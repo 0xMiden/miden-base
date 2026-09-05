@@ -255,3 +255,25 @@ impl TryFrom<proto::primitives::MerkleStore>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedAdviceInputs as AdviceInputs;
+
+impl Verify for AdviceInputs {
+    type Verified = miden_protocol::vm::AdviceInputs;
+    type Error = AdviceError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.advice_stack.verify().expect("infallible advice stack"),
+            self.advice_map.verify()?,
+            self.merkle_store.verify()?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::AdviceInputs> for miden_protocol::vm::AdviceInputs {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::AdviceInputs) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

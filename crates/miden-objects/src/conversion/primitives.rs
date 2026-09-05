@@ -8,7 +8,6 @@ use miden_protocol::utils::serde::{Deserializable, Serializable};
 use miden_protocol::vm::{AdviceInputs, AdviceMap, AdviceStack, ExecutionProof};
 use miden_protocol::{Felt, MastForest, Word};
 
-use super::{MessageDecodeExt, required};
 use crate::{ConversionError, ConversionResultExt, proto};
 
 const WORD_SERIALIZED_SIZE: usize = Word::SERIALIZED_SIZE;
@@ -215,19 +214,6 @@ impl From<&AdviceInputs> for proto::primitives::AdviceInputs {
             advice_map: Some(value.map().into()),
             merkle_store: Some(value.store().into()),
         }
-    }
-}
-
-impl TryFrom<proto::primitives::AdviceInputs> for AdviceInputs {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::AdviceInputs) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let advice_stack = required!(decoder, value.advice_stack)?;
-        let advice_map: AdviceMap = required!(decoder, value.advice_map)?;
-        let merkle_store: MerkleStore = required!(decoder, value.merkle_store)?;
-
-        Ok(AdviceInputs::new(advice_stack, advice_map, merkle_store))
     }
 }
 
