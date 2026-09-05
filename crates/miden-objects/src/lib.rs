@@ -6,6 +6,7 @@ pub mod conversion;
 pub mod error;
 
 pub use error::{ConversionError, ConversionResultExt};
+pub use miden_protobuf::{BuildUnchecked, DecodeMessage, Decoded, Verify, VerifyWith};
 pub use prost;
 
 /// Generated canonical Protobuf messages.

@@ -5,6 +5,8 @@ members = [
   "crates/miden-agglayer",
   "crates/miden-block-prover",
   "crates/miden-objects",
+  "crates/miden-protobuf",
+  "crates/miden-protobuf-derive",
   "crates/miden-protocol",
   "crates/miden-protocol-build-utils",
   "crates/miden-standards",
@@ -47,6 +49,9 @@ miden-testing              = { default-features = false, path = "crates/miden-te
 miden-tx                   = { default-features = false, path = "crates/miden-tx", version = "0.17.0-rc.4" }
 miden-tx-batch             = { default-features = false, path = "crates/miden-tx-batch", version = "0.17.0-rc.4" }
 
+miden-protobuf = { default-features = false, path = "crates/miden-protobuf", version = "0.17" }
+miden-protobuf-derive = { path = "crates/miden-protobuf-derive", version = "0.17" }
+
 # Miden dependencies
 miden-assembly         = { default-features = false, version = "0.32.0" }
 miden-assembly-syntax  = { default-features = false, version = "0.32.0" }
@@ -64,6 +69,11 @@ miden-utils-sync       = { default-features = false, version = "0.32.0" }
 miden-verifier         = { default-features = false, version = "0.32.0" }
 
 # External dependencies
+proc-macro-crate = { version = "3.4" }
+proc-macro2 = { version = "1" }
+quote = { version = "1" }
+syn = { features = ["full"], version = "2" }
+prost-types = { default-features = false, version = "0.14" }
 alloy-sol-types = { default-features = false, version = "1.5" }
 anyhow          = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
 assert_matches  = { default-features = false, version = "1.5" }

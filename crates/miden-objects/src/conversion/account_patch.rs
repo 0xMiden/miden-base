@@ -212,7 +212,7 @@ impl TryFrom<proto::account::AccountStoragePatch> for AccountStoragePatch {
             .map(|(index, slot)| {
                 let slot_path = format!("slots[{index}]");
                 let slot_name = StorageSlotName::new(slot.slot_name)
-                    .map_err(ConversionError::from)
+                    .map_err(ConversionError::new)
                     .context("slot_name")
                     .context(slot_path.clone())?;
                 let patch = match slot.patch {
@@ -279,7 +279,7 @@ impl TryFrom<proto::account::AccountVaultPatch> for AccountVaultPatch {
             let asset_id: Word =
                 required!(decoder, entry.asset_id).context(format!("entries[{index}]"))?;
             let asset_id = AssetId::try_from(asset_id)
-                .map_err(ConversionError::from)
+                .map_err(ConversionError::new)
                 .context("asset_id")
                 .context(format!("entries[{index}]"))?;
             let value = required!(decoder, entry.value).context(format!("entries[{index}]"))?;
@@ -289,9 +289,7 @@ impl TryFrom<proto::account::AccountVaultPatch> for AccountVaultPatch {
             }
         }
 
-        AccountVaultPatch::new(entries)
-            .map_err(ConversionError::from)
-            .context("entries")
+        AccountVaultPatch::new(entries).map_err(ConversionError::new).context("entries")
     }
 }
 

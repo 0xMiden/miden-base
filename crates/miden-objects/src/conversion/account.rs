@@ -117,7 +117,7 @@ impl TryFrom<proto::account::AccountStorageHeader> for AccountStorageHeader {
             .map(|slot| {
                 use proto::account::account_storage_header::storage_slot::Content;
 
-                let name = StorageSlotName::new(slot.slot_name)?;
+                let name = StorageSlotName::new(slot.slot_name).map_err(ConversionError::new)?;
                 let (slot_type, commitment) = match slot.content {
                     Some(Content::Value(value)) => {
                         (StorageSlotType::Value, value.try_into().context("content.value")?)

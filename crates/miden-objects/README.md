@@ -13,6 +13,20 @@ RPC crates can use `FILE_DESCRIPTOR_SET` as the import descriptor and apply ever
 to the canonical generated types from this crate instead of generating duplicate Rust types in the
 RPC crate.
 
+## Decoded Objects
+
+The experimental `ProtoDecodeFields` derive generates schema-shaped records, required/optional/
+repeated message conversion, and nested field/index error paths. Atomic messages can implement
+`DecodeMessage` using their existing representation decoder. Enums, oneofs, maps, and boxed
+messages are not yet supported by the derive.
+
+Domain construction is opt-in and handwritten: `Verify::verify()` needs no external context,
+`VerifyWith<C>::verify_with(context)` accepts borrowed or owned context, and
+`BuildUnchecked::build_unchecked()` uses a supported unchecked constructor. Unchecked construction
+can still fail and must document the invariants the caller must ensure. None of these operations
+is invoked automatically by field decoding, and verification errors do not get generated wire
+paths. Existing conversion APIs are retained as compatibility bridges during migration.
+
 ## License
 
 This project is [MIT licensed](../../LICENSE).

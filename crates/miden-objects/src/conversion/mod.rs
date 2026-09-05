@@ -32,12 +32,12 @@ impl<M: prost::Message> MessageDecoder<M> {
     ) -> Result<U, ConversionError>
     where
         T: TryInto<U>,
-        T::Error: Into<ConversionError>,
+        T::Error: core::error::Error + Send + Sync + 'static,
     {
         value
             .ok_or_else(|| ConversionError::missing_field::<M>(name))?
             .try_into()
-            .map_err(Into::into)
+            .map_err(ConversionError::new)
             .map_err(|error: ConversionError| error.context(name))
     }
 }
