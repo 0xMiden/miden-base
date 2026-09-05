@@ -97,3 +97,14 @@ fn sparse_path_defers_depth_validation() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn smt_leaf_entry_verifies() {
+    let decoded = proto::primitives::SmtLeafEntry {
+        key: Some(Word::empty().into()),
+        value: Some(Word::empty().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.verify().unwrap(), (Word::empty(), Word::empty()));
+}

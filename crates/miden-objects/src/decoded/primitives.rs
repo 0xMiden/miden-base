@@ -38,3 +38,21 @@ impl TryFrom<proto::primitives::SparseMerklePath>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedSmtLeafEntry as SmtLeafEntry;
+
+impl Verify for SmtLeafEntry {
+    type Verified = (miden_protocol::Word, miden_protocol::Word);
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.key, self.value))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::SmtLeafEntry> for (miden_protocol::Word, miden_protocol::Word) {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::SmtLeafEntry) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
