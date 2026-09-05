@@ -443,3 +443,15 @@ fn account_witness_defers_path_depth_verification() {
         assert_eq!(decoded.verify().is_ok(), valid);
     }
 }
+
+#[test]
+fn vault_patch_entry_defers_asset_id_validation() {
+    let decoded = proto::account::AccountVaultPatchEntry {
+        asset_id: Some(Word::empty().into()),
+        value: Some(Word::empty().into()),
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.asset_id, Word::empty());
+    assert!(decoded.verify().is_err());
+}

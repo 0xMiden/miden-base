@@ -88,3 +88,23 @@ impl TryFrom<proto::account::AccountWitness>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountVaultPatchEntry as AccountVaultPatchEntry;
+
+impl Verify for AccountVaultPatchEntry {
+    type Verified = (miden_protocol::asset::AssetId, miden_protocol::Word);
+    type Error = miden_protocol::errors::AssetError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.asset_id.try_into()?, self.value))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountVaultPatchEntry>
+    for (miden_protocol::asset::AssetId, miden_protocol::Word)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountVaultPatchEntry) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
