@@ -130,3 +130,14 @@ fn asset_class_verifies() {
     .unwrap();
     assert_eq!(decoded.verify().unwrap().suffix(), miden_protocol::Felt::ONE);
 }
+
+#[test]
+fn transaction_id_verifies() {
+    let decoded = proto::transaction::TransactionId { id: Some(Word::empty().into()) }
+        .decode_fields()
+        .unwrap();
+    assert_eq!(
+        decoded.verify().unwrap(),
+        miden_protocol::transaction::TransactionId::from_raw(Word::empty())
+    );
+}
