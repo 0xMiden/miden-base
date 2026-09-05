@@ -35,17 +35,8 @@ impl From<MerklePath> for proto::primitives::MerklePath {
 
 impl TryFrom<&proto::primitives::MerklePath> for MerklePath {
     type Error = ConversionError;
-
-    fn try_from(merkle_path: &proto::primitives::MerklePath) -> Result<Self, Self::Error> {
-        merkle_path.siblings.iter().map(Word::try_from).collect()
-    }
-}
-
-impl TryFrom<proto::primitives::MerklePath> for MerklePath {
-    type Error = ConversionError;
-
-    fn try_from(merkle_path: proto::primitives::MerklePath) -> Result<Self, Self::Error> {
-        (&merkle_path).try_into()
+    fn try_from(value: &proto::primitives::MerklePath) -> Result<Self, Self::Error> {
+        value.clone().try_into()
     }
 }
 

@@ -78,3 +78,11 @@ fn proof_verification_config_defers_nested_policy_checks() {
     .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn merkle_path_verifies() {
+    let decoded = proto::primitives::MerklePath { siblings: vec![Word::empty().into()] }
+        .decode_fields()
+        .unwrap();
+    assert_eq!(decoded.verify().unwrap().nodes(), &[Word::empty()]);
+}
