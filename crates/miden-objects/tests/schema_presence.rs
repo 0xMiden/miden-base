@@ -17,6 +17,31 @@ fn message<'a>(
 }
 
 #[test]
+fn account_id_uses_a_versioned_field_payload() {
+    let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
+    let id = message(&descriptors, "account", "AccountId");
+    assert_eq!(id.oneof_decl.len(), 1);
+    assert_eq!(id.oneof_decl[0].name(), "version");
+    assert_eq!(id.field.len(), 1);
+    let variant = &id.field[0];
+    assert_eq!(variant.name(), "v1");
+    assert_eq!(variant.number(), 1);
+    assert_eq!(variant.r#type(), Type::Message);
+    assert_eq!(variant.type_name(), ".account.AccountIdV1");
+    assert_eq!(variant.oneof_index, Some(0));
+
+    let v1 = message(&descriptors, "account", "AccountIdV1");
+    assert_eq!(v1.field.len(), 2);
+    for (field, (name, number)) in v1.field.iter().zip([("suffix", 1), ("prefix", 2)]) {
+        assert_eq!(field.name(), name);
+        assert_eq!(field.number(), number);
+        assert_eq!(field.r#type(), Type::Message);
+        assert_eq!(field.type_name(), ".primitives.Felt");
+        assert!(!field.proto3_optional());
+    }
+}
+
+#[test]
 fn block_header_scheduled_upgrade_has_explicit_presence() {
     let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
     let header = message(&descriptors, "blockchain", "BlockHeader");

@@ -665,14 +665,19 @@ fn note_protobuf_reconstructs_attachment_metadata_from_structured_attachments() 
 fn note_metadata_protobuf_reports_invalid_sender() {
     let metadata = *Note::mock_noop(Word::empty()).metadata();
     let mut message = proto::note::NoteMetadata::from(metadata);
-    let proto::account::account_id::Version::V1(id) =
+    let proto::account::account_id::Version::V1(v1) =
         message.sender.as_mut().unwrap().version.as_mut().unwrap();
-    id.prefix.as_mut().unwrap().value &= !0xf;
+    v1.prefix.as_mut().unwrap().value = Felt::ORDER;
+
     let error = NoteMetadata::try_from(message).unwrap_err();
-    assert!(error.to_string().starts_with("sender.version.v1: "));
-    assert_matches!(
-        error.source().unwrap().downcast_ref::<AccountIdError>(),
-        Some(AccountIdError::UnknownAccountIdVersion(0))
+
+    assert!(error.to_string().starts_with("sender.version.v1.prefix.felt.value: "));
+    assert!(
+        error
+            .source()
+            .unwrap()
+            .downcast_ref::<<Felt as TryFrom<u64>>::Error>()
+            .is_some()
     );
 }
 

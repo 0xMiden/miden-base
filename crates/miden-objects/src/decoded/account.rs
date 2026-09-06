@@ -1,10 +1,33 @@
 //! Domain construction for decoded account messages.
 pub use proto::account::{
+    DecodedAccountId as AccountId,
     DecodedAccountIdV1 as AccountIdV1,
     DecodedStorageSlotId as StorageSlotId,
 };
 
 use crate::{ConversionError, DecodeMessage, Verify, proto};
+
+impl Verify for AccountId {
+    type Verified = miden_protocol::account::AccountId;
+    type Error = miden_protocol::errors::AccountIdError;
+
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        match self.version {
+            proto::account::account_id::DecodedVersion::V1(id) => {
+                Ok(Self::Verified::V1(id.verify()?))
+            },
+        }
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountId> for miden_protocol::account::AccountId {
+    type Error = ConversionError;
+
+    fn try_from(value: proto::account::AccountId) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
 
 impl Verify for AccountIdV1 {
     type Verified = miden_protocol::account::AccountIdV1;
@@ -89,11 +112,17 @@ impl Verify for AccountWitness {
     type Verified = miden_protocol::block::account_tree::AccountWitness;
     type Error = AccountWitnessError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        Ok(Self::Verified::new(self.witness_id, self.commitment, self.path.verify()?)?)
+        Ok(Self::Verified::new(
+            self.witness_id.verify()?,
+            self.commitment,
+            self.path.verify()?,
+        )?)
     }
 }
 #[derive(Debug, thiserror::Error)]
 pub enum AccountWitnessError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("invalid witness path: {0}")]
     Path(#[from] miden_protocol::crypto::merkle::MerkleError),
     #[error("invalid account witness: {0}")]
@@ -195,7 +224,7 @@ impl Verify for AccountHeader {
             },
         }
         Ok(Self::Verified::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.nonce.try_into().map_err(AccountHeaderError::Nonce)?,
             self.vault_root,
             self.storage_commitment,
@@ -205,6 +234,8 @@ impl Verify for AccountHeader {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum AccountHeaderError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("account header version is unspecified")]
     UnspecifiedVersion,
     #[error("invalid account nonce: {0}")]
@@ -426,7 +457,7 @@ impl Verify for AccountPatch {
             return Err(AccountPatchError::UnspecifiedVersion);
         }
         Ok(Self::Verified::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.storage.verify()?,
             self.vault.verify()?,
             self.code.map(Verify::verify).transpose()?,
@@ -437,6 +468,8 @@ impl Verify for AccountPatch {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccountPatchError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("account patch version is unspecified")]
     UnspecifiedVersion,
     #[error("{0}")]
@@ -589,7 +622,7 @@ impl Verify for PartialAccount {
     type Error = PartialAccountError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.nonce,
             self.code.verify()?,
             self.storage.verify()?,
@@ -601,6 +634,8 @@ impl Verify for PartialAccount {
 
 #[derive(Debug, thiserror::Error)]
 pub enum PartialAccountError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("{0}")]
     Account(#[from] miden_protocol::errors::AccountError),
     #[error("{0}")]

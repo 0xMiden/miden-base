@@ -31,8 +31,44 @@ fn execution_proof_atomic_decode() {
 }
 
 #[test]
-fn account_id_atomic_decode() {
-    assert!(proto::account::AccountId { id: vec![] }.decode_fields().is_err());
+fn account_id_oneof_roundtrip() {
+    use miden_protocol::account::{AccountId, AccountIdV1, AccountType, AssetCallbackFlag};
+    use prost::Message;
+
+    let id = AccountId::V1(AccountIdV1::dummy(
+        [7; 15],
+        AccountType::Private,
+        AssetCallbackFlag::Disabled,
+    ));
+    let bytes = proto::account::AccountId::from(id).encode_to_vec();
+    let wire = proto::account::AccountId::decode(bytes.as_slice()).unwrap();
+    let decoded = wire.decode_fields().unwrap();
+    let proto::account::account_id::DecodedVersion::V1(v1) = &decoded.version;
+    assert_eq!(v1.suffix, id.suffix());
+    assert_eq!(v1.prefix, id.prefix().as_felt());
+    assert_eq!(decoded.verify().unwrap(), id);
+    assert_eq!(AccountId::try_from(wire).unwrap(), id);
+}
+
+#[test]
+fn account_id_verification_is_deferred_in_parents() {
+    use miden_protocol::errors::AccountIdError;
+
+    let metadata = *miden_protocol::note::Note::mock_noop(Word::empty()).metadata();
+    let mut wire = proto::note::NoteMetadata::from(metadata);
+    let sender = wire.sender.as_mut().unwrap();
+    let proto::account::account_id::Version::V1(v1) = sender.version.as_mut().unwrap();
+    v1.prefix.as_mut().unwrap().value &= !0xf;
+
+    let decoded = (*sender).decode_fields().unwrap();
+    assert!(matches!(decoded.verify(), Err(AccountIdError::UnknownAccountIdVersion(0))));
+    let decoded = wire.decode_fields().unwrap();
+    assert!(matches!(
+        decoded.verify(),
+        Err(miden_objects::decoded::note::VerificationError::AccountId(
+            AccountIdError::UnknownAccountIdVersion(0)
+        ))
+    ));
 }
 
 #[test]
@@ -91,8 +127,49 @@ fn account_id_v1_decode_reports_field_paths() {
             }
             let error = id.decode_fields().unwrap_err();
             assert!(error.to_string().starts_with(&path), "{error}");
+            let error = proto::account::AccountId {
+                version: Some(proto::account::account_id::Version::V1(id)),
+            }
+            .decode_fields()
+            .unwrap_err();
+            assert!(error.to_string().starts_with(&format!("version.v1.{path}")), "{error}");
         }
     }
+}
+
+#[test]
+fn account_id_decode_reports_repeated_asset_paths() {
+    let note = miden_protocol::note::Note::mock_noop(Word::empty());
+    let (assets, _, recipient, _) = note.into_parts();
+    let details = miden_protocol::note::NoteDetails::new(assets, recipient);
+    let mut wire = proto::note::NoteDetails::from(&details);
+    let index = wire.assets.len();
+    wire.assets.push(proto::asset::Asset {
+        asset_id: Some(proto::asset::AssetId {
+            version: proto::asset::AssetVersion::V1 as i32,
+            asset_class: Some(proto::asset::AssetClass {
+                suffix: Some(proto::primitives::Felt { value: 0 }),
+                prefix: Some(proto::primitives::Felt { value: 0 }),
+            }),
+            composition: proto::asset::AssetComposition::Fungible as i32,
+            faucet_id: Some(proto::account::AccountId {
+                version: Some(proto::account::account_id::Version::V1(
+                    proto::account::AccountIdV1 {
+                        suffix: Some(proto::primitives::Felt { value: 0 }),
+                        prefix: None,
+                    },
+                )),
+            }),
+        }),
+        value: Some(Word::empty().into()),
+    });
+    let error = wire.decode_fields().unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .starts_with(&format!("assets[{index}].asset_id.faucet_id.version.v1.prefix: ")),
+        "{error}"
+    );
 }
 
 #[test]
@@ -781,7 +858,7 @@ fn asset_id_decodes_named_enums_before_verifying_composition() {
         composition: proto::asset::AssetComposition::Fungible as i32,
         faucet_id: Some(FungibleAsset::mock_issuer().into()),
     };
-    let decoded = wire.clone().decode_fields().unwrap();
+    let decoded = wire.decode_fields().unwrap();
     assert_eq!(decoded.version, proto::asset::AssetVersion::V1);
     assert_eq!(decoded.composition, proto::asset::AssetComposition::Fungible);
     assert!(decoded.verify().is_ok());

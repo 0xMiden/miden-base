@@ -216,7 +216,7 @@ impl Verify for BlockAccountUpdate {
     type Error = BlockAccountUpdateError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.final_state_commitment,
             self.details.verify()?,
         )?)
@@ -225,6 +225,8 @@ impl Verify for BlockAccountUpdate {
 
 #[derive(Debug, thiserror::Error)]
 pub enum BlockAccountUpdateError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("{0}")]
     Details(#[from] super::account::AccountPatchError),
     #[error("{0}")]

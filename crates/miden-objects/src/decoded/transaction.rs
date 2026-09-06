@@ -221,7 +221,7 @@ impl BuildUnchecked for TransactionHeader {
         let output_notes =
             self.output_notes.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
         let header = Self::Output::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.initial_state_commitment,
             self.final_state_commitment,
             input_notes,
@@ -238,6 +238,8 @@ impl BuildUnchecked for TransactionHeader {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum TransactionHeaderBuildError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("invalid note header: {0}")]
     Note(#[from] super::note::VerificationError),
     #[error("invalid input notes: {0}")]
@@ -418,7 +420,7 @@ impl Verify for TxAccountUpdate {
     type Error = TxAccountUpdateError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.initial_state_commitment,
             self.final_state_commitment,
             self.account_patch_commitment,
@@ -429,6 +431,8 @@ impl Verify for TxAccountUpdate {
 
 #[derive(Debug, thiserror::Error)]
 pub enum TxAccountUpdateError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("{0}")]
     Details(#[from] super::account::AccountPatchError),
     #[error("{0}")]
@@ -450,7 +454,7 @@ impl Verify for BatchAccountUpdate {
     type Error = BatchAccountUpdateError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
-            self.account_id,
+            self.account_id.verify()?,
             self.initial_state_commitment,
             self.final_state_commitment,
             self.details.verify()?,
@@ -460,6 +464,8 @@ impl Verify for BatchAccountUpdate {
 
 #[derive(Debug, thiserror::Error)]
 pub enum BatchAccountUpdateError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("{0}")]
     Details(#[from] super::account::AccountPatchError),
     #[error("{0}")]

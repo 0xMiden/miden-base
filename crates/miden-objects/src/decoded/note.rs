@@ -57,6 +57,8 @@ impl Verify for NoteAttachment {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("invalid note asset: {0}")]
     Asset(#[from] super::asset::VerificationError),
     #[error("note metadata version is unspecified")]
@@ -198,8 +200,8 @@ impl Verify for NoteMetadata {
                 return Err(VerificationError::UnspecifiedNoteType);
             },
         };
-        let partial =
-            PartialNoteMetadata::new(self.sender, note_type).with_tag(NoteTag::new(self.tag));
+        let partial = PartialNoteMetadata::new(self.sender.verify()?, note_type)
+            .with_tag(NoteTag::new(self.tag));
         if self.attachment_schemes.len() > NoteAttachments::MAX_COUNT {
             return Err(VerificationError::TooManyAttachmentSchemes);
         }
@@ -280,7 +282,7 @@ impl Verify for PartialNoteMetadata {
                 return Err(VerificationError::UnspecifiedNoteType);
             },
         };
-        Ok(Self::Verified::new(self.sender, note_type).with_tag(NoteTag::new(self.tag)))
+        Ok(Self::Verified::new(self.sender.verify()?, note_type).with_tag(NoteTag::new(self.tag)))
     }
 }
 

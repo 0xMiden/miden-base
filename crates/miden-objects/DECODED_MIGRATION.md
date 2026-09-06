@@ -8,22 +8,22 @@ This experiment starts from `origin/next` at `8195bba1` on branch
 `DecodeMessage`, `Verify`, `VerifyWith<C>`, and `BuildUnchecked`.
 Each migration commit covers one wire message.
 
-All 96 Miden message declarations, including nested and empty messages, are integrated.
+All 97 Miden message declarations, including nested and empty messages, are integrated.
 The imported `google.protobuf.Empty` is not counted as a Miden message.
 
 | Primary construction capability | Messages |
 | --- | ---: |
-| Generated records with manual `Verify` | 80 |
+| Generated records with manual `Verify` | 82 |
 | Generated records with manual `BuildUnchecked` | 10 |
 | Generated record with contextual verification only | 1 |
-| Canonical atomic representation adapters | 5 |
+| Canonical atomic representation adapters | 4 |
 | Unmigrated messages | 0 |
-| Total | 96 |
+| Total | 97 |
 
-Two unchecked records also implement `VerifyWith`. The five atoms are
+Two unchecked records also implement `VerifyWith`. The four atoms are
 `primitives.Word`, `primitives.Felt`, `primitives.MastForest`,
-`primitives.ExecutionProof`, and `account.AccountId`. Their existing canonical
-representation parsing and leaf diagnostics remain handwritten. This is not 96 fully
+and `primitives.ExecutionProof`. Their existing canonical
+representation parsing and leaf diagnostics remain handwritten. This is not 97 fully
 generated domain conversions.
 
 Generated-record selection and the two byte adapter attributes live in [build.rs](build.rs).
@@ -101,12 +101,15 @@ uses the public `SignedBlock::validate` API rather than duplicating that logic.
 - `StorageValuePatch` is a create/update/remove oneof, with a Word for create/update and
   `google.protobuf.Empty` for remove.
 - `PublicKey` and `Signature` use algorithm-specific byte oneofs instead of an enum plus bytes.
+- `AccountId` uses a version oneof instead of canonical bytes. Its `AccountIdV1` payload
+  carries suffix/prefix Felts. Structural decoding is generated; `Verify` checks the account-ID
+  bit constraints with the protocol's checked constructor before wrapping the V1 variant.
 - Full `Note` carries the new `PartialNoteMetadata`, while standalone `NoteMetadata` and
   `NoteHeader` retain full attachment metadata. Full notes derive attachment headers and
   commitments from attachment content rather than silently ignoring redundant fields.
 
-Storage patches and cryptographic oneofs change the wire layout. These schemas are unreleased;
-regenerate consumers together. Existing domain encoders remain handwritten.
+Storage patches, account IDs, and cryptographic oneofs change the wire layout. These schemas are
+unreleased; regenerate consumers together. Existing domain encoders remain handwritten.
 
 ## Validation
 

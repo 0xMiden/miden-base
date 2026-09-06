@@ -15,11 +15,6 @@ message AccountIdV1 {
   primitives.Felt prefix = 2;
 }
 
-message AccountIdV1 {
-  primitives.Felt suffix = 1;
-  primitives.Felt prefix = 2;
-}
-
 message AccountStorageHeader {
   message StorageSlot {
     string slot_name = 1;

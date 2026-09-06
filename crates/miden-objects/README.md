@@ -35,7 +35,7 @@ can still fail and must document the invariants the caller must ensure. None of 
 is invoked automatically by field decoding, and verification errors do not get generated wire
 paths. Existing conversion APIs are retained as compatibility bridges during migration.
 
-All 96 Miden messages are integrated: 91 generated records and five canonical atomic adapters.
+All 97 Miden messages are integrated: 93 generated records and four canonical atomic adapters.
 Construction capabilities, trust boundaries, and unreleased wire changes are detailed in
 [Decoded Conversion Migration](DECODED_MIGRATION.md).
 

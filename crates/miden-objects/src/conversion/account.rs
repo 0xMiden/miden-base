@@ -15,46 +15,7 @@ use miden_protocol::account::{
 use miden_protocol::asset::PartialVault;
 use miden_protocol::block::account_tree::AccountWitness;
 
-use crate::{ConversionError, proto};
-
-impl From<&AccountIdV1> for proto::account::AccountIdV1 {
-    fn from(account_id: &AccountIdV1) -> Self {
-        Self {
-            suffix: Some(account_id.suffix().into()),
-            prefix: Some(account_id.prefix().as_felt().into()),
-        }
-    }
-}
-
-impl From<AccountIdV1> for proto::account::AccountIdV1 {
-    fn from(account_id: AccountIdV1) -> Self {
-        (&account_id).into()
-    }
-}
-
-impl TryFrom<proto::account::AccountId> for AccountId {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::AccountId) -> Result<Self, Self::Error> {
-        match message.version {
-            Some(proto::account::account_id::Version::V1(id)) => {
-                id.try_into().map(Self::V1).context("version.v1")
-            },
-            None => Err(ConversionError::missing_field::<proto::account::AccountId>("version")),
-        }
-    }
-}
-
-impl TryFrom<proto::account::AccountIdV1> for AccountIdV1 {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::AccountIdV1) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let suffix = required!(decoder, message.suffix)?;
-        let prefix = required!(decoder, message.prefix)?;
-        Self::try_from_elements(suffix, prefix).map_err(ConversionError::new)
-    }
-}
+use crate::proto;
 
 impl From<&AccountIdV1> for proto::account::AccountIdV1 {
     fn from(account_id: &AccountIdV1) -> Self {
@@ -242,9 +203,4 @@ impl From<AccountWitness> for proto::account::AccountWitness {
     fn from(witness: AccountWitness) -> Self {
         (&witness).into()
     }
-}
-
-// Canonical representation adapter; domain interpretation is left to the containing record.
-impl crate::DecodeMessage for proto::account::AccountId {
-    type Decoded = miden_protocol::account::AccountId;
 }

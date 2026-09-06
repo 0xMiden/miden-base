@@ -45,13 +45,15 @@ impl Verify for AssetId {
         };
         Ok(Self::Verified::new(
             self.asset_class.verify().expect("infallible asset class"),
-            self.faucet_id,
+            self.faucet_id.verify()?,
             composition,
         )?)
     }
 }
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("{0}")]
+    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("asset id version is unspecified")]
     UnspecifiedVersion,
     #[error("asset composition is unspecified")]
