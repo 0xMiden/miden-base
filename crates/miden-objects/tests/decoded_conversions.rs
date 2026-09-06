@@ -744,3 +744,24 @@ fn asset_reports_nested_enum_paths_before_verifying() {
     let error = wire.decode_fields().unwrap_err();
     assert!(error.to_string().starts_with("asset_id.version: "), "{error}");
 }
+
+#[test]
+fn note_metadata_decodes_named_enums_and_defers_attachment_checks() {
+    let metadata = *miden_protocol::note::Note::mock_noop(Word::empty()).metadata();
+    let wire = proto::note::NoteMetadata::from(metadata);
+    let decoded = wire.clone().decode_fields().unwrap();
+    assert_eq!(decoded.version, proto::note::NoteVersion::V1);
+    assert_eq!(decoded.note_type, proto::note::NoteType::Private);
+    assert_eq!(decoded.verify().unwrap(), metadata);
+    for attachment_schemes in
+        [vec![u32::MAX], vec![0; miden_protocol::note::NoteAttachments::MAX_COUNT + 1]]
+    {
+        let decoded = proto::note::NoteMetadata { attachment_schemes, ..wire.clone() }
+            .decode_fields()
+            .unwrap();
+        assert!(decoded.verify().is_err());
+    }
+    let decoded = proto::note::NoteMetadata { note_type: 0, ..wire }.decode_fields().unwrap();
+    assert_eq!(decoded.note_type, proto::note::NoteType::Unspecified);
+    assert!(decoded.verify().is_err());
+}

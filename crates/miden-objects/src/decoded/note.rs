@@ -57,6 +57,12 @@ impl Verify for NoteAttachment {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("note metadata version is unspecified")]
+    UnspecifiedVersion,
+    #[error("note type is unspecified")]
+    UnspecifiedNoteType,
+    #[error("too many attachment schemes")]
+    TooManyAttachmentSchemes,
     #[error("invalid inclusion path: {0}")]
     Path(#[from] miden_protocol::crypto::merkle::MerkleError),
     #[error("invalid script entrypoint: {0}")]
@@ -159,6 +165,57 @@ impl TryFrom<proto::note::NoteInclusionProof>
 {
     type Error = ConversionError;
     fn try_from(value: proto::note::NoteInclusionProof) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::note::DecodedNoteMetadata as NoteMetadata;
+
+impl Verify for NoteMetadata {
+    type Verified = miden_protocol::note::NoteMetadata;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use miden_protocol::note::{
+            NoteAttachmentHeader,
+            NoteAttachmentScheme,
+            NoteAttachments,
+            NoteTag,
+            NoteType,
+            PartialNoteMetadata,
+        };
+        match self.version {
+            proto::note::NoteVersion::V1 => {},
+            proto::note::NoteVersion::Unspecified => {
+                return Err(VerificationError::UnspecifiedVersion);
+            },
+        }
+        let note_type = match self.note_type {
+            proto::note::NoteType::Private => NoteType::Private,
+            proto::note::NoteType::Public => NoteType::Public,
+            proto::note::NoteType::Unspecified => {
+                return Err(VerificationError::UnspecifiedNoteType);
+            },
+        };
+        let partial =
+            PartialNoteMetadata::new(self.sender, note_type).with_tag(NoteTag::new(self.tag));
+        if self.attachment_schemes.len() > NoteAttachments::MAX_COUNT {
+            return Err(VerificationError::TooManyAttachmentSchemes);
+        }
+        let mut headers = [NoteAttachmentHeader::absent(); NoteAttachments::MAX_COUNT];
+        for (header, raw) in headers.iter_mut().zip(self.attachment_schemes) {
+            let scheme: u16 = raw.try_into()?;
+            if scheme != 0 {
+                *header = NoteAttachmentHeader::new(NoteAttachmentScheme::new(scheme)?);
+            }
+        }
+        Ok(Self::Verified::from_parts(partial, headers, self.attachments_commitment))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteMetadata> for miden_protocol::note::NoteMetadata {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteMetadata) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

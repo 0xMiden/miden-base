@@ -611,14 +611,14 @@ fn note_protobuf_requires_note_details() {
 }
 
 #[test]
-fn note_metadata_protobuf_rejects_unspecified_version_before_payload_fields() {
+fn note_metadata_protobuf_rejects_unspecified_version_after_decoding() {
     let error = NoteMetadata::try_from(proto::note::NoteMetadata {
         version: proto::note::NoteVersion::Unspecified as i32,
-        ..Default::default()
+        ..proto::note::NoteMetadata::from(*Note::mock_noop(Word::empty()).metadata())
     })
     .unwrap_err();
 
-    assert_eq!(error.to_string(), "version: note metadata version is unspecified");
+    assert_eq!(error.to_string(), "note metadata version is unspecified");
 }
 
 #[test]
@@ -628,11 +628,10 @@ fn note_metadata_protobuf_preserves_unknown_version_error_sources() {
             NoteMetadata::try_from(proto::note::NoteMetadata { version, ..Default::default() })
                 .unwrap_err();
 
-        assert_eq!(error.to_string(), format!("version: unknown note metadata version {version}"));
+        assert_eq!(error.to_string(), format!("version: {}", prost::UnknownEnumValue(version)));
         assert_matches!(
             error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
             Some(prost::UnknownEnumValue(value)) if *value == version
         );

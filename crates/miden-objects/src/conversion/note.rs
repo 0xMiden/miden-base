@@ -7,8 +7,6 @@ use miden_protocol::note::{
     Note,
     NoteAssets,
     NoteAttachment,
-    NoteAttachmentHeader,
-    NoteAttachmentScheme,
     NoteAttachments,
     NoteDetails,
     NoteDetailsCommitment,
@@ -73,15 +71,6 @@ impl From<NoteMetadata> for proto::note::NoteMetadata {
     }
 }
 
-impl TryFrom<proto::note::NoteMetadata> for NoteMetadata {
-    type Error = ConversionError;
-
-    fn try_from(metadata: proto::note::NoteMetadata) -> Result<Self, Self::Error> {
-        decode_note_version(metadata.version).context("version")?;
-        decode_note_metadata(metadata)
-    }
-}
-
 impl From<PartialNoteMetadata> for proto::note::PartialNoteMetadata {
     fn from(metadata: PartialNoteMetadata) -> Self {
         Self {
@@ -105,7 +94,6 @@ impl TryFrom<proto::note::PartialNoteMetadata> for PartialNoteMetadata {
         )
     }
 }
-
 // NOTE ATTACHMENTS
 // ================================================================================================
 
@@ -321,40 +309,6 @@ fn decode_note_version(version: i32) -> Result<(), ConversionError> {
             error,
         )),
     }
-}
-
-fn decode_note_metadata(
-    metadata: proto::note::NoteMetadata,
-) -> Result<NoteMetadata, ConversionError> {
-    let proto::note::NoteMetadata {
-        sender,
-        note_type,
-        tag,
-        attachment_schemes,
-        attachments_commitment,
-        ..
-    } = metadata;
-
-    let partial =
-        decode_partial_note_metadata::<proto::note::NoteMetadata>(sender, note_type, tag)?;
-    let decoder = MessageDecoder::<proto::note::NoteMetadata>::default();
-    let attachments_commitment = required!(decoder, attachments_commitment)?;
-
-    if attachment_schemes.len() > NoteAttachments::MAX_COUNT {
-        return Err(ConversionError::message("too many attachment schemes"));
-    }
-    let mut attachment_headers = [NoteAttachmentHeader::absent(); NoteAttachments::MAX_COUNT];
-    for (slot, raw) in attachment_headers.iter_mut().zip(attachment_schemes) {
-        let raw = u16::try_from(raw)
-            .map_err(|_| ConversionError::message("attachment scheme out of u16 range"))?;
-        *slot = if raw == 0 {
-            NoteAttachmentHeader::absent()
-        } else {
-            NoteAttachmentHeader::new(NoteAttachmentScheme::new(raw).map_err(ConversionError::new)?)
-        };
-    }
-
-    Ok(NoteMetadata::from_parts(partial, attachment_headers, attachments_commitment))
 }
 
 fn decode_partial_note_metadata<M: prost::Message>(
