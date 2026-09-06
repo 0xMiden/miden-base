@@ -351,3 +351,31 @@ impl TryFrom<proto::primitives::IndexedSmtLeaf>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedSmtOpening as SmtOpening;
+
+impl Verify for SmtOpening {
+    type Verified = miden_protocol::crypto::merkle::smt::SmtProof;
+    type Error = SmtOpeningError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(self.path.verify()?, self.leaf.verify()?)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SmtOpeningError {
+    #[error(transparent)]
+    Path(#[from] miden_protocol::crypto::merkle::MerkleError),
+    #[error(transparent)]
+    Leaf(#[from] miden_protocol::crypto::merkle::smt::SmtLeafError),
+    #[error(transparent)]
+    Proof(#[from] miden_protocol::crypto::merkle::smt::SmtProofError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::SmtOpening> for miden_protocol::crypto::merkle::smt::SmtProof {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::SmtOpening) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
