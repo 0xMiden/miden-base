@@ -138,3 +138,73 @@ impl TryFrom<proto::blockchain::BlockHeader> for miden_protocol::block::BlockHea
         crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedPartialBlockchain as PartialBlockchain;
+
+/// Checks MMR reconstruction and header membership, but not header parent linkage or a trusted
+/// root.
+impl crate::BuildUnchecked for PartialBlockchain {
+    type Output = miden_protocol::transaction::PartialBlockchain;
+    type Error = PartialBlockchainError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        use miden_protocol::crypto::merkle::MerklePath;
+        use miden_protocol::crypto::merkle::mmr::{Forest, MmrPeaks, PartialMmr};
+
+        let size = usize::try_from(self.forest)?;
+        let peaks = MmrPeaks::new(Forest::new(size)?, self.peaks)?;
+        let mut mmr = PartialMmr::from_peaks(peaks);
+        let mut previous = None;
+        for tracked in self.tracked_leaves {
+            let position = usize::try_from(tracked.position)?;
+            if position >= size {
+                return Err(PartialBlockchainError::Position { position, size });
+            }
+            if previous.is_some_and(|previous| position <= previous) {
+                return Err(PartialBlockchainError::LeafOrder);
+            }
+            previous = Some(position);
+            mmr.track(position, tracked.leaf, &MerklePath::new(tracked.path))?;
+        }
+        let mut previous = None;
+        let mut headers = alloc::vec::Vec::new();
+        for header in self.block_headers {
+            let header = header.build_unchecked()?;
+            if previous.is_some_and(|previous| header.block_num() <= previous) {
+                return Err(PartialBlockchainError::HeaderOrder);
+            }
+            previous = Some(header.block_num());
+            headers.push(header);
+        }
+        Ok(Self::Output::new(mmr, headers)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PartialBlockchainError {
+    #[error("{0}")]
+    Size(#[from] core::num::TryFromIntError),
+    #[error("{0}")]
+    Forest(#[from] miden_protocol::utils::serde::DeserializationError),
+    #[error("{0}")]
+    Mmr(#[from] miden_protocol::crypto::merkle::mmr::MmrError),
+    #[error("{0}")]
+    Header(#[from] BlockHeaderError),
+    #[error("{0}")]
+    Chain(#[from] miden_protocol::errors::PartialBlockchainError),
+    #[error("tracked leaf position {position} is outside forest of size {size}")]
+    Position { position: usize, size: usize },
+    #[error("tracked leaf positions must be unique and strictly increasing")]
+    LeafOrder,
+    #[error("block headers must be unique and ordered by ascending block number")]
+    HeaderOrder,
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::PartialBlockchain>
+    for miden_protocol::transaction::PartialBlockchain
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::PartialBlockchain) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}

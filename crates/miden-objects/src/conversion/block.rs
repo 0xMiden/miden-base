@@ -15,8 +15,6 @@ use miden_protocol::block::{
     ValidatorConfig,
 };
 use miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature;
-use miden_protocol::crypto::merkle::MerklePath;
-use miden_protocol::crypto::merkle::mmr::{Forest, MmrPeaks, PartialMmr};
 use miden_protocol::note::Nullifier;
 use miden_protocol::protocol_config::NextProtocolConfig;
 use miden_protocol::transaction::{
@@ -70,78 +68,6 @@ impl From<&PartialBlockchain> for proto::blockchain::PartialBlockchain {
             tracked_leaves,
             block_headers: value.block_headers().map(Into::into).collect(),
         }
-    }
-}
-
-impl TryFrom<proto::blockchain::PartialBlockchain> for PartialBlockchain {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::blockchain::PartialBlockchain) -> Result<Self, Self::Error> {
-        let forest_size = usize::try_from(value.forest).context("forest")?;
-        let forest = Forest::new(forest_size).map_err(ConversionError::new).context("forest")?;
-        let peaks = value
-            .peaks
-            .into_iter()
-            .enumerate()
-            .map(|(index, peak)| Word::try_from(peak).context(format!("peaks[{index}]")))
-            .collect::<Result<Vec<_>, _>>()?;
-        let peaks = MmrPeaks::new(forest, peaks).map_err(ConversionError::new).context("peaks")?;
-        let mut mmr = PartialMmr::from_peaks(peaks);
-
-        let mut previous_position = None;
-        for (index, tracked) in value.tracked_leaves.into_iter().enumerate() {
-            let position = usize::try_from(tracked.position)
-                .context(format!("tracked_leaves[{index}].position"))?;
-            if position >= forest_size {
-                return Err(ConversionError::message(format!(
-                    "tracked leaf position {position} is outside forest of size {forest_size}"
-                ))
-                .context(format!("tracked_leaves[{index}].position")));
-            }
-            if previous_position.is_some_and(|previous| position <= previous) {
-                return Err(ConversionError::message(
-                    "tracked leaf positions must be unique and strictly increasing",
-                )
-                .context(format!("tracked_leaves[{index}].position")));
-            }
-            previous_position = Some(position);
-
-            let decoder = tracked.decoder();
-            let leaf = required!(decoder, tracked.leaf)?;
-            let path = tracked
-                .path
-                .into_iter()
-                .enumerate()
-                .map(|(path_index, node)| {
-                    Word::try_from(node)
-                        .context(format!("tracked_leaves[{index}].path[{path_index}]"))
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-            mmr.track(position, leaf, &MerklePath::new(path))
-                .map_err(ConversionError::new)
-                .context(format!("tracked_leaves[{index}]"))?;
-        }
-
-        let mut previous_block_num = None;
-        let block_headers = value
-            .block_headers
-            .into_iter()
-            .enumerate()
-            .map(|(index, header)| {
-                let header =
-                    BlockHeader::try_from(header).context(format!("block_headers[{index}]"))?;
-                if previous_block_num.is_some_and(|previous| header.block_num() <= previous) {
-                    return Err(ConversionError::message(
-                        "block headers must be unique and ordered by ascending block number",
-                    )
-                    .context(format!("block_headers[{index}].block_num")));
-                }
-                previous_block_num = Some(header.block_num());
-                Ok(header)
-            })
-            .collect::<Result<Vec<_>, ConversionError>>()?;
-
-        Self::new(mmr, block_headers).map_err(ConversionError::new)
     }
 }
 
