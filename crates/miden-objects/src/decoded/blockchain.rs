@@ -340,3 +340,63 @@ impl TryFrom<proto::blockchain::BlockBody> for miden_protocol::block::BlockBody 
         crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedSignedBlock as SignedBlock;
+
+/// Checks header/body consistency but does not authenticate against a trusted parent.
+impl crate::BuildUnchecked for SignedBlock {
+    type Output = miden_protocol::block::SignedBlock;
+    type Error = SignedBlockError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let header = self.header.build_unchecked()?;
+        let body = self.body.build_unchecked()?;
+        let signatures = self
+            .signatures
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<_, _>>()
+            .expect("canonical signatures");
+        let signatures = miden_protocol::block::BlockSignatures::new(signatures)
+            .map_err(|error| SignedBlockError::Signatures(alloc::boxed::Box::new(error)))?;
+        Self::Output::new(header, body, signatures)
+            .map_err(|error| SignedBlockError::Block(alloc::boxed::Box::new(error)))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum SignedBlockError {
+    #[error("{0}")]
+    Header(#[from] BlockHeaderError),
+    #[error("{0}")]
+    Body(#[from] BlockBodyError),
+    #[error("{0}")]
+    // These constructor errors are defined in private protocol modules.
+    Signatures(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
+    #[error("{0}")]
+    Block(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::SignedBlock> for miden_protocol::block::SignedBlock {
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::SignedBlock) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}
+
+/// Authenticates the block against an already-trusted parent, in addition to self-consistency.
+/// This does not re-execute transactions or validate the account/nullifier state transition.
+impl crate::VerifyWith<&miden_protocol::block::BlockHeader> for SignedBlock {
+    type Verified = miden_protocol::block::SignedBlock;
+    type Error = SignedBlockError;
+    fn verify_with(
+        self,
+        parent: &miden_protocol::block::BlockHeader,
+    ) -> Result<Self::Verified, Self::Error> {
+        let block = crate::BuildUnchecked::build_unchecked(self)?;
+        block
+            .validate(Some(parent))
+            .map_err(|error| SignedBlockError::Block(alloc::boxed::Box::new(error)))?;
+        Ok(block)
+    }
+}

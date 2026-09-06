@@ -1006,3 +1006,48 @@ fn partial_note_metadata_roundtrips_without_attachment_fields() {
     let wire: proto::note::PartialNoteMetadata = metadata.into();
     assert_eq!(wire.decode_fields().unwrap().verify().unwrap(), metadata);
 }
+
+#[test]
+fn signed_blocks_require_a_trusted_parent_for_authentication() {
+    use miden_objects::{BuildUnchecked, VerifyWith};
+    use miden_protocol::block::{BlockBody, BlockHeader, SignedBlock, ValidatorConfig};
+    use miden_protocol::transaction::OrderedTransactionHeaders;
+
+    fn header_for(num: u32, previous: Word, keys: ValidatorConfig) -> BlockHeader {
+        let body = BlockBody::new(
+            vec![],
+            vec![],
+            vec![],
+            OrderedTransactionHeaders::new_unchecked(vec![]),
+        )
+        .unwrap();
+        BlockHeader::new(
+            previous,
+            num.into(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            body.compute_block_note_tree().root(),
+            body.transaction_commitment(),
+            keys,
+            miden_protocol::block::FeeParameters::new(500),
+            Word::empty(),
+            None,
+            0,
+        )
+    }
+    let (signers, keys) = ValidatorConfig::random_with_signers(1);
+    let parent = header_for(0, Word::empty(), keys.clone());
+    let header = header_for(1, parent.commitment(), keys.clone());
+    let body =
+        BlockBody::new(vec![], vec![], vec![], OrderedTransactionHeaders::new_unchecked(vec![]))
+            .unwrap();
+    let block =
+        SignedBlock::new(header.clone(), body, keys.sign_all(&signers, header.commitment()))
+            .unwrap();
+    let wire: proto::blockchain::SignedBlock = (&block).into();
+    assert_eq!(wire.clone().decode_fields().unwrap().verify_with(&parent).unwrap(), block);
+    let wrong_parent = header_for(0, Word::empty(), ValidatorConfig::random_with_signers(1).1);
+    assert!(wire.clone().decode_fields().unwrap().verify_with(&wrong_parent).is_err());
+    assert_eq!(wire.decode_fields().unwrap().build_unchecked().unwrap(), block);
+}

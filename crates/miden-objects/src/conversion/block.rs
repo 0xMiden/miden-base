@@ -1,22 +1,17 @@
-use alloc::vec::Vec;
-
 use miden_protocol::block::{
     BlockAccountUpdate,
     BlockBody,
     BlockHeader,
     BlockNumber,
-    BlockSignatures,
     FeeParameters,
     OutputNoteBatch,
     SignedBlock,
     ValidatorConfig,
 };
-use miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature;
 use miden_protocol::protocol_config::NextProtocolConfig;
 use miden_protocol::transaction::{OutputNote, PartialBlockchain};
 
-use super::{MessageDecodeExt, required};
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::{ConversionError, proto};
 
 // BLOCK NUMBER
 // ================================================================================================
@@ -178,29 +173,6 @@ impl From<&SignedBlock> for proto::blockchain::SignedBlock {
 impl From<SignedBlock> for proto::blockchain::SignedBlock {
     fn from(block: SignedBlock) -> Self {
         (&block).into()
-    }
-}
-
-impl TryFrom<proto::blockchain::SignedBlock> for SignedBlock {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::blockchain::SignedBlock) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let header = required!(decoder, value.header)?;
-        let body = required!(decoder, value.body)?;
-        let signatures = value
-            .signatures
-            .into_iter()
-            .map(Signature::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .context("signatures")?;
-        let signatures = BlockSignatures::new(signatures)
-            .map_err(ConversionError::new)
-            .context("signatures")?;
-
-        SignedBlock::new(header, body, signatures)
-            .map_err(ConversionError::new)
-            .context("body")
     }
 }
 
