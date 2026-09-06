@@ -17,6 +17,21 @@ use miden_protocol::block::account_tree::AccountWitness;
 
 use crate::{ConversionError, proto};
 
+impl From<&AccountIdV1> for proto::account::AccountIdV1 {
+    fn from(account_id: &AccountIdV1) -> Self {
+        Self {
+            suffix: Some(account_id.suffix().into()),
+            prefix: Some(account_id.prefix().as_felt().into()),
+        }
+    }
+}
+
+impl From<AccountIdV1> for proto::account::AccountIdV1 {
+    fn from(account_id: AccountIdV1) -> Self {
+        (&account_id).into()
+    }
+}
+
 impl TryFrom<proto::account::AccountId> for AccountId {
     type Error = ConversionError;
 

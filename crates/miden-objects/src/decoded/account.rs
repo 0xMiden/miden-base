@@ -1,7 +1,28 @@
 //! Domain construction for decoded account messages.
-pub use proto::account::DecodedStorageSlotId as StorageSlotId;
+pub use proto::account::{
+    DecodedAccountIdV1 as AccountIdV1,
+    DecodedStorageSlotId as StorageSlotId,
+};
 
 use crate::{ConversionError, DecodeMessage, Verify, proto};
+
+impl Verify for AccountIdV1 {
+    type Verified = miden_protocol::account::AccountIdV1;
+    type Error = miden_protocol::errors::AccountIdError;
+
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Self::Verified::try_from_elements(self.suffix, self.prefix)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountIdV1> for miden_protocol::account::AccountIdV1 {
+    type Error = ConversionError;
+
+    fn try_from(value: proto::account::AccountIdV1) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
 
 impl Verify for StorageSlotId {
     type Verified = miden_protocol::account::StorageSlotId;

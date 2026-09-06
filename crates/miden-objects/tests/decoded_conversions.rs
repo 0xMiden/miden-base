@@ -36,6 +36,66 @@ fn account_id_atomic_decode() {
 }
 
 #[test]
+fn account_id_v1_roundtrip() {
+    use miden_protocol::account::{AccountIdV1, AccountType, AssetCallbackFlag};
+
+    for account_type in [AccountType::Private, AccountType::Public] {
+        for callbacks in [AssetCallbackFlag::Disabled, AssetCallbackFlag::Enabled] {
+            let id = AccountIdV1::dummy([7; 15], account_type, callbacks);
+            let decoded = proto::account::AccountIdV1::from(id).decode_fields().unwrap();
+            assert_eq!(decoded.suffix, id.suffix());
+            assert_eq!(decoded.prefix, id.prefix().as_felt());
+            assert_eq!(decoded.verify().unwrap(), id);
+            assert_eq!(AccountIdV1::try_from(proto::account::AccountIdV1::from(&id)).unwrap(), id);
+        }
+    }
+}
+
+#[test]
+fn account_id_v1_verification_is_deferred() {
+    use miden_protocol::errors::AccountIdError;
+
+    for (suffix, prefix, expected) in [
+        (0, 0, AccountIdError::UnknownAccountIdVersion(0)),
+        (1, 1, AccountIdError::AccountIdSuffixLeastSignificantByteMustBeZero),
+        (1 << 63, 1, AccountIdError::AccountIdSuffixMostSignificantBitMustBeZero),
+    ] {
+        let decoded = proto::account::AccountIdV1 {
+            suffix: Some(proto::primitives::Felt { value: suffix }),
+            prefix: Some(proto::primitives::Felt { value: prefix }),
+        }
+        .decode_fields()
+        .unwrap();
+        assert_eq!(decoded.verify().unwrap_err().to_string(), expected.to_string());
+    }
+}
+
+#[test]
+fn account_id_v1_decode_reports_field_paths() {
+    for field in ["suffix", "prefix"] {
+        for invalid in [None, Some(proto::primitives::Felt { value: miden_protocol::Felt::ORDER })]
+        {
+            let path = if invalid.is_some() {
+                format!("{field}.felt.value:")
+            } else {
+                format!("{field}:")
+            };
+            let mut id = proto::account::AccountIdV1 {
+                suffix: Some(proto::primitives::Felt { value: 0 }),
+                prefix: Some(proto::primitives::Felt { value: 1 }),
+            };
+            match field {
+                "suffix" => id.suffix = invalid,
+                "prefix" => id.prefix = invalid,
+                _ => unreachable!(),
+            }
+            let error = id.decode_fields().unwrap_err();
+            assert!(error.to_string().starts_with(&path), "{error}");
+        }
+    }
+}
+
+#[test]
 fn kernel_verification_is_deferred() {
     let decoded = proto::protocol_config::KernelConfig {
         main_proc: Some(Word::empty().into()),
