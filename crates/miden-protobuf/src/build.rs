@@ -29,6 +29,26 @@ pub fn configure_proto_decode_fields<'a>(
             ));
         }
         let optional_fields = explicit_optional_message_fields(descriptors, message)?;
+        let descriptor = lookup_message(descriptors, canonical_name)
+            .expect("optional field lookup already validated the message");
+        for (index, oneof) in descriptor.oneof_decl.iter().enumerate() {
+            let variants: Vec<_> = descriptor
+                .field
+                .iter()
+                .filter(|field| field.oneof_index == Some(index as i32) && !field.proto3_optional())
+                .collect();
+            if variants.is_empty() {
+                continue;
+            }
+            let path = format!("{canonical_name}.{}", oneof.name());
+            prost.enum_attribute(&path, "#[derive(::miden_protobuf::ProtoDecodeFields)]");
+            for variant in variants {
+                prost.field_attribute(
+                    format!(".{path}.{}", variant.name()),
+                    format!("#[proto_decode(name = {:?})]", variant.name()),
+                );
+            }
+        }
         // A leading dot would also apply the derive to nested message declarations.
         prost.message_attribute(canonical_name, "#[derive(::miden_protobuf::ProtoDecodeFields)]");
         for field in optional_fields {
@@ -36,6 +56,30 @@ pub fn configure_proto_decode_fields<'a>(
         }
     }
     Ok(())
+}
+
+fn lookup_message<'a>(
+    descriptors: &'a FileDescriptorSet,
+    name: &str,
+) -> Option<&'a DescriptorProto> {
+    fn find<'a>(
+        message: &'a DescriptorProto,
+        parent: &str,
+        target: &str,
+    ) -> Option<&'a DescriptorProto> {
+        let path = if parent.is_empty() {
+            message.name().to_owned()
+        } else {
+            format!("{parent}.{}", message.name())
+        };
+        if path == target {
+            return Some(message);
+        }
+        message.nested_type.iter().find_map(|nested| find(nested, &path, target))
+    }
+    descriptors.file.iter().find_map(|file| {
+        file.message_type.iter().find_map(|message| find(message, file.package(), name))
+    })
 }
 
 fn explicit_optional_message_fields(
@@ -178,7 +222,8 @@ mod tests {
         let marker = generated.find(OPTIONAL_ATTRIBUTE).unwrap();
         assert!(selected < marker && marker < unselected);
         assert_eq!(generated.matches(OPTIONAL_ATTRIBUTE).count(), 1);
-        assert_eq!(generated.matches("::miden_protobuf::ProtoDecodeFields").count(), 1);
+        assert_eq!(generated.matches("::miden_protobuf::ProtoDecodeFields").count(), 2);
+        assert_eq!(generated.matches("#[proto_decode(name = \"choice\")]").count(), 1);
         assert!(!generated.contains("constructor"));
 
         let duplicate = configure_proto_decode_fields(

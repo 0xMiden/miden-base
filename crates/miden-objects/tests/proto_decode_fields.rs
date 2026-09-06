@@ -94,6 +94,77 @@ mod kinds {
     }
 }
 
+#[derive(Clone, PartialEq, prost::Oneof, ProtoDecodeFields)]
+enum Choice {
+    #[prost(message, tag = "1")]
+    #[proto_decode(name = "nested_child")]
+    NestedChild(Child),
+    #[prost(uint64, tag = "2")]
+    #[proto_decode(name = "index")]
+    Index(u64),
+    #[prost(enumeration = "kinds::Kind", tag = "3")]
+    #[proto_decode(name = "type")]
+    Type(i32),
+    #[prost(message, tag = "4")]
+    #[proto_decode(name = "empty")]
+    Empty(()),
+}
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct ChoiceMessage {
+    #[prost(oneof = "Choice", tags = "1, 2, 3, 4")]
+    choice: Option<Choice>,
+}
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct ChoiceContainer {
+    #[prost(message, repeated, tag = "1")]
+    children: Vec<ChoiceMessage>,
+}
+#[test]
+fn oneof_payloads_decode_without_domain_mapping() {
+    use prost::Message;
+    for choice in [
+        Choice::NestedChild(child()),
+        Choice::Index(0),
+        Choice::Type(1),
+        Choice::Empty(()),
+    ] {
+        let wire = ChoiceMessage { choice: Some(choice.clone()) };
+        let decoded = ChoiceMessage::decode(wire.encode_to_vec().as_slice())
+            .unwrap()
+            .decode_fields()
+            .unwrap();
+        match (choice, decoded.choice) {
+            (Choice::NestedChild(_), DecodedChoice::NestedChild(value)) => {
+                assert_eq!(value.leaf.value, 7)
+            },
+            (Choice::Index(value), DecodedChoice::Index(decoded)) => assert_eq!(value, decoded),
+            (Choice::Type(_), DecodedChoice::Type(kinds::Kind::Active))
+            | (Choice::Empty(()), DecodedChoice::Empty(())) => {},
+            _ => panic!("variant changed"),
+        }
+    }
+}
+#[test]
+fn oneof_errors_include_variant_and_repeated_parent_paths() {
+    use core::error::Error;
+    let error = ChoiceContainer {
+        children: vec![ChoiceMessage {
+            choice: Some(Choice::NestedChild(Child { leaf: None })),
+        }],
+    }
+    .decode_fields()
+    .unwrap_err();
+    assert!(
+        error.to_string().starts_with("children[0].choice.nested_child.leaf:"),
+        "{error}"
+    );
+    let error = ChoiceMessage { choice: Some(Choice::Type(99)) }.decode_fields().unwrap_err();
+    assert!(error.to_string().starts_with("choice.type:"), "{error}");
+    assert_eq!(error.source().unwrap().downcast_ref::<prost::UnknownEnumValue>().unwrap().0, 99);
+    let error = ChoiceMessage::default().decode_fields().unwrap_err();
+    assert!(error.to_string().starts_with("choice: field"), "{error}");
+}
+
 #[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
 struct EnumFields {
     #[prost(enumeration = "kinds::Kind", tag = "1")]

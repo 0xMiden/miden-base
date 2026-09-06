@@ -15,6 +15,9 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
             "ProtoDecodeFields has no message-level configuration; implement Verify on the record",
         ));
     }
+    if let Data::Enum(data) = &input.data {
+        return expand_oneof(&input, data, runtime);
+    }
     let Data::Struct(data) = &input.data else {
         return Err(syn::Error::new(input.span(), "ProtoDecodeFields requires a named struct"));
     };
@@ -31,21 +34,40 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
         let ident = field.ident.as_ref().expect("named field");
         let name = ident_name(ident);
         let prost = ProstField::parse(field)?;
-        if prost.oneof.is_some() || prost.map || prost.boxed {
+        if prost.map || prost.boxed {
             return Err(syn::Error::new(
                 field.span(),
-                "ProtoDecodeFields does not yet support oneofs, maps, or boxed messages",
+                "ProtoDecodeFields does not yet support maps or boxed messages",
             ));
         }
         let presence = FieldKindOverride::parse(&field.attrs)?;
-        if presence.is_some() && (!prost.message || !prost.optional || prost.repeated) {
+        if presence.is_some()
+            && prost.oneof.is_none()
+            && (!prost.message || !prost.optional || prost.repeated)
+        {
             return Err(syn::Error::new(
                 field.span(),
                 "presence overrides require a singular Option<Message> field",
             ));
         }
 
-        let (ty, value) = if let Some(enumeration) = &prost.enumeration {
+        let (ty, value) = if let Some(oneof) = &prost.oneof {
+            container_type(field, "Option")?;
+            let decoded = quote!(<#oneof as #runtime::DecodeMessage>::Decoded);
+            if matches!(presence, Some(FieldKindOverride::Optional)) {
+                (
+                    quote!(::core::option::Option<#decoded>),
+                    quote!(#runtime::decode(#runtime::OptionalField::new(#name, message.#ident))?),
+                )
+            } else {
+                (
+                    decoded,
+                    quote!(#runtime::decode(
+                        #runtime::RequiredField::<#source, _>::new(#name, message.#ident)
+                    )?),
+                )
+            }
+        } else if let Some(enumeration) = &prost.enumeration {
             if prost.repeated {
                 container_type(field, "Vec")?;
                 (
@@ -125,6 +147,81 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
     })
 }
 
+fn expand_oneof(
+    input: &DeriveInput,
+    data: &syn::DataEnum,
+    runtime: TokenStream,
+) -> Result<TokenStream> {
+    let source = &input.ident;
+    let record = format_ident!("Decoded{}", ident_name(source));
+    let visibility = &input.vis;
+    let mut declarations = Vec::new();
+    let mut arms = Vec::new();
+    for variant in &data.variants {
+        let Fields::Unnamed(fields) = &variant.fields else {
+            return Err(syn::Error::new(variant.span(), "expected a Prost oneof payload"));
+        };
+        if fields.unnamed.len() != 1 {
+            return Err(syn::Error::new(variant.span(), "expected one Prost oneof payload"));
+        }
+        let mut field = fields.unnamed[0].clone();
+        field.attrs = variant.attrs.clone();
+        let prost = ProstField::parse(&field)?;
+        if prost.map || prost.boxed || prost.repeated || prost.optional || prost.oneof.is_some() {
+            return Err(syn::Error::new(variant.span(), "unsupported Prost oneof payload"));
+        }
+        let mut name = None;
+        for attribute in variant.attrs.iter().filter(|attr| attr.path().is_ident("proto_decode")) {
+            attribute.parse_nested_meta(|meta| {
+                if !meta.path.is_ident("name") || name.is_some() {
+                    return Err(meta.error("expected one descriptor-injected `name`"));
+                }
+                name = Some(meta.value()?.parse::<syn::LitStr>()?);
+                Ok(())
+            })?;
+        }
+        let name = name.ok_or_else(|| {
+            syn::Error::new(
+                variant.span(),
+                "oneof variants require descriptor-injected #[proto_decode(name = \"wire_name\")]",
+            )
+        })?;
+        let ident = &variant.ident;
+        let ty = &field.ty;
+        // Prost represents google.protobuf.Empty as (), which needs no decoding.
+        let empty = matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty());
+        let (decoded, value) = if let Some(enumeration) = &prost.enumeration {
+            (
+                quote!(#enumeration),
+                quote!(#runtime::decode(#runtime::ValueField::new(#name, value))?),
+            )
+        } else if prost.message && !empty {
+            (
+                quote!(<#ty as #runtime::DecodeMessage>::Decoded),
+                quote!(#runtime::decode(#runtime::ValueField::new(#name, value))?),
+            )
+        } else {
+            (quote!(#ty), quote!(value))
+        };
+        let docs = variant.attrs.iter().filter(|attr| attr.path().is_ident("doc"));
+        declarations.push(quote!(#(#docs)* #ident(#decoded)));
+        arms.push(quote!(#source::#ident(value) => Self::#ident(#value)));
+    }
+    Ok(quote! {
+        /// Decoded oneof payload. Domain invariants have not been verified.
+        #[derive(Debug)]
+        #[must_use = "decoded fields have not been verified"]
+        #visibility enum #record { #(#declarations,)* }
+        impl #runtime::DecodeMessage for #source { type Decoded = #record; }
+        impl ::core::convert::TryFrom<#source> for #record {
+            type Error = #runtime::ConversionError;
+            fn try_from(value: #source) -> ::core::result::Result<Self, Self::Error> {
+                ::core::result::Result::Ok(match value { #(#arms,)* })
+            }
+        }
+    })
+}
+
 fn container_type<'a>(field: &'a Field, container: &str) -> Result<&'a Type> {
     if let Type::Path(ty) = &field.ty
         && ty.qself.is_none()
@@ -152,7 +249,6 @@ mod tests {
     #[test]
     fn unsupported_fields_fail_explicitly() {
         for field in [
-            quote!(#[prost(oneof = "Choice", tags = "1, 2")] value: Option<Choice>),
             quote!(#[prost(map = "string, uint32", tag = "1")] value: HashMap<String, u32>),
             quote!(#[prost(btree_map = "string, uint32", tag = "1")] value: BTreeMap<String, u32>),
             quote!(#[prost(message, optional, boxed, tag = "1")] value: Option<Box<Nested>>),
@@ -174,6 +270,32 @@ mod tests {
         )
         .unwrap_err();
         assert!(error.to_string().contains("implement Verify"));
+    }
+
+    #[test]
+    fn oneof_requires_wire_names_and_single_payloads() {
+        for input in [
+            quote!(
+                enum Choice {
+                    #[prost(uint32, tag = "1")]
+                    Value(u32),
+                }
+            ),
+            quote!(
+                enum Choice {
+                    #[prost(uint32, tag = "1")]
+                    Value,
+                }
+            ),
+            quote!(
+                enum Choice {
+                    #[prost(uint32, tag = "1")]
+                    Value(u32, u32),
+                }
+            ),
+        ] {
+            assert!(expand(syn::parse2(input).unwrap(), quote!(::runtime)).is_err());
+        }
     }
 
     #[test]
