@@ -320,6 +320,7 @@ impl TryFrom<proto::transaction::OutputNote> for miden_protocol::transaction::Ou
 
 pub use proto::transaction::DecodedAuthenticatedInputNote as AuthenticatedInputNote;
 
+/// Checks proof/note identity, not inclusion against a trusted block root.
 impl Verify for AuthenticatedInputNote {
     type Verified = miden_protocol::transaction::InputNote;
     type Error = InputNoteError;
@@ -526,6 +527,7 @@ impl TryFrom<proto::transaction::ProvenTransaction>
 
 pub use proto::transaction::DecodedProposedBatch as ProposedBatch;
 
+/// Verifies transaction proofs and batch consistency, not trust in the supplied reference chain.
 impl crate::VerifyWith<u32> for ProposedBatch {
     type Verified = miden_protocol::batch::ProposedBatch;
     type Error = ProposedBatchError;

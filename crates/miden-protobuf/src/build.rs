@@ -14,6 +14,8 @@ const OPTIONAL_ATTRIBUTE: &str = "#[proto_decode(optional)]";
 /// Each selected message derives `ProtoDecodeFields`. Explicitly optional message fields are
 /// preserved using the descriptor metadata that Prost's attributes omit. Nested message types
 /// must also derive `ProtoDecodeFields` or implement `DecodeMessage` as an atomic adapter.
+/// Real oneofs also derive decoded enums; their exact wire variant names are injected from the
+/// descriptors. Synthetic oneofs used for explicit optional fields are not configured as enums.
 pub fn configure_proto_decode_fields<'a>(
     prost: &mut prost_build::Config,
     descriptors: &FileDescriptorSet,

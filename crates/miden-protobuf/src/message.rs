@@ -2,7 +2,7 @@ use core::error::Error;
 
 use crate::ConversionError;
 
-/// Decodes a wire message without constructing its verified domain counterpart.
+/// Decodes a wire message or oneof without constructing its verified domain counterpart.
 ///
 /// Derived implementations produce schema-shaped records. Atomic messages can select an existing
 /// deserialized type instead, using its `TryFrom` implementation. Such adapters should check the
@@ -15,7 +15,8 @@ pub trait DecodeMessage: Sized {
     }
 }
 
-/// The decoded representation of a **wire message** `P`, not its verified domain counterpart.
+/// The decoded representation of a **wire message or oneof** `P`, not its verified domain
+/// counterpart.
 pub type Decoded<P> = <P as DecodeMessage>::Decoded;
 
 /// Checks domain invariants and constructs the verified type using ordinary Rust.

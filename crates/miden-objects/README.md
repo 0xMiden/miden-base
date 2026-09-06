@@ -19,8 +19,14 @@ The experimental `ProtoDecodeFields` derive generates schema-shaped records, req
 repeated message conversion, and nested field/index error paths. Atomic messages can implement
 `DecodeMessage` using their existing representation decoder. Enum fields use Prost's named enum
 types, preserving optional/repeated cardinality and rejecting unknown discriminants with generated
-paths. Known variants such as `Unspecified` remain available for domain verification. Oneofs, maps,
-and boxed messages are not yet supported by the derive.
+paths. Known variants such as `Unspecified` remain available for domain verification. Oneofs
+generate matching decoded enums, with exact wire variant names supplied by descriptors.
+An absent oneof is rejected by default; an explicitly configured optional oneof retains its Option.
+Maps and boxed messages are not yet supported and are not used by these schemas.
+
+Canonical bytes can opt into a local representation type using
+`#[proto_decode(bytes = Adapter)]`. The adapter implements ordinary `TryFrom`; generated
+code supplies field, variant, and index paths. It does not run domain verification.
 
 Domain construction is opt-in and handwritten: `Verify::verify()` needs no external context,
 `VerifyWith<C>::verify_with(context)` accepts borrowed or owned context, and
@@ -29,7 +35,8 @@ can still fail and must document the invariants the caller must ensure. None of 
 is invoked automatically by field decoding, and verification errors do not get generated wire
 paths. Existing conversion APIs are retained as compatibility bridges during migration.
 
-The current coverage and complete list of skipped messages are in
+All 96 Miden messages are integrated: 91 generated records and five canonical atomic adapters.
+Construction capabilities, trust boundaries, and unreleased wire changes are detailed in
 [Decoded Conversion Migration](DECODED_MIGRATION.md).
 
 ## License

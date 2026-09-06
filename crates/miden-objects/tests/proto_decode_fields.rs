@@ -311,3 +311,22 @@ fn bytes_adapters_keep_generated_paths_and_sources() {
     .unwrap_err();
     assert!(error.to_string().starts_with("choice.encoded:"), "{error}");
 }
+
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct OptionalChoice {
+    #[prost(oneof = "Choice", tags = "1, 2, 3, 4")]
+    #[proto_decode(optional)]
+    choice: Option<Choice>,
+}
+#[test]
+fn optional_oneofs_preserve_absence_and_validate_present_payloads() {
+    assert!(OptionalChoice::default().decode_fields().unwrap().choice.is_none());
+    let decoded = OptionalChoice { choice: Some(Choice::Index(0)) }.decode_fields().unwrap();
+    assert!(matches!(decoded.choice, Some(DecodedChoice::Index(0))));
+    let error = OptionalChoice {
+        choice: Some(Choice::NestedChild(Child { leaf: None })),
+    }
+    .decode_fields()
+    .unwrap_err();
+    assert!(error.to_string().starts_with("choice.nested_child.leaf:"), "{error}");
+}

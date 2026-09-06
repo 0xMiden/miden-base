@@ -35,7 +35,6 @@ impl From<ProposedBatch> for proto::transaction::ProposedBatch {
 /// Decodes and structurally validates a proposed batch, including transaction proof verification.
 ///
 /// Callers handling untrusted requests should invoke this in a blocking task.
-
 pub fn decode_proposed_batch(
     value: proto::transaction::ProposedBatch,
     proof_security_level: u32,
@@ -78,7 +77,6 @@ pub fn decode_standalone_proven_batch(
 }
 
 /// Decodes a proven batch and checks every public field duplicated from its proposal.
-
 pub fn decode_proven_batch(
     value: proto::transaction::ProvenBatch,
     proposed: &ProposedBatch,

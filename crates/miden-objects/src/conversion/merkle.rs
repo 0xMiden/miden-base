@@ -157,6 +157,14 @@ impl From<PartialSmt> for proto::primitives::PartialSmt {
     }
 }
 
+impl TryFrom<proto::primitives::PartialSmt> for UniqueNodes {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
+        use crate::DecodeMessage;
+        value.decode_fields()?.into_unique_nodes().map_err(ConversionError::new)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeMap;
@@ -462,13 +470,5 @@ mod tests {
             encoded,
             "failed to deserialize PartialSmt: invalid value: inner node hash is inconsistent with parent",
         );
-    }
-}
-
-impl TryFrom<proto::primitives::PartialSmt> for UniqueNodes {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
-        use crate::DecodeMessage;
-        value.decode_fields()?.into_unique_nodes().map_err(ConversionError::new)
     }
 }

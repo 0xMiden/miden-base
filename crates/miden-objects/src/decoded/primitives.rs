@@ -497,6 +497,7 @@ impl<T: miden_protocol::utils::serde::Deserializable + miden_protocol::utils::se
 
 pub use proto::primitives::DecodedPublicKey as PublicKey;
 
+/// Returns the canonical public key; ownership and authorization are not established here.
 impl Verify for PublicKey {
     type Verified = miden_protocol::crypto::dsa::ecdsa_k256_keccak::PublicKey;
     type Error = core::convert::Infallible;
@@ -518,6 +519,7 @@ impl TryFrom<proto::primitives::PublicKey>
 
 pub use proto::primitives::DecodedSignature as Signature;
 
+/// Returns the canonical signature; authenticity requires a public key and signed message.
 impl Verify for Signature {
     type Verified = miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature;
     type Error = core::convert::Infallible;

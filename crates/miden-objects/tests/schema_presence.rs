@@ -68,3 +68,19 @@ fn full_notes_only_carry_partial_metadata() {
     assert!(partial.field.iter().all(|field| !field.name().starts_with("attachment")));
     assert_eq!(message(&descriptors, "note", "NoteMetadata").field.len(), 6);
 }
+
+#[test]
+fn cryptographic_payloads_use_algorithm_oneofs() {
+    let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
+    for (name, oneof) in [("PublicKey", "key"), ("Signature", "signature")] {
+        let payload = message(&descriptors, "primitives", name);
+        assert_eq!(payload.oneof_decl.len(), 1);
+        assert_eq!(payload.oneof_decl[0].name(), oneof);
+        assert_eq!(payload.field.len(), 1);
+        let field = &payload.field[0];
+        assert_eq!(field.name(), "ecdsa_k256_keccak");
+        assert_eq!(field.number(), 1);
+        assert_eq!(field.r#type(), Type::Bytes);
+        assert_eq!(field.oneof_index, Some(0));
+    }
+}
