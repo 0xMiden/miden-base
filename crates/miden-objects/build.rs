@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".transaction.InputNotes",
             ".transaction.InputNote",
             ".transaction.AuthenticatedInputNote",
             ".transaction.OutputNote",

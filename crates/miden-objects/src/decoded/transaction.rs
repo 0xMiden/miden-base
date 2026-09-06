@@ -380,3 +380,32 @@ impl TryFrom<proto::transaction::InputNote> for miden_protocol::transaction::Inp
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedInputNotes as InputNotes;
+
+impl Verify for InputNotes {
+    type Verified = miden_protocol::transaction::InputNotes<miden_protocol::transaction::InputNote>;
+    type Error = InputNotesError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let notes = self.notes.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
+        Ok(Self::Verified::new(notes)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum InputNotesError {
+    #[error("{0}")]
+    Note(#[from] InputNoteError),
+    #[error("{0}")]
+    Input(#[from] miden_protocol::errors::TransactionInputError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::InputNotes>
+    for miden_protocol::transaction::InputNotes<miden_protocol::transaction::InputNote>
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::InputNotes) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

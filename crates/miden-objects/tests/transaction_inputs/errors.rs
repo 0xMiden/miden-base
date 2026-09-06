@@ -11,10 +11,14 @@ use miden_protocol::transaction::TransactionInputs;
 use super::common;
 
 fn transaction_input_error(error: &ConversionError) -> &TransactionInputError {
-    error
-        .source()
-        .and_then(|source| source.downcast_ref::<TransactionInputError>())
-        .expect("transaction input conversion should preserve its domain error")
+    let mut source = error.source();
+    while let Some(error) = source {
+        if let Some(error) = error.downcast_ref::<TransactionInputError>() {
+            return error;
+        }
+        source = error.source();
+    }
+    panic!("transaction input conversion should preserve its domain error")
 }
 
 #[test]
@@ -99,7 +103,7 @@ fn authenticated_input_note_rejects_a_proof_for_a_different_note() {
     let error = TransactionInputs::try_from(message).unwrap_err();
 
     assert!(
-        error.to_string().starts_with("v1.input_notes.notes[0]: note ID mismatch:"),
+        error.to_string().starts_with("v1.input_notes: note ID mismatch:"),
         "unexpected error: {error}"
     );
 }
