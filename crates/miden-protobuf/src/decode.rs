@@ -12,10 +12,8 @@ where
     source.decode()
 }
 
-/// Converts a generated Protobuf field wrapper into the target type inferred by its constructor.
-///
-/// Implement [`DecodeRepeated`] on a domain collection to adapt a repeated Protobuf field directly
-/// into a type that enforces its own invariants.
+/// Converts a Protobuf field into the representation selected by its generated decoded record.
+/// This handles structural conversion and error paths, not domain construction or verification.
 pub trait DecodeField<T> {
     fn decode(self) -> Result<T, ConversionError>;
 }
@@ -43,7 +41,7 @@ where
             .value
             .ok_or_else(|| ConversionError::missing_field::<M>(self.name))
             .context(self.name)?;
-        value.try_into().map_err(ConversionError::new).context(self.name)
+        value.try_into().context(self.name)
     }
 }
 
@@ -64,11 +62,7 @@ where
     S::Error: Error + Send + Sync + 'static,
 {
     fn decode(self) -> Result<Option<T>, ConversionError> {
-        self.value
-            .map(TryInto::try_into)
-            .transpose()
-            .map_err(ConversionError::new)
-            .context(self.name)
+        self.value.map(TryInto::try_into).transpose().context(self.name)
     }
 }
 
@@ -83,55 +77,19 @@ impl<S> RepeatedField<S> {
     pub const fn new(name: &'static str, values: Vec<S>) -> Self {
         Self { name, values }
     }
-
-    /// Returns the Protobuf field name.
-    pub const fn name(&self) -> &'static str {
-        self.name
-    }
-
-    /// Converts every item and includes the failing item index in conversion errors.
-    pub fn decode_items<T>(self) -> Result<Vec<T>, ConversionError>
-    where
-        S: TryInto<T>,
-        S::Error: Error + Send + Sync + 'static,
-    {
-        self.values
-            .into_iter()
-            .enumerate()
-            .map(|(index, value)| {
-                value
-                    .try_into()
-                    .map_err(ConversionError::new)
-                    .context(format!("{}[{index}]", self.name))
-            })
-            .collect()
-    }
 }
 
-/// Converts a repeated Protobuf field directly into a target collection.
-///
-/// The Protobuf source type is a trait parameter so a crate that owns the generated source type
-/// can implement this trait for a foreign domain collection.
-pub trait DecodeRepeated<S>: Sized {
-    fn decode_repeated(field: RepeatedField<S>) -> Result<Self, ConversionError>;
-}
-
-impl<S, T> DecodeRepeated<S> for Vec<T>
+impl<S, T> DecodeField<Vec<T>> for RepeatedField<S>
 where
     S: TryInto<T>,
     S::Error: Error + Send + Sync + 'static,
 {
-    fn decode_repeated(field: RepeatedField<S>) -> Result<Self, ConversionError> {
-        field.decode_items()
-    }
-}
-
-impl<S, T> DecodeField<T> for RepeatedField<S>
-where
-    T: DecodeRepeated<S>,
-{
-    fn decode(self) -> Result<T, ConversionError> {
-        T::decode_repeated(self)
+    fn decode(self) -> Result<Vec<T>, ConversionError> {
+        self.values
+            .into_iter()
+            .enumerate()
+            .map(|(index, value)| value.try_into().context(format!("{}[{index}]", self.name)))
+            .collect()
     }
 }
 
@@ -152,7 +110,7 @@ where
     S::Error: Error + Send + Sync + 'static,
 {
     fn decode(self) -> Result<T, ConversionError> {
-        self.value.try_into().map_err(ConversionError::new).context(self.name)
+        self.value.try_into().context(self.name)
     }
 }
 
@@ -161,26 +119,13 @@ mod tests {
     use alloc::string::ToString;
     use alloc::vec;
     use alloc::vec::Vec;
+    use core::error::Error;
+    use core::num::TryFromIntError;
 
-    use super::{DecodeRepeated, OptionalField, RepeatedField, RequiredField, decode};
-    use crate::ConversionError;
+    use super::{OptionalField, RepeatedField, RequiredField, decode};
 
     #[derive(Clone, PartialEq, prost::Message)]
     struct Message {}
-
-    #[derive(Debug, PartialEq, Eq)]
-    struct Numbers(Vec<u16>);
-
-    impl DecodeRepeated<u32> for Numbers {
-        fn decode_repeated(field: RepeatedField<u32>) -> Result<Self, ConversionError> {
-            let name = field.name();
-            let values = field.decode_items()?;
-            if values.is_empty() {
-                return Err(ConversionError::message("numbers must not be empty").context(name));
-            }
-            Ok(Numbers(values))
-        }
-    }
 
     #[test]
     fn optional_field_converts_present_values() {
@@ -205,11 +150,18 @@ mod tests {
         ))
         .unwrap_err();
         assert!(error.to_string().starts_with("values[1]:"));
+        assert!(error.source().unwrap().is::<TryFromIntError>());
     }
 
     #[test]
-    fn repeated_field_can_decode_directly_into_a_domain_collection() {
-        let numbers: Numbers = decode(RepeatedField::new("numbers", vec![1_u32, 2_u32])).unwrap();
-        assert_eq!(numbers, Numbers(vec![1, 2]));
+    fn repeated_fields_preserve_order_and_duplicates() {
+        let numbers: Vec<u16> = decode(RepeatedField::new("numbers", vec![2_u32, 1, 2])).unwrap();
+        assert_eq!(numbers, vec![2, 1, 2]);
+    }
+
+    #[test]
+    fn empty_repeated_fields_do_not_enforce_domain_invariants() {
+        let numbers: Vec<u16> = decode(RepeatedField::new("numbers", Vec::<u32>::new())).unwrap();
+        assert!(numbers.is_empty());
     }
 }

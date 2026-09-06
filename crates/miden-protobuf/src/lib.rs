@@ -8,15 +8,7 @@ pub mod build;
 mod decode;
 mod error;
 mod message;
-pub use decode::{
-    DecodeField,
-    DecodeRepeated,
-    OptionalField,
-    RepeatedField,
-    RequiredField,
-    ValueField,
-    decode,
-};
+pub use decode::{DecodeField, OptionalField, RepeatedField, RequiredField, ValueField, decode};
 pub use error::{ConversionError, ConversionResultExt};
 pub use message::{BuildUnchecked, DecodeMessage, Decoded, Verify, VerifyWith};
 #[cfg(feature = "derive")]

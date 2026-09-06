@@ -36,6 +36,8 @@ The old required-field helper and handwritten proven-batch parts struct have als
 ## Structural Decoding
 
 - Message cardinality, presence, enum conversion, and field/index paths are generated.
+- Repeated fields decode into `Vec<T>` only, preserving order and duplicates. Domain collections
+  and their invariants are constructed explicitly during verification.
 - Explicitly optional message presence is injected from schema descriptors.
 - Enum fields use Prost's named enum, not integers. Unknown discriminants fail decoding with
   a preserved `prost::UnknownEnumValue` source. Known-but-disallowed values fail construction.
