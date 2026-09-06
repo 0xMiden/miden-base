@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".account.PartialAccount",
             ".account.PartialVault",
             ".account.PartialStorage",
             ".account.PartialStorageMap",

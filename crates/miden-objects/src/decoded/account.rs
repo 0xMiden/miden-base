@@ -560,3 +560,38 @@ impl TryFrom<proto::account::PartialVault> for miden_protocol::asset::PartialVau
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedPartialAccount as PartialAccount;
+
+impl Verify for PartialAccount {
+    type Verified = miden_protocol::account::PartialAccount;
+    type Error = PartialAccountError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.account_id,
+            self.nonce,
+            self.code.verify()?,
+            self.storage.verify()?,
+            self.vault.verify()?,
+            self.seed,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PartialAccountError {
+    #[error("{0}")]
+    Account(#[from] miden_protocol::errors::AccountError),
+    #[error("{0}")]
+    Storage(#[from] PartialStorageError),
+    #[error("{0}")]
+    Vault(#[from] PartialVaultError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::PartialAccount> for miden_protocol::account::PartialAccount {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::PartialAccount) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

@@ -15,8 +15,7 @@ use miden_protocol::account::{
 use miden_protocol::asset::PartialVault;
 use miden_protocol::block::account_tree::AccountWitness;
 
-use super::{MessageDecodeExt, required};
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::{ConversionError, proto};
 
 impl TryFrom<proto::account::AccountId> for AccountId {
     type Error = ConversionError;
@@ -175,23 +174,6 @@ impl From<PartialVault> for proto::account::PartialVault {
 
 // PARTIAL ACCOUNT
 // ================================================================================================
-
-impl TryFrom<proto::account::PartialAccount> for PartialAccount {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::PartialAccount) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let account_id = required!(decoder, message.account_id)?;
-        let nonce = required!(decoder, message.nonce)?;
-        let code = required!(decoder, message.code)?;
-        let storage = required!(decoder, message.storage)?;
-        let vault = required!(decoder, message.vault)?;
-        let seed = message.seed.map(Word::try_from).transpose().context("seed")?;
-
-        PartialAccount::new(account_id, nonce, code, storage, vault, seed)
-            .map_err(ConversionError::new)
-    }
-}
 
 impl From<&PartialAccount> for proto::account::PartialAccount {
     fn from(account: &PartialAccount) -> Self {
