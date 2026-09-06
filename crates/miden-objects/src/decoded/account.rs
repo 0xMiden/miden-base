@@ -257,3 +257,49 @@ impl TryFrom<proto::account::AccountStorageHeader>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedStorageMapPatch as StorageMapPatch;
+
+impl Verify for StorageMapPatch {
+    type Verified = miden_protocol::account::StorageMapPatch;
+    type Error = StorageMapPatchError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use proto::account::StoragePatchOperation;
+        let mut entries = alloc::collections::BTreeMap::new();
+        for entry in self.entries {
+            let (key, value) = entry.verify().expect("infallible storage map entry");
+            if entries.insert(key, value).is_some() {
+                return Err(StorageMapPatchError::DuplicateKey(key));
+            }
+        }
+        let entries = miden_protocol::account::StorageMapPatchEntries::from_raw(entries);
+        match self.operation {
+            StoragePatchOperation::Create => Ok(Self::Verified::Create { entries }),
+            StoragePatchOperation::Update if entries.is_empty() => {
+                Err(StorageMapPatchError::EmptyUpdate)
+            },
+            StoragePatchOperation::Update => Ok(Self::Verified::Update { entries }),
+            StoragePatchOperation::Remove if entries.is_empty() => Ok(Self::Verified::Remove),
+            StoragePatchOperation::Remove => Err(StorageMapPatchError::NonEmptyRemove),
+            StoragePatchOperation::Unspecified => Err(StorageMapPatchError::UnspecifiedOperation),
+        }
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum StorageMapPatchError {
+    #[error("storage patch operation is unspecified")]
+    UnspecifiedOperation,
+    #[error("entries must be non-empty for an update operation")]
+    EmptyUpdate,
+    #[error("entries must be empty for a remove operation")]
+    NonEmptyRemove,
+    #[error("duplicate storage map key {0:?}")]
+    DuplicateKey(miden_protocol::account::StorageMapKey),
+}
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::StorageMapPatch> for miden_protocol::account::StorageMapPatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::StorageMapPatch) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

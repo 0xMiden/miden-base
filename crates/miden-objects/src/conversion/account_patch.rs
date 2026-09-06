@@ -1,5 +1,4 @@
 use alloc::borrow::ToOwned;
-use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::vec::Vec;
 
@@ -10,7 +9,6 @@ use miden_protocol::account::{
     AccountStoragePatch,
     AccountUpdateDetails,
     AccountVaultPatch,
-    StorageMapKey,
     StorageMapPatch,
     StorageMapPatchEntries,
     StorageSlotName,
@@ -89,33 +87,6 @@ impl From<&StorageMapPatch> for proto::account::StorageMapPatch {
     }
 }
 
-impl TryFrom<proto::account::StorageMapPatch> for StorageMapPatch {
-    type Error = ConversionError;
-
-    fn try_from(patch: proto::account::StorageMapPatch) -> Result<Self, Self::Error> {
-        use proto::account::storage_map_patch::Operation;
-
-        match patch.operation {
-            Some(Operation::Create(entries)) => Ok(Self::Create {
-                entries: entries.try_into().context("operation.create")?,
-            }),
-            Some(Operation::Update(entries)) => {
-                let entries: StorageMapPatchEntries =
-                    entries.try_into().context("operation.update")?;
-                if entries.is_empty() {
-                    return Err(ConversionError::message("entries must be non-empty")
-                        .context("operation.update.entries"));
-                }
-                Ok(Self::Update { entries })
-            },
-            Some(Operation::Remove(())) => Ok(Self::Remove),
-            None => {
-                Err(ConversionError::missing_field::<proto::account::StorageMapPatch>("operation"))
-            },
-        }
-    }
-}
-
 impl From<&StorageMapPatchEntries> for proto::account::StorageMapPatchEntries {
     fn from(entries: &StorageMapPatchEntries) -> Self {
         Self {
@@ -130,29 +101,6 @@ impl From<&StorageMapPatchEntries> for proto::account::StorageMapPatchEntries {
         }
     }
 }
-
-impl TryFrom<proto::account::StorageMapPatchEntries> for StorageMapPatchEntries {
-    type Error = ConversionError;
-
-    fn try_from(patch: proto::account::StorageMapPatchEntries) -> Result<Self, Self::Error> {
-        let mut entries = BTreeMap::new();
-        for (index, entry) in patch.entries.into_iter().enumerate() {
-            let decoder = entry.decoder();
-            let entry_context = format!("entries[{index}]");
-            let key = StorageMapKey::from_raw(
-                required!(decoder, entry.key).context(entry_context.clone())?,
-            );
-            let value = required!(decoder, entry.value).context(entry_context.clone())?;
-            if entries.insert(key, value).is_some() {
-                return Err(ConversionError::message("duplicate storage map key")
-                    .context(format!("{entry_context}.key")));
-            }
-        }
-
-        Ok(Self::from_raw(entries))
-    }
-}
-
 impl From<&AccountStoragePatch> for proto::account::AccountStoragePatch {
     fn from(patch: &AccountStoragePatch) -> Self {
         Self {

@@ -680,3 +680,31 @@ fn storage_header_reports_nested_enum_paths_and_defers_duplicates() {
     .unwrap_err();
     assert!(error.to_string().starts_with("slots[1].slot_type: "), "{error}");
 }
+
+#[test]
+fn storage_map_patch_verifies_operation_constraints_after_decoding() {
+    use proto::account::StoragePatchOperation::{Create, Remove, Unspecified, Update};
+    let entry = proto::account::StorageMapEntry {
+        key: Some(Word::empty().into()),
+        value: Some(Word::empty().into()),
+    };
+    for (operation, count, valid) in [
+        (Create, 0, true),
+        (Create, 1, true),
+        (Update, 0, false),
+        (Update, 1, true),
+        (Remove, 0, true),
+        (Remove, 1, false),
+        (Unspecified, 0, false),
+        (Create, 2, false),
+    ] {
+        let decoded = proto::account::StorageMapPatch {
+            operation: operation as i32,
+            entries: vec![entry.clone(); count],
+        }
+        .decode_fields()
+        .unwrap();
+        assert_eq!(decoded.operation, operation);
+        assert_eq!(decoded.verify().is_ok(), valid, "{operation:?}, {count}");
+    }
+}
