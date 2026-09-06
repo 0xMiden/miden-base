@@ -903,6 +903,93 @@ fn account_storage_patch_protobuf_slots_follow_canonical_storage_order() {
 }
 
 #[test]
+fn storage_value_patch_oneof_roundtrips_all_operations() {
+    use proto::account::storage_value_patch::Operation;
+
+    for value in [Word::empty(), Word::from([1_u32, 2, 3, 4])] {
+        for (patch, expected) in [
+            (StorageValuePatch::Create { value }, Operation::Create(value.into())),
+            (StorageValuePatch::Update { value }, Operation::Update(value.into())),
+            (StorageValuePatch::Remove, Operation::Remove(())),
+        ] {
+            let message = proto::account::StorageValuePatch::from(&patch);
+            assert_eq!(message.operation, Some(expected));
+            let encoded = message.encode_to_vec();
+            let decoded = proto::account::StorageValuePatch::decode(encoded.as_slice()).unwrap();
+            assert_eq!(StorageValuePatch::try_from(decoded).unwrap(), patch);
+        }
+    }
+
+    let remove = proto::account::StorageValuePatch::from(&StorageValuePatch::Remove);
+    assert_eq!(remove.encode_to_vec(), [0x1a, 0x00]);
+}
+
+#[test]
+fn storage_value_patch_requires_an_operation() {
+    let message = proto::account::StorageValuePatch::decode(&[][..]).unwrap();
+    let error = StorageValuePatch::try_from(message).unwrap_err();
+
+    assert_eq!(
+        error.to_string(),
+        "operation: field miden_objects::proto::account::StorageValuePatch::operation is missing"
+    );
+}
+
+#[test]
+fn storage_value_patch_reports_the_malformed_variant_and_error_source() {
+    use miden_protocol::utils::serde::DeserializationError;
+    use proto::account::storage_value_patch::Operation;
+
+    for (operation, name) in [
+        (
+            Operation::Create(proto::primitives::Word { encoded: vec![u8::MAX; 32] }),
+            "create",
+        ),
+        (
+            Operation::Update(proto::primitives::Word { encoded: vec![u8::MAX; 32] }),
+            "update",
+        ),
+    ] {
+        let error = StorageValuePatch::try_from(proto::account::StorageValuePatch {
+            operation: Some(operation),
+        })
+        .unwrap_err();
+
+        assert!(error.to_string().starts_with(&format!("operation.{name}: ")), "{error}");
+        assert_matches!(
+            error
+                .source()
+                .and_then(Error::source)
+                .and_then(|source| source.downcast_ref::<DeserializationError>()),
+            Some(DeserializationError::InvalidValue(_))
+        );
+    }
+}
+
+#[test]
+fn storage_value_patch_nested_in_account_storage_patch_roundtrips() {
+    let patch = AccountStoragePatch::from_entries([
+        (
+            StorageSlotName::mock(1),
+            StorageSlotPatch::Value(StorageValuePatch::Create { value: Word::empty() }),
+        ),
+        (
+            StorageSlotName::mock(2),
+            StorageSlotPatch::Value(StorageValuePatch::Update {
+                value: Word::from([1_u32, 0, 0, 0]),
+            }),
+        ),
+        (StorageSlotName::mock(3), StorageSlotPatch::Value(StorageValuePatch::Remove)),
+    ])
+    .unwrap();
+    let message = proto::account::AccountStoragePatch::from(&patch);
+    let encoded = message.encode_to_vec();
+    let decoded = proto::account::AccountStoragePatch::decode(encoded.as_slice()).unwrap();
+
+    assert_eq!(AccountStoragePatch::try_from(decoded).unwrap(), patch);
+}
+
+#[test]
 fn empty_protobuf_block_body_decodes_to_an_empty_domain_body() {
     let expected =
         BlockBody::new(vec![], vec![], vec![], OrderedTransactionHeaders::new_unchecked(vec![]))

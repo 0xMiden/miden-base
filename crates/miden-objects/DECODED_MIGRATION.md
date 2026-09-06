@@ -8,18 +8,20 @@ This experiment starts from `origin/next` at `8195bba1` on branch
 and `BuildUnchecked` traits. Each migration commit covers one wire message.
 The protocol domain types are unchanged. The schema now marks
 `BlockHeader.next_protocol_config` explicitly optional without changing its field number or encoding.
+`StorageValuePatch` now uses a create/update/remove oneof instead of an enum and optional-by-convention
+value. This changes its unreleased wire layout; encoders and decoders must be regenerated together.
 
 The initial pass integrated 47 messages. Named enum decoding added another 12, one per commit.
-The current descriptor-based inventory covers all 95 message declarations, including nested
-and empty messages:
+The current inventory covers all 95 Miden message declarations, including nested and empty messages.
+The imported `google.protobuf.Empty` descriptor is not counted as a Miden message:
 
 | Status | Messages |
 | --- | ---: |
 | Generated decoded records with manual `Verify` | 52 |
 | Generated decoded records with manual `BuildUnchecked` | 2 |
 | Canonical atomic representation adapters | 5 |
-| Directly blocked by oneofs | 6 |
-| Held for presence, byte-adapter, or projection decisions | 4 |
+| Directly blocked by oneofs | 7 |
+| Held for byte-adapter or projection decisions | 3 |
 | Blocked by dependencies on those messages | 26 |
 | Total | 95 |
 
@@ -52,6 +54,7 @@ Migrated messages exercise the actual Prost-generated enum types.
 | --- | --- |
 | `account.AccountUpdateDetails` | oneof update |
 | `account.StorageSlotPatch` | oneof patch |
+| `account.StorageValuePatch` | oneof operation |
 | `primitives.SmtLeaf` | oneof leaf |
 | `transaction.InputNote` | oneof note |
 | `transaction.OutputNote` | oneof note |
@@ -62,20 +65,20 @@ blocker in these schemas. Enum fields no longer block migration.
 
 ## Behavioral Gaps
 
-These four messages have field shapes the derive accepts, but migrating them mechanically would
+These three messages have field shapes the derive accepts, but migrating them mechanically would
 change existing behavior or diagnostics. They were left untouched for review.
 
 | Message | Decision needed |
 | --- | --- |
-| `account.StorageValuePatch` | `value` is not explicitly optional in the schema, but Remove requires it to be absent. |
 | `primitives.PublicKey` | Decode canonical bytes through a reusable adapter while preserving the generated `encoded` path. |
 | `primitives.Signature` | Same byte-adapter requirement as `PublicKey`. |
 | `note.Note` | Existing full-note conversion ignores transmitted metadata attachment fields and recomputes them from attachments. |
 
-For presence, the current model treats singular messages as required unless the schema says
-`optional`. It cannot express the operation-dependent presence of `StorageValuePatch.value`
-without either an optional field followed by manual verification or a schema oneof. No presence
-override was added to silently contradict the schema.
+Both presence gaps are resolved in the schemas. Scheduled upgrades are explicitly optional.
+Storage value patches carry a `Word` for Create/Update and `google.protobuf.Empty` for Remove,
+which Prost represents as `()`. The existing handwritten conversion rejects an absent operation
+and decodes the selected value. Migration of that conversion awaits generator oneof support.
+`BlockHeader` still depends on the unmigrated `ValidatorConfig`.
 
 For keys and signatures, deriving a record with a named variant and raw `Vec<u8>` is possible.
 However, moving byte parsing to `Verify` would move malformed-byte errors out of generated path
