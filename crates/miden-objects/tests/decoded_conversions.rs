@@ -820,3 +820,18 @@ fn input_note_commitment_builds_unchecked_after_decoding() {
     let error = wire.decode_fields().unwrap_err();
     assert!(error.to_string().starts_with("header.metadata.note_type: "), "{error}");
 }
+
+#[test]
+fn private_output_note_defers_cross_field_verification() {
+    let note = miden_protocol::note::Note::mock_noop(Word::empty());
+    let output = miden_protocol::transaction::PrivateOutputNote::new(
+        *note.header(),
+        note.attachments().clone(),
+    )
+    .unwrap();
+    let mut wire = proto::transaction::PrivateOutputNote::from(&output);
+    assert_eq!(wire.clone().decode_fields().unwrap().verify().unwrap(), output);
+    wire.header.as_mut().unwrap().metadata.as_mut().unwrap().note_type =
+        proto::note::NoteType::Public as i32;
+    assert!(wire.decode_fields().unwrap().verify().is_err());
+}
