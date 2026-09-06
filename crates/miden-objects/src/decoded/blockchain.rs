@@ -208,3 +208,33 @@ impl TryFrom<proto::blockchain::PartialBlockchain>
         crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedBlockAccountUpdate as BlockAccountUpdate;
+
+impl Verify for BlockAccountUpdate {
+    type Verified = miden_protocol::block::BlockAccountUpdate;
+    type Error = BlockAccountUpdateError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.account_id,
+            self.final_state_commitment,
+            self.details.verify()?,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum BlockAccountUpdateError {
+    #[error("{0}")]
+    Details(#[from] super::account::AccountPatchError),
+    #[error("{0}")]
+    Update(#[from] miden_protocol::errors::BlockAccountUpdateError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::BlockAccountUpdate> for miden_protocol::block::BlockAccountUpdate {
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::BlockAccountUpdate) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
