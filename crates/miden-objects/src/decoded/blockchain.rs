@@ -266,3 +266,21 @@ impl TryFrom<proto::blockchain::IndexedOutputNote>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedOutputNoteBatch as OutputNoteBatch;
+
+impl Verify for OutputNoteBatch {
+    type Verified = miden_protocol::block::OutputNoteBatch;
+    type Error = IndexedOutputNoteError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        self.notes.into_iter().map(Verify::verify).collect()
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::OutputNoteBatch> for miden_protocol::block::OutputNoteBatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::OutputNoteBatch) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
