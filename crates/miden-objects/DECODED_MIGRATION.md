@@ -6,7 +6,8 @@ This experiment starts from `origin/next` at `8195bba1` on branch
 `mirko/protobuf-decoded-next`. The foundation introduces `miden-protobuf`,
 `miden-protobuf-derive`, and the fixed `DecodeMessage`, `Verify`, `VerifyWith<C>`,
 and `BuildUnchecked` traits. Each migration commit covers one wire message.
-The schemas and protocol domain types are unchanged.
+The protocol domain types are unchanged. The schema now marks
+`BlockHeader.next_protocol_config` explicitly optional without changing its field number or encoding.
 
 The initial pass integrated 47 messages. Named enum decoding added another 12, one per commit.
 The current descriptor-based inventory covers all 95 message declarations, including nested
@@ -18,8 +19,8 @@ and empty messages:
 | Generated decoded records with manual `BuildUnchecked` | 2 |
 | Canonical atomic representation adapters | 5 |
 | Directly blocked by oneofs | 6 |
-| Held for presence, byte-adapter, or projection decisions | 5 |
-| Blocked by dependencies on those messages | 25 |
+| Held for presence, byte-adapter, or projection decisions | 4 |
+| Blocked by dependencies on those messages | 26 |
 | Total | 95 |
 
 The five atoms are `primitives.Word`, `primitives.Felt`, `primitives.MastForest`,
@@ -61,13 +62,12 @@ blocker in these schemas. Enum fields no longer block migration.
 
 ## Behavioral Gaps
 
-These five messages have field shapes the derive accepts, but migrating them mechanically would
+These four messages have field shapes the derive accepts, but migrating them mechanically would
 change existing behavior or diagnostics. They were left untouched for review.
 
 | Message | Decision needed |
 | --- | --- |
 | `account.StorageValuePatch` | `value` is not explicitly optional in the schema, but Remove requires it to be absent. |
-| `blockchain.BlockHeader` | `next_protocol_config` is not explicitly optional in the schema, but existing headers may omit it. Also depends on `ValidatorConfig`. |
 | `primitives.PublicKey` | Decode canonical bytes through a reusable adapter while preserving the generated `encoded` path. |
 | `primitives.Signature` | Same byte-adapter requirement as `PublicKey`. |
 | `note.Note` | Existing full-note conversion ignores transmitted metadata attachment fields and recomputes them from attachments. |
@@ -101,6 +101,7 @@ are immediate; follow the table to a oneof or behavioral gap above.
 | `account.PartialVault` | `primitives.PartialSmt` |
 | `blockchain.BlockAccountUpdate` | `account.AccountUpdateDetails` |
 | `blockchain.BlockBody` | `blockchain.BlockAccountUpdate`, `blockchain.OutputNoteBatch` |
+| `blockchain.BlockHeader` | `blockchain.ValidatorConfig` |
 | `blockchain.IndexedOutputNote` | `transaction.OutputNote` |
 | `blockchain.OutputNoteBatch` | `blockchain.IndexedOutputNote` |
 | `blockchain.PartialBlockchain` | `blockchain.BlockHeader` |
@@ -144,5 +145,5 @@ are immediate; follow the table to a oneof or behavioral gap above.
 - Compatibility conversions for borrowed messages clone into the owned decoding model.
   Existing infallible `From` conversions for `BlockNumber` and `FeeParameters` remain infallible.
 
-Only named enum support was added to the derive in this pass. The traits and construction model
-were not changed.
+The derive supports named enums; the traits and construction model remain unchanged. The presence
+schema fixes do not add generator oneof support or field adapters.

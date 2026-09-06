@@ -987,6 +987,18 @@ fn block_header_protobuf_round_trip_preserves_current_fields() {
 }
 
 #[test]
+fn block_header_protobuf_round_trip_preserves_absent_scheduled_upgrade() {
+    let header = BlockHeader::mock(1, None, None, &[]);
+    assert!(header.next_protocol_config().is_none());
+
+    let encoded = proto::blockchain::BlockHeader::from(&header).encode_to_vec();
+    let message = proto::blockchain::BlockHeader::decode(encoded.as_slice()).unwrap();
+
+    assert!(message.next_protocol_config.is_none());
+    assert_eq!(BlockHeader::try_from(message).unwrap(), header);
+}
+
+#[test]
 fn block_header_protobuf_rejects_invalid_validator_quorum() {
     let header = block_header_with_scheduled_upgrade();
     let mut message = proto::blockchain::BlockHeader::from(header);
