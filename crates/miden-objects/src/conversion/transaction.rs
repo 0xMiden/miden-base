@@ -1,6 +1,3 @@
-use alloc::format;
-use alloc::vec::Vec;
-
 use miden_protocol::transaction::{
     InputNoteCommitment,
     OutputNote,
@@ -14,8 +11,7 @@ use miden_protocol::transaction::{
     TxAccountUpdate,
 };
 
-use super::{MessageDecodeExt, required};
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::proto;
 
 // TRANSACTION ARGUMENTS
 // ================================================================================================
@@ -89,48 +85,6 @@ impl From<&ProvenTransaction> for proto::transaction::ProvenTransaction {
 impl From<ProvenTransaction> for proto::transaction::ProvenTransaction {
     fn from(value: ProvenTransaction) -> Self {
         Self::from(&value)
-    }
-}
-
-impl TryFrom<proto::transaction::ProvenTransaction> for ProvenTransaction {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::transaction::ProvenTransaction) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let account_update = required!(decoder, value.account_update)?;
-        let input_notes = value
-            .input_notes
-            .into_iter()
-            .enumerate()
-            .map(|(index, note)| {
-                InputNoteCommitment::try_from(note).context(format!("input_notes[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let output_notes = value
-            .output_notes
-            .into_iter()
-            .enumerate()
-            .map(|(index, note)| {
-                OutputNote::try_from(note).context(format!("output_notes[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let reference_block_commitment = required!(decoder, value.reference_block_commitment)?;
-        let reference_block_num =
-            required!(decoder, value.reference_block_num).context("reference_block_num")?;
-        let expiration_block_num =
-            required!(decoder, value.expiration_block_num).context("expiration_block_num")?;
-        let proof = required!(decoder, value.proof)?;
-
-        Self::new(
-            account_update,
-            input_notes,
-            output_notes,
-            reference_block_num,
-            reference_block_commitment,
-            expiration_block_num,
-            proof,
-        )
-        .map_err(ConversionError::new)
     }
 }
 

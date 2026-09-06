@@ -472,3 +472,54 @@ impl TryFrom<proto::transaction::BatchAccountUpdate> for miden_protocol::batch::
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedProvenTransaction as ProvenTransaction;
+
+/// Checks transaction construction invariants, but not its proof or input-note authentication.
+impl crate::BuildUnchecked for ProvenTransaction {
+    type Output = miden_protocol::transaction::ProvenTransaction;
+    type Error = ProvenTransactionError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let inputs = self
+            .input_notes
+            .into_iter()
+            .map(BuildUnchecked::build_unchecked)
+            .collect::<Result<alloc::vec::Vec<_>, _>>()?;
+        let outputs = self
+            .output_notes
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<alloc::vec::Vec<_>, _>>()?;
+        Ok(Self::Output::new(
+            self.account_update.verify()?,
+            inputs,
+            outputs,
+            self.reference_block_num.verify().expect("infallible block number"),
+            self.reference_block_commitment,
+            self.expiration_block_num.verify().expect("infallible block number"),
+            self.proof,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProvenTransactionError {
+    #[error("{0}")]
+    Update(#[from] TxAccountUpdateError),
+    #[error("{0}")]
+    Input(#[from] super::note::VerificationError),
+    #[error("{0}")]
+    Output(#[from] OutputNoteError),
+    #[error("{0}")]
+    Transaction(#[from] miden_protocol::errors::ProvenTransactionError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::ProvenTransaction>
+    for miden_protocol::transaction::ProvenTransaction
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::ProvenTransaction) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}
