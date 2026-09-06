@@ -32,6 +32,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut prost = prost_build::Config::new();
     prost.out_dir(out_dir);
+    for message in ["primitives.Felt", "primitives.Word", "primitives.ExecutionProof"] {
+        prost.message_attribute(
+            message,
+            quote::quote!(#[derive(::miden_protobuf::ProtoDecodeValue)]).to_string(),
+        );
+    }
     miden_protobuf::build::configure_proto_decode_fields(
         &mut prost,
         &descriptors,

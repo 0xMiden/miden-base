@@ -20,6 +20,19 @@ use syn::{
     parse_macro_input,
 };
 mod fields;
+mod value;
+
+/// Generates `decode_value(&self, parser)` for a single scalar or bytes payload.
+/// The parser handles representation decoding only; the generated method attaches the schema
+/// field name and preserves the error source. No domain target or constructor is configured.
+#[proc_macro_derive(ProtoDecodeValue)]
+pub fn derive_proto_decode_value(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    runtime_path()
+        .and_then(|runtime| value::expand(input, runtime))
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
 /// Generates a decoded record without domain construction.
 /// Message cardinality and error paths come from Prost metadata and descriptor-injected presence.
 /// Enum fields use Prost's named enums and reject unknown discriminants during decoding.
@@ -48,7 +61,7 @@ fn runtime_path() -> Result<TokenStream2> {
         },
         Err(error) => Err(syn::Error::new(
             Span::call_site(),
-            format!("ProtoDecodeFields requires a dependency on `miden-protobuf`: {error}"),
+            format!("protobuf decoding derives require a dependency on `miden-protobuf`: {error}"),
         )),
     }
 }

@@ -126,7 +126,7 @@ fn account_id_v1_decode_reports_field_paths() {
         for invalid in [None, Some(proto::primitives::Felt { value: miden_protocol::Felt::ORDER })]
         {
             let path = if invalid.is_some() {
-                format!("{field}.felt.value:")
+                format!("{field}.value:")
             } else {
                 format!("{field}:")
             };

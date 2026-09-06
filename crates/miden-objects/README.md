@@ -24,6 +24,10 @@ generate matching decoded enums, with exact wire variant names supplied by descr
 An absent oneof is rejected by default; an explicitly configured optional oneof retains its Option.
 Maps and boxed messages are not yet supported and are not used by these schemas.
 
+The three single-payload atoms use `ProtoDecodeValue` to generate `decode_value(&self, parser)`.
+Their parsers return representation errors; the helper supplies the payload field path and
+preserves the source. Neither targets nor constructors are configured in attributes.
+
 Canonical bytes can opt into a local representation type using
 `#[proto_decode(bytes = Adapter)]`. The adapter implements ordinary `TryFrom`; generated
 code supplies field, variant, and index paths. It does not run domain verification.

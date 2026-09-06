@@ -21,9 +21,9 @@ The imported `google.protobuf.Empty` is not counted as a Miden message.
 | Total | 97 |
 
 Two unchecked records also implement `VerifyWith`. The three atoms are
-`primitives.Word`, `primitives.Felt`, and `primitives.ExecutionProof`. Their existing canonical
-representation parsing and leaf diagnostics remain handwritten. This is not 97 fully
-generated domain conversions.
+`primitives.Word`, `primitives.Felt`, and `primitives.ExecutionProof`. Canonical representation
+parsing remains handwritten, but `ProtoDecodeValue` generates their payload field paths and
+error wrapping. This is not 97 fully generated domain conversions.
 
 Generated-record selection and byte adapter attributes live in [build.rs](build.rs).
 Handwritten construction lives in [src/decoded](src/decoded). Combined protobuf-to-domain

@@ -4,28 +4,11 @@ use alloc::vec::Vec;
 
 use miden_protocol::crypto::dsa::ecdsa_k256_keccak::{PublicKey, Signature};
 use miden_protocol::crypto::merkle::store::MerkleStore;
-use miden_protocol::utils::serde::{Deserializable, Serializable};
+use miden_protocol::utils::serde::{Deserializable, DeserializationError, Serializable};
 use miden_protocol::vm::{AdviceInputs, AdviceMap, AdviceStack, ExecutionProof};
 use miden_protocol::{Felt, MastForest, Word};
 
-use crate::{ConversionError, ConversionResultExt, proto};
-
-const WORD_SERIALIZED_SIZE: usize = Word::SERIALIZED_SIZE;
-
-fn ensure_exact_length(
-    encoded: &[u8],
-    expected: usize,
-    field: &'static str,
-) -> Result<(), ConversionError> {
-    if encoded.len() != expected {
-        return Err(ConversionError::message(format!(
-            "expected exactly {expected} bytes, got {}",
-            encoded.len()
-        ))
-        .context(field));
-    }
-    Ok(())
-}
+use crate::{ConversionError, proto};
 
 // FELT
 // ================================================================================================
@@ -54,7 +37,7 @@ impl TryFrom<&proto::primitives::Felt> for Felt {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::Felt) -> Result<Self, Self::Error> {
-        Self::try_from(value.value).map_err(ConversionError::new).context("felt.value")
+        value.decode_value(|value| Self::try_from(*value))
     }
 }
 
@@ -85,9 +68,16 @@ impl TryFrom<&proto::primitives::Word> for Word {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::Word) -> Result<Self, Self::Error> {
-        ensure_exact_length(&value.encoded, WORD_SERIALIZED_SIZE, "word.encoded")?;
-        Self::read_from_bytes(&value.encoded)
-            .map_err(|error| ConversionError::deserialization("word.encoded", error))
+        value.decode_value(|encoded| {
+            if encoded.len() != Word::SERIALIZED_SIZE {
+                return Err(DeserializationError::InvalidValue(format!(
+                    "expected exactly {} bytes, got {}",
+                    Word::SERIALIZED_SIZE,
+                    encoded.len()
+                )));
+            }
+            Self::read_from_bytes(encoded)
+        })
     }
 }
 
@@ -118,9 +108,7 @@ impl TryFrom<&proto::primitives::ExecutionProof> for ExecutionProof {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::ExecutionProof) -> Result<Self, Self::Error> {
-        Self::read_from_bytes(&value.encoded)
-            .map_err(|error| ConversionError::deserialization("ExecutionProof", error))
-            .map_err(|error| error.context("encoded"))
+        value.decode_value(|encoded| Self::read_from_bytes(encoded))
     }
 }
 
@@ -259,7 +247,6 @@ mod tests {
     use assert_matches::assert_matches;
     use miden_protocol::testing::dummy_execution_proof;
     use miden_protocol::testing::random_secret_key::random_secret_key;
-    use miden_protocol::utils::serde::DeserializationError;
 
     use super::*;
     use crate::{DecodeMessage, Verify};
@@ -289,7 +276,8 @@ mod tests {
         assert_eq!(Word::try_from(proto::primitives::Word::from(word)).unwrap(), word);
 
         let error = Word::try_from(proto::primitives::Word { encoded: vec![0; 31] }).unwrap_err();
-        assert_eq!(error.to_string(), "word.encoded: expected exactly 32 bytes, got 31");
+        assert!(error.to_string().starts_with("encoded: "), "{error}");
+        assert!(error.to_string().contains("expected exactly 32 bytes, got 31"), "{error}");
     }
 
     #[test]

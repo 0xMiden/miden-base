@@ -664,7 +664,7 @@ fn note_metadata_protobuf_reports_invalid_sender() {
 
     let error = message.decode_fields().unwrap_err();
 
-    assert!(error.to_string().starts_with("sender.version.v1.prefix.felt.value: "));
+    assert!(error.to_string().starts_with("sender.version.v1.prefix.value: "));
     assert!(
         error
             .source()
@@ -952,12 +952,9 @@ fn storage_value_patch_reports_the_malformed_variant_and_error_source() {
             .decode_fields()
             .unwrap_err();
 
-        assert!(error.to_string().starts_with(&format!("operation.{name}: ")), "{error}");
+        assert!(error.to_string().starts_with(&format!("operation.{name}.encoded: ")), "{error}");
         assert_matches!(
-            error
-                .source()
-                .and_then(Error::source)
-                .and_then(|source| source.downcast_ref::<DeserializationError>()),
+            error.source().and_then(|source| source.downcast_ref::<DeserializationError>()),
             Some(DeserializationError::InvalidValue(_))
         );
     }
