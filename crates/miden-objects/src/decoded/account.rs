@@ -394,3 +394,44 @@ impl TryFrom<proto::account::AccountStoragePatch> for miden_protocol::account::A
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountPatch as AccountPatch;
+
+impl Verify for AccountPatch {
+    type Verified = miden_protocol::account::AccountPatch;
+    type Error = AccountPatchError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        if self.version != proto::account::AccountPatchVersion::V1 {
+            return Err(AccountPatchError::UnspecifiedVersion);
+        }
+        Ok(Self::Verified::new(
+            self.account_id,
+            self.storage.verify()?,
+            self.vault.verify()?,
+            self.code.map(Verify::verify).transpose()?,
+            self.final_nonce,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum AccountPatchError {
+    #[error("account patch version is unspecified")]
+    UnspecifiedVersion,
+    #[error(transparent)]
+    Storage(#[from] StoragePatchError),
+    #[error(transparent)]
+    Vault(#[from] VaultPatchError),
+    #[error(transparent)]
+    Code(#[from] miden_protocol::errors::AccountError),
+    #[error(transparent)]
+    Patch(#[from] miden_protocol::errors::AccountPatchError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountPatch> for miden_protocol::account::AccountPatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountPatch) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

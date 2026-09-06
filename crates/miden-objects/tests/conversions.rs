@@ -535,14 +535,14 @@ fn account_patch_roundtrips_through_explicit_versioned_protobuf_bytes() {
 }
 
 #[test]
-fn account_patch_protobuf_rejects_unspecified_version_before_payload_fields() {
+fn account_patch_protobuf_rejects_unspecified_version_after_decoding() {
     let error = AccountPatch::try_from(proto::account::AccountPatch {
         version: proto::account::AccountPatchVersion::Unspecified as i32,
-        ..Default::default()
+        ..proto::account::AccountPatch::from(account_patch())
     })
     .unwrap_err();
 
-    assert_eq!(error.to_string(), "version: account patch version is unspecified");
+    assert_eq!(error.to_string(), "account patch version is unspecified");
 }
 
 #[test]
@@ -552,11 +552,10 @@ fn account_patch_protobuf_preserves_unknown_version_error_sources() {
             AccountPatch::try_from(proto::account::AccountPatch { version, ..Default::default() })
                 .unwrap_err();
 
-        assert_eq!(error.to_string(), format!("version: unknown account patch version {version}"));
+        assert_eq!(error.to_string(), format!("version: unknown enumeration value {version}"));
         assert_matches!(
             error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
             Some(prost::UnknownEnumValue(value)) if *value == version
         );
