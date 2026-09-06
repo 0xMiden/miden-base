@@ -1,14 +1,11 @@
-use alloc::collections::{BTreeMap, BTreeSet};
-use alloc::format;
 use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::crypto::merkle::mmr::MmrDelta;
-use miden_protocol::crypto::merkle::smt::{PartialSmt, SMT_DEPTH, SmtLeaf, SmtProof, UniqueNodes};
-use miden_protocol::crypto::merkle::{MerklePath, NodeIndex, SparseMerklePath};
+use miden_protocol::crypto::merkle::smt::{PartialSmt, SmtLeaf, SmtProof, UniqueNodes};
+use miden_protocol::crypto::merkle::{MerklePath, SparseMerklePath};
 
-use super::{MessageDecodeExt, required};
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::{ConversionError, proto};
 
 // MERKLE PATH
 // ================================================================================================
@@ -154,106 +151,9 @@ impl From<UniqueNodes> for proto::primitives::PartialSmt {
     }
 }
 
-impl TryFrom<proto::primitives::PartialSmt> for UniqueNodes {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let proto::primitives::PartialSmt {
-            root,
-            node_levels,
-            leaves,
-            value_only_leaves,
-        } = value;
-
-        let root = required!(decoder, root)?;
-
-        let mut seen_depths = BTreeSet::new();
-        let mut decoded_nodes = BTreeMap::new();
-        for level in node_levels {
-            let depth = u8::try_from(level.depth).context("node_levels.depth")?;
-            if depth == 0 || depth >= SMT_DEPTH {
-                return Err(ConversionError::message(format!(
-                    "partial SMT node depth {depth} must be in the range 1..{SMT_DEPTH}"
-                )));
-            }
-            if !seen_depths.insert(depth) {
-                return Err(ConversionError::message(format!(
-                    "partial SMT contains duplicate node depth {depth}"
-                )));
-            }
-
-            for node in level.nodes {
-                let index = NodeIndex::new(depth, node.index).context("node_levels.nodes.index")?;
-                if decoded_nodes.contains_key(&index) {
-                    return Err(ConversionError::message(format!(
-                        "partial SMT contains duplicate node index {} at depth {depth}",
-                        node.index
-                    )));
-                }
-                let digest = node.digest.ok_or_else(|| {
-                    ConversionError::missing_field::<proto::primitives::PartialSmtNode>("digest")
-                })?;
-                decoded_nodes.insert(index, digest.try_into().context("digest")?);
-            }
-        }
-
-        let mut seen_leaf_indices = BTreeSet::new();
-        let mut decoded_leaves = BTreeMap::new();
-        for indexed_leaf in leaves {
-            if !seen_leaf_indices.insert(indexed_leaf.index) {
-                return Err(ConversionError::message(format!(
-                    "partial SMT contains duplicate leaf index {}",
-                    indexed_leaf.index
-                )));
-            }
-            let decoder = indexed_leaf.decoder();
-            let leaf = required!(decoder, indexed_leaf.leaf)?;
-            decoded_leaves.insert(indexed_leaf.index, leaf);
-        }
-
-        let mut seen_value_only_indices = BTreeSet::new();
-        let mut decoded_value_only_leaves = BTreeMap::new();
-        for indexed_digest in value_only_leaves {
-            if !seen_value_only_indices.insert(indexed_digest.index) {
-                return Err(ConversionError::message(format!(
-                    "partial SMT contains duplicate value-only leaf index {}",
-                    indexed_digest.index
-                )));
-            }
-            if seen_leaf_indices.contains(&indexed_digest.index) {
-                return Err(ConversionError::message(format!(
-                    "partial SMT leaf index {} has both a leaf and a value-only leaf",
-                    indexed_digest.index
-                )));
-            }
-            let decoder = indexed_digest.decoder();
-            let digest = required!(decoder, indexed_digest.value)?;
-            decoded_value_only_leaves.insert(indexed_digest.index, digest);
-        }
-
-        Ok(UniqueNodes {
-            root,
-            nodes: decoded_nodes,
-            leaves: decoded_leaves,
-            value_only_leaves: decoded_value_only_leaves,
-        })
-    }
-}
-
 impl From<PartialSmt> for proto::primitives::PartialSmt {
     fn from(partial_smt: PartialSmt) -> Self {
         partial_smt.to_unique_nodes().into()
-    }
-}
-
-impl TryFrom<proto::primitives::PartialSmt> for PartialSmt {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
-        let unique_nodes = UniqueNodes::try_from(value)?;
-        PartialSmt::from_unique_nodes(unique_nodes)
-            .map_err(|err| ConversionError::deserialization("PartialSmt", err))
     }
 }
 
@@ -263,7 +163,8 @@ mod tests {
     use alloc::string::ToString;
     use alloc::vec;
 
-    use miden_protocol::crypto::merkle::smt::{LeafIndex, PartialSmt, Smt, UniqueNodes};
+    use miden_protocol::crypto::merkle::NodeIndex;
+    use miden_protocol::crypto::merkle::smt::{LeafIndex, PartialSmt, SMT_DEPTH, Smt, UniqueNodes};
     use prost::Message;
 
     use super::*;
@@ -367,7 +268,7 @@ mod tests {
         encoded.root = None;
         assert_partial_smt_decode_error(
             encoded,
-            "field miden_objects::proto::primitives::PartialSmt::root is missing",
+            "root: field miden_objects::proto::primitives::PartialSmt::root is missing",
         );
     }
 
@@ -391,10 +292,7 @@ mod tests {
                 digest: Some(Word::empty().into()),
             }],
         }];
-        assert_partial_smt_decode_error(
-            encoded,
-            "node_levels.nodes.index: node index position 2 is not valid for depth 1",
-        );
+        assert_partial_smt_decode_error(encoded, "node index position 2 is not valid for depth 1");
     }
 
     #[test]
@@ -406,7 +304,7 @@ mod tests {
         }];
         assert_partial_smt_decode_error(
             encoded,
-            "field miden_objects::proto::primitives::PartialSmtNode::digest is missing",
+            "node_levels[0].nodes[0].digest: field miden_objects::proto::primitives::PartialSmtNode::digest is missing",
         );
     }
 
@@ -416,7 +314,7 @@ mod tests {
         encoded.leaves = vec![proto::primitives::IndexedSmtLeaf { index: 0, leaf: None }];
         assert_partial_smt_decode_error(
             encoded,
-            "field miden_objects::proto::primitives::IndexedSmtLeaf::leaf is missing",
+            "leaves[0].leaf: field miden_objects::proto::primitives::IndexedSmtLeaf::leaf is missing",
         );
     }
 
@@ -427,7 +325,7 @@ mod tests {
             vec![proto::primitives::IndexedDigest { index: 0, value: None }];
         assert_partial_smt_decode_error(
             encoded,
-            "field miden_objects::proto::primitives::IndexedDigest::value is missing",
+            "value_only_leaves[0].value: field miden_objects::proto::primitives::IndexedDigest::value is missing",
         );
     }
 
@@ -436,10 +334,7 @@ mod tests {
         let mut encoded = empty_partial_smt_message();
         encoded.node_levels =
             vec![proto::primitives::PartialSmtNodeLevel { depth: 256, nodes: vec![] }];
-        assert_partial_smt_decode_error(
-            encoded,
-            "node_levels.depth: out of range integral type conversion attempted",
-        );
+        assert_partial_smt_decode_error(encoded, "out of range integral type conversion attempted");
     }
 
     #[test]
@@ -567,5 +462,13 @@ mod tests {
             encoded,
             "failed to deserialize PartialSmt: invalid value: inner node hash is inconsistent with parent",
         );
+    }
+}
+
+impl TryFrom<proto::primitives::PartialSmt> for UniqueNodes {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
+        use crate::DecodeMessage;
+        value.decode_fields()?.into_unique_nodes().map_err(ConversionError::new)
     }
 }
