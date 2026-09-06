@@ -47,7 +47,7 @@ fn account_id_oneof_roundtrip() {
     assert_eq!(v1.suffix, id.suffix());
     assert_eq!(v1.prefix, id.prefix().as_felt());
     assert_eq!(decoded.verify().unwrap(), id);
-    assert_eq!(AccountId::try_from(wire).unwrap(), id);
+    assert_eq!(wire.decode_fields().unwrap().verify().unwrap(), id);
 }
 
 #[test]
@@ -82,7 +82,14 @@ fn account_id_v1_roundtrip() {
             assert_eq!(decoded.suffix, id.suffix());
             assert_eq!(decoded.prefix, id.prefix().as_felt());
             assert_eq!(decoded.verify().unwrap(), id);
-            assert_eq!(AccountIdV1::try_from(proto::account::AccountIdV1::from(&id)).unwrap(), id);
+            assert_eq!(
+                proto::account::AccountIdV1::from(&id)
+                    .decode_fields()
+                    .unwrap()
+                    .verify()
+                    .unwrap(),
+                id
+            );
         }
     }
 }

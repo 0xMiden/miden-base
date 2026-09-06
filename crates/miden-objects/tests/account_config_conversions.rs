@@ -1,7 +1,7 @@
 use core::error::Error;
 
 use assert_matches::assert_matches;
-use miden_objects::{ConversionError, proto};
+use miden_objects::{ConversionError, DecodeMessage, Verify, proto};
 use miden_protocol::account::{
     AccountCode,
     AccountId,
@@ -98,7 +98,7 @@ fn storage_slot_id_roundtrips_through_protobuf_bytes() {
     let encoded = proto::account::StorageSlotId::from(id).encode_to_vec();
     let message = proto::account::StorageSlotId::decode(encoded.as_slice()).unwrap();
 
-    assert_eq!(StorageSlotId::try_from(message).unwrap(), id);
+    assert_eq!(message.decode_fields().unwrap().verify().unwrap(), id);
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn partial_account_roundtrips_through_protobuf_bytes() {
     let encoded = proto::account::PartialAccount::from(&account).encode_to_vec();
     let message = proto::account::PartialAccount::decode(encoded.as_slice()).unwrap();
 
-    assert_eq!(PartialAccount::try_from(message).unwrap(), account);
+    assert_eq!(message.decode_fields().unwrap().verify().unwrap(), account);
 }
 
 #[test]
@@ -116,7 +116,7 @@ fn partial_account_requires_nested_messages() {
     let mut message = proto::account::PartialAccount::from(partial_account());
     message.account_id = None;
 
-    let error = PartialAccount::try_from(message).unwrap_err();
+    let error = message.decode_fields().unwrap_err();
 
     assert!(error.to_string().ends_with("::account_id is missing"));
 }
@@ -126,7 +126,12 @@ fn partial_account_preserves_seed_validation_source() {
     let mut message = proto::account::PartialAccount::from(partial_account());
     message.seed = Some(Word::empty().into());
 
-    let error = PartialAccount::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<AccountError>(&error),
@@ -139,7 +144,12 @@ fn partial_account_rejects_new_account_without_seed() {
     let mut message = proto::account::PartialAccount::from(partial_account());
     message.nonce = Some(Felt::ZERO.into());
 
-    let error = PartialAccount::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<AccountError>(&error),
@@ -156,7 +166,12 @@ fn partial_storage_rejects_duplicate_roots_before_collection() {
     };
     message.maps = vec![map.clone(), map];
 
-    let error = PartialStorage::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<miden_objects::decoded::account::PartialStorageError>(&error),
@@ -173,7 +188,12 @@ fn partial_storage_preserves_root_not_in_header_source() {
         keys: vec![],
     });
 
-    let error = PartialStorage::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<AccountError>(&error),
@@ -189,7 +209,12 @@ fn partial_storage_map_rejects_duplicate_raw_keys() {
         PartialStorageMap::new_full(storage_map).into();
     message.keys.push(Word::from(key).into());
 
-    let error = PartialStorageMap::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<miden_protocol::crypto::merkle::MerkleError>(&error),
@@ -203,7 +228,12 @@ fn partial_storage_map_rejects_untracked_raw_keys() {
         PartialStorageMap::new(Word::empty()).into();
     message.keys = vec![Word::from(StorageMapKey::from_index(1)).into()];
 
-    let error = PartialStorageMap::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<miden_protocol::crypto::merkle::MerkleError>(&error),
@@ -219,7 +249,12 @@ fn partial_vault_rejects_duplicate_asset_ids() {
         PartialVault::new_full(AssetVault::new(&[asset]).unwrap()).into();
     message.asset_ids.push(Word::from(id).into());
 
-    let error = PartialVault::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<PartialAssetVaultError>(&error),
@@ -232,7 +267,12 @@ fn partial_vault_preserves_invalid_asset_id_source() {
     let mut message: proto::account::PartialVault = PartialVault::new(Word::empty()).into();
     message.asset_ids = vec![Word::empty().into()];
 
-    let error = PartialVault::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(error_source::<AssetError>(&error), Some(AssetError::UnknownAssetIdVersion(0)));
 }
@@ -246,7 +286,12 @@ fn partial_vault_preserves_invalid_asset_value_source() {
         asset_ids: vec![Word::from(id).into()],
     };
 
-    let error = PartialVault::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<PartialAssetVaultError>(&error),
@@ -269,7 +314,7 @@ fn partial_storage_decoding_normalizes_map_order() {
     let mut unordered = expected.clone();
     unordered.maps.reverse();
 
-    let decoded = PartialStorage::try_from(unordered).unwrap();
+    let decoded = unordered.decode_fields().unwrap().verify().unwrap();
 
     assert_eq!(proto::account::PartialStorage::from(decoded), expected);
 }
@@ -282,7 +327,7 @@ fn partial_vault_decoding_normalizes_asset_id_order() {
     let mut unordered = expected.clone();
     unordered.asset_ids.reverse();
 
-    let decoded = PartialVault::try_from(unordered).unwrap();
+    let decoded = unordered.decode_fields().unwrap().verify().unwrap();
 
     assert_eq!(proto::account::PartialVault::from(decoded), expected);
 }
@@ -327,7 +372,7 @@ fn protocol_config_roundtrips_through_protobuf_bytes_and_preserves_kernel_order(
         message.tx_kernel.as_ref().unwrap().kernel_procs,
         vec![Word::from([2_u32, 0, 0, 0]).into()]
     );
-    assert_eq!(ProtocolConfig::try_from(message).unwrap(), config);
+    assert_eq!(message.decode_fields().unwrap().verify().unwrap(), config);
 }
 
 #[test]
@@ -335,7 +380,7 @@ fn protocol_config_requires_all_nested_messages() {
     let mut message = proto::protocol_config::ProtocolConfig::from(dummy_protocol_config());
     message.proof_verification = None;
 
-    let error = ProtocolConfig::try_from(message).unwrap_err();
+    let error = message.decode_fields().unwrap_err();
 
     assert!(error.to_string().ends_with("::proof_verification is missing"));
 }
@@ -351,7 +396,12 @@ fn protocol_config_preserves_fee_asset_validation_source() {
     .unwrap();
     message.fee_asset_id = Some(Word::from(non_fungible).into());
 
-    let error = ProtocolConfig::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<ProtocolConfigError>(&error),
@@ -361,10 +411,14 @@ fn protocol_config_preserves_fee_asset_validation_source() {
 
 #[test]
 fn kernel_config_rejects_oversized_procedure_list() {
-    let error = KernelConfig::try_from(proto::protocol_config::KernelConfig {
+    let error = proto::protocol_config::KernelConfig {
         main_proc: Some(Word::empty().into()),
         kernel_procs: vec![Word::empty().into(); KernelConfig::MAX_NUM_KERNEL_PROCEDURES + 1],
-    })
+    }
+    .decode_fields()
+    .unwrap()
+    .verify()
+    .map_err(ConversionError::new)
     .unwrap_err();
 
     assert_matches!(
@@ -376,10 +430,14 @@ fn kernel_config_rejects_oversized_procedure_list() {
 
 #[test]
 fn proof_security_policy_rejects_out_of_range_minimum_bits() {
-    let error = ProofSecurityPolicy::try_from(proto::protocol_config::ProofSecurityPolicy {
+    let error = proto::protocol_config::ProofSecurityPolicy {
         security_estimator_root: Some(Word::empty().into()),
         minimum_bits: u32::from(u8::MAX) + 1,
-    })
+    }
+    .decode_fields()
+    .unwrap()
+    .verify()
+    .map_err(ConversionError::new)
     .unwrap_err();
 
     assert_matches!(error_source::<core::num::TryFromIntError>(&error), Some(_));
@@ -387,10 +445,14 @@ fn proof_security_policy_rejects_out_of_range_minimum_bits() {
 
 #[test]
 fn proof_security_policy_preserves_zero_bits_validation_source() {
-    let error = ProofSecurityPolicy::try_from(proto::protocol_config::ProofSecurityPolicy {
+    let error = proto::protocol_config::ProofSecurityPolicy {
         security_estimator_root: Some(Word::empty().into()),
         minimum_bits: 0,
-    })
+    }
+    .decode_fields()
+    .unwrap()
+    .verify()
+    .map_err(ConversionError::new)
     .unwrap_err();
 
     assert_matches!(

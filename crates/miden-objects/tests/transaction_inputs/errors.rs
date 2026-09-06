@@ -1,12 +1,11 @@
 use core::error::Error;
 
 use assert_matches::assert_matches;
-use miden_objects::{ConversionError, proto};
+use miden_objects::{BuildUnchecked, ConversionError, DecodeMessage, proto};
 use miden_protocol::block::BlockNumber;
 use miden_protocol::errors::{StorageSlotNameError, TransactionInputError};
 use miden_protocol::note::Note;
 use miden_protocol::protocol_config::ProtocolConfig;
-use miden_protocol::transaction::TransactionInputs;
 
 use super::common;
 
@@ -23,8 +22,7 @@ fn transaction_input_error(error: &ConversionError) -> &TransactionInputError {
 
 #[test]
 fn transaction_inputs_requires_a_version() {
-    let error =
-        TransactionInputs::try_from(proto::transaction::TransactionInputs::default()).unwrap_err();
+    let error = proto::transaction::TransactionInputs::default().decode_fields().unwrap_err();
 
     assert!(error.to_string().ends_with("::version is missing"));
 }
@@ -46,7 +44,7 @@ fn transaction_inputs_v1_requires_every_singular_message() {
     for (field, remove) in fields {
         let mut message = common::dummy_transaction_inputs_message();
         remove(common::transaction_inputs_v1_mut(&mut message));
-        let error = TransactionInputs::try_from(message).unwrap_err();
+        let error = message.decode_fields().unwrap_err();
 
         assert!(
             error.to_string().starts_with(&format!("version.v1.{field}: field ")),
@@ -65,14 +63,14 @@ fn input_notes_require_their_oneof_and_authenticated_fields() {
         .unwrap()
         .notes[0]
         .note = None;
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message.decode_fields().unwrap_err();
     assert!(error.to_string().ends_with(
         "input_notes.notes[0].note: field miden_objects::proto::transaction::InputNote::note is missing"
     ));
 
     let mut message = common::dummy_transaction_inputs_message();
     common::authenticated_input_note_mut(&mut message).note = None;
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message.decode_fields().unwrap_err();
     assert!(
         error
             .to_string()
@@ -82,7 +80,7 @@ fn input_notes_require_their_oneof_and_authenticated_fields() {
 
     let mut message = common::dummy_transaction_inputs_message();
     common::authenticated_input_note_mut(&mut message).proof = None;
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message.decode_fields().unwrap_err();
     assert!(
         error
             .to_string()
@@ -100,7 +98,12 @@ fn authenticated_input_note_rejects_a_proof_for_a_different_note() {
         .unwrap()
         .note_id = Some((&Note::mock_noop(common::dummy_word(99)).id()).into());
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert!(error.to_string().starts_with("note ID mismatch:"), "unexpected error: {error}");
 }
@@ -112,7 +115,12 @@ fn input_notes_reject_duplicate_nullifiers_and_preserve_the_domain_source() {
     let duplicate = v1.input_notes.as_ref().unwrap().notes[0].clone();
     v1.input_notes.as_mut().unwrap().notes.push(duplicate);
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert!(
         error.to_string().starts_with("transaction input note with nullifier"),
@@ -127,7 +135,12 @@ fn foreign_slot_names_reject_invalid_names_and_preserve_the_domain_source() {
     common::transaction_inputs_v1_mut(&mut message).foreign_account_slot_names[0].slot_name =
         "invalid".into();
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<StorageSlotNameError>(&error),
@@ -141,7 +154,12 @@ fn foreign_slot_names_reject_id_name_mismatches() {
     let v1 = common::transaction_inputs_v1_mut(&mut message);
     v1.foreign_account_slot_names[0].slot_id = v1.foreign_account_slot_names[1].slot_id;
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<miden_objects::decoded::transaction::ForeignAccountSlotNameError>(&error),
@@ -157,7 +175,12 @@ fn foreign_slot_names_reject_duplicate_ids() {
     duplicate.slot_name = v1.foreign_account_slot_names[0].slot_name.clone();
     v1.foreign_account_slot_names.push(duplicate);
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
 
     assert_matches!(
         error_source::<miden_objects::decoded::transaction::TransactionInputsError>(&error),
@@ -171,7 +194,12 @@ fn transaction_inputs_reject_an_inconsistent_protocol_config() {
     common::transaction_inputs_v1_mut(&mut message).protocol_config =
         Some(proto::protocol_config::ProtocolConfig::from(ProtocolConfig::mock()));
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_matches!(
         transaction_input_error(&error),
         TransactionInputError::InconsistentProtocolConfig { .. }
@@ -184,7 +212,12 @@ fn transaction_inputs_reject_an_inconsistent_chain_length() {
     let header = common::transaction_inputs_v1_mut(&mut message).block_header.as_mut().unwrap();
     header.block_num = Some(BlockNumber::from(1_u32).into());
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_matches!(
         transaction_input_error(&error),
         TransactionInputError::InconsistentChainLength { .. }
@@ -197,7 +230,12 @@ fn transaction_inputs_reject_an_inconsistent_chain_commitment() {
     let header = common::transaction_inputs_v1_mut(&mut message).block_header.as_mut().unwrap();
     header.chain_commitment = Some(common::dummy_word(100).into());
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_matches!(
         transaction_input_error(&error),
         TransactionInputError::InconsistentChainCommitment { .. }
@@ -213,7 +251,12 @@ fn transaction_inputs_reject_an_authenticated_note_from_an_untracked_block() {
         .unwrap()
         .block_num = Some(BlockNumber::from(1_u32).into());
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_matches!(
         transaction_input_error(&error),
         TransactionInputError::InputNoteBlockNotInPartialBlockchain(_)
@@ -228,7 +271,12 @@ fn transaction_inputs_reject_an_invalid_authenticated_note_path() {
     authenticated.note = Some(replacement.clone().into());
     authenticated.proof.as_mut().unwrap().note_id = Some((&replacement.id()).into());
 
-    let error = TransactionInputs::try_from(message).unwrap_err();
+    let error = message
+        .decode_fields()
+        .unwrap()
+        .build_unchecked()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_matches!(
         transaction_input_error(&error),
         TransactionInputError::InputNoteNotInBlock(note_id, _) if *note_id == replacement.id()

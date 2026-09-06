@@ -5,7 +5,7 @@ use miden_protocol::crypto::merkle::mmr::MmrDelta;
 use miden_protocol::crypto::merkle::smt::{PartialSmt, SmtLeaf, SmtProof, UniqueNodes};
 use miden_protocol::crypto::merkle::{MerklePath, SparseMerklePath};
 
-use crate::{ConversionError, proto};
+use crate::proto;
 
 // MERKLE PATH
 // ================================================================================================
@@ -20,13 +20,6 @@ impl From<&MerklePath> for proto::primitives::MerklePath {
 impl From<MerklePath> for proto::primitives::MerklePath {
     fn from(value: MerklePath) -> Self {
         (&value).into()
-    }
-}
-
-impl TryFrom<&proto::primitives::MerklePath> for MerklePath {
-    type Error = ConversionError;
-    fn try_from(value: &proto::primitives::MerklePath) -> Result<Self, Self::Error> {
-        value.clone().try_into()
     }
 }
 
@@ -157,14 +150,6 @@ impl From<PartialSmt> for proto::primitives::PartialSmt {
     }
 }
 
-impl TryFrom<proto::primitives::PartialSmt> for UniqueNodes {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
-        use crate::DecodeMessage;
-        value.decode_fields()?.into_unique_nodes().map_err(ConversionError::new)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use alloc::collections::BTreeMap;
@@ -176,6 +161,7 @@ mod tests {
     use prost::Message;
 
     use super::*;
+    use crate::{ConversionError, DecodeMessage, Verify};
 
     #[test]
     fn partial_smt_round_trip() {
@@ -191,7 +177,7 @@ mod tests {
         let encoded: proto::primitives::PartialSmt = partial_smt.clone().into();
         assert!(encoded.node_levels.is_sorted_by_key(|level| level.depth));
 
-        let decoded = PartialSmt::try_from(encoded).unwrap();
+        let decoded = encoded.decode_fields().unwrap().verify().unwrap();
 
         assert_eq!(decoded, partial_smt);
         assert_eq!(decoded.get_value(&key0).unwrap(), value0);
@@ -249,7 +235,7 @@ mod tests {
             encoded.node_levels.iter().map(|level| level.depth).collect::<Vec<_>>(),
             vec![1, 2, 3]
         );
-        let decoded = UniqueNodes::try_from(encoded).unwrap();
+        let decoded = encoded.decode_fields().unwrap().into_unique_nodes().unwrap();
         assert_eq!(decoded.nodes, expected_nodes);
     }
 
@@ -266,7 +252,10 @@ mod tests {
         encoded: proto::primitives::PartialSmt,
         expected_error: &str,
     ) {
-        let error = PartialSmt::try_from(encoded).unwrap_err();
+        let error = encoded
+            .decode_fields()
+            .and_then(|decoded| decoded.verify().map_err(ConversionError::new))
+            .unwrap_err();
         assert_eq!(error.to_string(), expected_error);
     }
 

@@ -1,28 +1,13 @@
 //! Domain construction for decoded note messages.
 pub use proto::note::DecodedNoteId as NoteId;
 
-use crate::{ConversionError, DecodeMessage, Verify, proto};
+use crate::{Verify, proto};
 
 impl Verify for NoteId {
     type Verified = miden_protocol::note::NoteId;
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::from_raw(self.id))
-    }
-}
-
-impl TryFrom<proto::note::NoteId> for miden_protocol::Word {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteId) -> Result<Self, Self::Error> {
-        value.decode_fields().map(|decoded| decoded.id)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteId> for miden_protocol::note::NoteId {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteId) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -33,14 +18,6 @@ impl Verify for NoteStorage {
     type Error = miden_protocol::errors::NoteError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Self::Verified::new(self.items)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteStorage> for miden_protocol::note::NoteStorage {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteStorage) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -77,14 +54,6 @@ pub enum VerificationError {
     Number(#[from] core::num::TryFromIntError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteAttachment> for miden_protocol::note::NoteAttachment {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteAttachment) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::note::DecodedNoteAttachments as NoteAttachments;
 
 impl Verify for NoteAttachments {
@@ -97,14 +66,6 @@ impl Verify for NoteAttachments {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteAttachments> for miden_protocol::note::NoteAttachments {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteAttachments) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::note::DecodedNoteScript as NoteScript;
 
 impl Verify for NoteScript {
@@ -113,14 +74,6 @@ impl Verify for NoteScript {
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &self.mast)?;
         Ok(Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), entrypoint)?)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteScript> for miden_protocol::note::NoteScript {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteScript) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -138,14 +91,6 @@ impl Verify for NoteRecipient {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteRecipient> for miden_protocol::note::NoteRecipient {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteRecipient) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::note::DecodedNoteInclusionProof as NoteInclusionProof;
 
 impl Verify for NoteInclusionProof {
@@ -160,16 +105,6 @@ impl Verify for NoteInclusionProof {
                 self.inclusion_path.verify()?,
             )?,
         ))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteInclusionProof>
-    for (miden_protocol::note::NoteId, miden_protocol::note::NoteInclusionProof)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteInclusionProof) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -216,14 +151,6 @@ impl Verify for NoteMetadata {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteMetadata> for miden_protocol::note::NoteMetadata {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteMetadata) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::note::DecodedNoteDetails as NoteDetails;
 
 impl Verify for NoteDetails {
@@ -233,14 +160,6 @@ impl Verify for NoteDetails {
         let assets = self.assets.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
         let assets = miden_protocol::note::NoteAssets::new(assets)?;
         Ok(Self::Verified::new(assets, self.recipient.verify()?))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteDetails> for miden_protocol::note::NoteDetails {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteDetails) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -254,14 +173,6 @@ impl Verify for NoteHeader {
             miden_protocol::note::NoteDetailsCommitment::from_raw(self.details_commitment),
             self.metadata.verify()?,
         ))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::NoteHeader> for miden_protocol::note::NoteHeader {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::NoteHeader) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -286,14 +197,6 @@ impl Verify for PartialNoteMetadata {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::PartialNoteMetadata> for miden_protocol::note::PartialNoteMetadata {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::PartialNoteMetadata) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::note::DecodedNote as Note;
 
 impl Verify for Note {
@@ -307,13 +210,5 @@ impl Verify for Note {
             recipient,
             self.note_attachments.verify()?,
         ))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::note::Note> for miden_protocol::note::Note {
-    type Error = ConversionError;
-    fn try_from(value: proto::note::Note) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

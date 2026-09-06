@@ -2,13 +2,13 @@ use core::error::Error;
 use std::collections::BTreeMap;
 
 use assert_matches::assert_matches;
-use miden_objects::proto;
+use miden_objects::{ConversionError, DecodeMessage, Verify, proto};
 use miden_protocol::crypto::merkle::InnerNodeInfo;
 use miden_protocol::crypto::merkle::store::MerkleStore;
 use miden_protocol::note::{Note, NoteId};
 use miden_protocol::transaction::TransactionArgs;
 use miden_protocol::utils::serde::DeserializationError;
-use miden_protocol::vm::{AdviceInputs, AdviceMap};
+use miden_protocol::vm::AdviceInputs;
 use miden_protocol::{Felt, Word};
 
 fn dummy_word(value: u32) -> Word {
@@ -56,12 +56,12 @@ fn advice_inputs_roundtrip_preserves_stack_order_and_normalizes_map_order() {
             .collect::<Vec<_>>(),
         vec![dummy_word(5), dummy_word(7)]
     );
-    assert_eq!(AdviceInputs::try_from(message).unwrap(), advice_inputs);
+    assert_eq!(message.decode_fields().unwrap().verify().unwrap(), advice_inputs);
 }
 
 #[test]
 fn advice_map_decoding_normalizes_arbitrary_entry_order() {
-    let map = AdviceMap::try_from(proto::primitives::AdviceMap {
+    let map = proto::primitives::AdviceMap {
         entries: vec![
             proto::primitives::AdviceMapEntry {
                 key: Some(dummy_word(7).into()),
@@ -72,7 +72,10 @@ fn advice_map_decoding_normalizes_arbitrary_entry_order() {
                 values: vec![Felt::from(4_u32).into()],
             },
         ],
-    })
+    }
+    .decode_fields()
+    .unwrap()
+    .verify()
     .unwrap();
 
     assert_eq!(
@@ -111,8 +114,8 @@ fn merkle_store_omits_identical_defaults_and_retains_default_parent_overrides() 
         Word::try_from(override_message.nodes[0].value.clone().unwrap()).unwrap()
             < Word::try_from(override_message.nodes[1].value.clone().unwrap()).unwrap()
     );
-    assert_eq!(MerkleStore::try_from(default_message).unwrap(), default_store);
-    assert_eq!(MerkleStore::try_from(override_message).unwrap(), store);
+    assert_eq!(default_message.decode_fields().unwrap().verify().unwrap(), default_store);
+    assert_eq!(override_message.decode_fields().unwrap().verify().unwrap(), store);
 }
 
 #[test]
@@ -133,18 +136,18 @@ fn transaction_args_roundtrip_normalizes_note_args_order() {
         message
             .note_args
             .iter()
-            .map(|entry| NoteId::from_raw(Word::try_from(entry.note_id.clone().unwrap()).unwrap()))
+            .map(|entry| entry.note_id.clone().unwrap().decode_fields().unwrap().verify().unwrap())
             .collect::<Vec<_>>(),
         vec![first, second]
     );
-    assert_eq!(TransactionArgs::try_from(message).unwrap(), args);
+    assert_eq!(message.decode_fields().unwrap().verify().unwrap(), args);
 }
 
 #[test]
 fn note_argument_decoding_normalizes_arbitrary_entry_order() {
     let first = note_id(1);
     let second = note_id(2);
-    let args = TransactionArgs::try_from(proto::transaction::TransactionArgs {
+    let args = proto::transaction::TransactionArgs {
         tx_script: None,
         tx_script_args: Some(dummy_word(3).into()),
         note_args: vec![
@@ -163,14 +166,17 @@ fn note_argument_decoding_normalizes_arbitrary_entry_order() {
             merkle_store: Some(proto::primitives::MerkleStore { nodes: vec![] }),
         }),
         auth_args: Some(dummy_word(6).into()),
-    })
+    }
+    .decode_fields()
+    .unwrap()
+    .verify()
     .unwrap();
 
     assert_eq!(
         proto::transaction::TransactionArgs::from(&args)
             .note_args
             .iter()
-            .map(|entry| NoteId::from_raw(Word::try_from(entry.note_id.clone().unwrap()).unwrap()))
+            .map(|entry| entry.note_id.clone().unwrap().decode_fields().unwrap().verify().unwrap())
             .collect::<Vec<_>>(),
         vec![first, second]
     );
@@ -183,7 +189,7 @@ fn advice_inputs_require_nested_messages_and_reject_duplicate_map_keys() {
         advice_map: Some(proto::primitives::AdviceMap { entries: vec![] }),
         merkle_store: Some(proto::primitives::MerkleStore { nodes: vec![] }),
     };
-    let error = AdviceInputs::try_from(missing_stack).unwrap_err();
+    let error = missing_stack.decode_fields().unwrap_err();
     assert!(error.to_string().ends_with("::advice_stack is missing"));
 
     let duplicate = proto::primitives::AdviceMap {
@@ -198,15 +204,21 @@ fn advice_inputs_require_nested_messages_and_reject_duplicate_map_keys() {
             },
         ],
     };
-    let error = AdviceMap::try_from(duplicate).unwrap_err();
+    let error = duplicate
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_eq!(error.to_string(), format!("duplicate advice map key {}", dummy_word(1)));
 }
 
 #[test]
 fn advice_stack_rejects_invalid_felts() {
-    let error = miden_protocol::vm::AdviceStack::try_from(proto::primitives::AdviceStack {
+    let error = proto::primitives::AdviceStack {
         values: vec![proto::primitives::Felt { value: Felt::ORDER }],
-    })
+    }
+    .decode_fields()
     .unwrap_err();
 
     assert_matches!(
@@ -225,7 +237,12 @@ fn merkle_store_rejects_duplicate_parents_and_preserves_invalid_word_source() {
         right: Some(dummy_word(3).into()),
     };
     let duplicate = proto::primitives::MerkleStore { nodes: vec![node.clone(), node] };
-    let error = MerkleStore::try_from(duplicate).unwrap_err();
+    let error = duplicate
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_eq!(error.to_string(), format!("duplicate Merkle store parent {}", dummy_word(1)));
 
     let invalid = proto::primitives::MerkleStore {
@@ -235,7 +252,7 @@ fn merkle_store_rejects_duplicate_parents_and_preserves_invalid_word_source() {
             right: Some(dummy_word(3).into()),
         }],
     };
-    let error = MerkleStore::try_from(invalid).unwrap_err();
+    let error = invalid.decode_fields().unwrap_err();
     assert!(error.to_string().starts_with("nodes[0].value.word.encoded: "), "{error}");
     assert!(error.source().is_some());
 }
@@ -253,7 +270,7 @@ fn transaction_args_require_nested_messages_and_reject_duplicate_note_ids() {
         }),
         auth_args: Some(dummy_word(1).into()),
     };
-    let error = TransactionArgs::try_from(missing).unwrap_err();
+    let error = missing.decode_fields().unwrap_err();
     assert!(error.to_string().ends_with("::tx_script_args is missing"));
 
     let note = note_id(1);
@@ -277,22 +294,31 @@ fn transaction_args_require_nested_messages_and_reject_duplicate_note_ids() {
         }),
         auth_args: Some(dummy_word(5).into()),
     };
-    let error = TransactionArgs::try_from(duplicate).unwrap_err();
+    let error = duplicate
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert_eq!(error.to_string(), format!("duplicate note argument {note}"));
 }
 
 #[test]
 fn transaction_script_rejects_missing_mast_and_invalid_entrypoint() {
     let missing_mast = proto::transaction::TransactionScript { entrypoint: 0, mast: None };
-    let error = miden_protocol::transaction::TransactionScript::try_from(missing_mast).unwrap_err();
+    let error = missing_mast.decode_fields().unwrap_err();
     assert!(error.to_string().ends_with("::mast is missing"));
 
     let invalid_entrypoint = proto::transaction::TransactionScript {
         entrypoint: 1,
         mast: Some(miden_protocol::MastForest::new().into()),
     };
-    let error =
-        miden_protocol::transaction::TransactionScript::try_from(invalid_entrypoint).unwrap_err();
+    let error = invalid_entrypoint
+        .decode_fields()
+        .unwrap()
+        .verify()
+        .map_err(ConversionError::new)
+        .unwrap_err();
     assert!(error.to_string().starts_with("invalid script entrypoint: "));
     assert_matches!(
         error
@@ -306,8 +332,7 @@ fn transaction_script_rejects_missing_mast_and_invalid_entrypoint() {
         entrypoint: 0,
         mast: Some(proto::primitives::MastForest { encoded: vec![0] }),
     };
-    let error =
-        miden_protocol::transaction::TransactionScript::try_from(malformed_mast).unwrap_err();
+    let error = malformed_mast.decode_fields().unwrap_err();
     assert!(
         error
             .to_string()

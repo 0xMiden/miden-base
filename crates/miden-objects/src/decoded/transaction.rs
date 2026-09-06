@@ -1,21 +1,13 @@
 //! Domain construction for decoded transaction messages.
 pub use proto::transaction::DecodedTransactionId as TransactionId;
 
-use crate::{BuildUnchecked, ConversionError, DecodeMessage, Verify, proto};
+use crate::{BuildUnchecked, Verify, proto};
 
 impl Verify for TransactionId {
     type Verified = miden_protocol::transaction::TransactionId;
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::from_raw(self.id))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TransactionId> for miden_protocol::transaction::TransactionId {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TransactionId) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -39,16 +31,6 @@ pub enum ScriptError {
     Script(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TransactionScript>
-    for miden_protocol::transaction::TransactionScript
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TransactionScript) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::transaction::DecodedNoteArgument as NoteArgument;
 
 impl Verify for NoteArgument {
@@ -56,16 +38,6 @@ impl Verify for NoteArgument {
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((self.note_id.verify()?, self.args))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::NoteArgument>
-    for (miden_protocol::note::NoteId, miden_protocol::Word)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::NoteArgument) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -102,14 +74,6 @@ pub enum TransactionArgsError {
     DuplicateNoteArgument(miden_protocol::note::NoteId),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TransactionArgs> for miden_protocol::transaction::TransactionArgs {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TransactionArgs) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::transaction::DecodedForeignAccountSlotName as ForeignAccountSlotName;
 
 impl Verify for ForeignAccountSlotName {
@@ -139,16 +103,6 @@ pub enum ForeignAccountSlotNameError {
     },
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::ForeignAccountSlotName>
-    for (miden_protocol::account::StorageSlotId, miden_protocol::account::StorageSlotName)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::ForeignAccountSlotName) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::transaction::DecodedInputNoteCommitment as InputNoteCommitment;
 
 /// Builds the decoded commitment without checking that its nullifier belongs to its note header.
@@ -162,16 +116,6 @@ impl BuildUnchecked for InputNoteCommitment {
             miden_protocol::note::Nullifier::from_raw(self.nullifier),
             self.header.map(Verify::verify).transpose()?,
         ))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::InputNoteCommitment>
-    for miden_protocol::transaction::InputNoteCommitment
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::InputNoteCommitment) -> Result<Self, Self::Error> {
-        value.decode_fields()?.build_unchecked().map_err(ConversionError::new)
     }
 }
 
@@ -190,15 +134,6 @@ pub enum PrivateOutputNoteError {
     Note(#[from] super::note::VerificationError),
     #[error("invalid private output note: {0}")]
     Output(#[from] miden_protocol::errors::OutputNoteError),
-}
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::PrivateOutputNote>
-    for miden_protocol::transaction::PrivateOutputNote
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::PrivateOutputNote) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::transaction::DecodedTransactionHeader as TransactionHeader;
@@ -252,15 +187,6 @@ pub enum TransactionHeaderBuildError {
         recomputed: miden_protocol::transaction::TransactionId,
     },
 }
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TransactionHeader>
-    for miden_protocol::transaction::TransactionHeader
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TransactionHeader) -> Result<Self, Self::Error> {
-        value.decode_fields()?.build_unchecked().map_err(ConversionError::new)
-    }
-}
 
 pub use proto::transaction::DecodedPublicOutputNote as PublicOutputNote;
 
@@ -278,16 +204,6 @@ pub enum PublicOutputNoteError {
     Note(#[from] super::note::VerificationError),
     #[error("{0}")]
     Output(#[from] miden_protocol::errors::OutputNoteError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::PublicOutputNote>
-    for miden_protocol::transaction::PublicOutputNote
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::PublicOutputNote) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::transaction::DecodedOutputNote as OutputNote;
@@ -310,14 +226,6 @@ pub enum OutputNoteError {
     Public(#[from] PublicOutputNoteError),
     #[error("{0}")]
     Private(#[from] PrivateOutputNoteError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::OutputNote> for miden_protocol::transaction::OutputNote {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::OutputNote) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::transaction::DecodedAuthenticatedInputNote as AuthenticatedInputNote;
@@ -350,16 +258,6 @@ pub enum InputNoteError {
     },
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::AuthenticatedInputNote>
-    for miden_protocol::transaction::InputNote
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::AuthenticatedInputNote) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::transaction::DecodedInputNote as InputNote;
 
 impl Verify for InputNote {
@@ -373,14 +271,6 @@ impl Verify for InputNote {
                 Ok(Self::Verified::unauthenticated(note.verify()?))
             },
         }
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::InputNote> for miden_protocol::transaction::InputNote {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::InputNote) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -401,16 +291,6 @@ pub enum InputNotesError {
     Note(#[from] InputNoteError),
     #[error("{0}")]
     Input(#[from] miden_protocol::errors::TransactionInputError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::InputNotes>
-    for miden_protocol::transaction::InputNotes<miden_protocol::transaction::InputNote>
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::InputNotes) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::transaction::DecodedTxAccountUpdate as TxAccountUpdate;
@@ -439,14 +319,6 @@ pub enum TxAccountUpdateError {
     Update(#[from] miden_protocol::errors::ProvenTransactionError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TxAccountUpdate> for miden_protocol::transaction::TxAccountUpdate {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TxAccountUpdate) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::transaction::DecodedBatchAccountUpdate as BatchAccountUpdate;
 
 impl Verify for BatchAccountUpdate {
@@ -470,14 +342,6 @@ pub enum BatchAccountUpdateError {
     Details(#[from] super::account::AccountPatchError),
     #[error("{0}")]
     Update(#[from] miden_protocol::errors::BatchAccountUpdateError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::BatchAccountUpdate> for miden_protocol::batch::BatchAccountUpdate {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::BatchAccountUpdate) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::transaction::DecodedProvenTransaction as ProvenTransaction;
@@ -519,16 +383,6 @@ pub enum ProvenTransactionError {
     Output(#[from] OutputNoteError),
     #[error("{0}")]
     Transaction(#[from] miden_protocol::errors::ProvenTransactionError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::ProvenTransaction>
-    for miden_protocol::transaction::ProvenTransaction
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::ProvenTransaction) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
 }
 
 pub use proto::transaction::DecodedProposedBatch as ProposedBatch;
@@ -574,8 +428,6 @@ pub enum ProposedBatchError {
     #[error("{0}")]
     Batch(#[from] miden_protocol::errors::ProposedBatchError),
 }
-
-// Compatibility bridge for callers using the combined conversion API.
 
 pub use proto::transaction::DecodedProvenBatch as ProvenBatch;
 
@@ -636,14 +488,6 @@ pub enum ProvenBatchError {
     AccountOrder,
     #[error("{0} does not match proposal")]
     ProposalMismatch(&'static str),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::ProvenBatch> for miden_protocol::batch::ProvenBatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::ProvenBatch) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
 }
 
 /// Checks all fields duplicated from an already-verified proposal. The batch execution proof
@@ -740,16 +584,6 @@ pub enum TransactionInputsError {
     Inputs(#[from] miden_protocol::errors::TransactionInputError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TransactionInputsV1>
-    for miden_protocol::transaction::TransactionInputs
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TransactionInputsV1) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
-}
-
 pub use proto::transaction::DecodedTransactionInputs as TransactionInputs;
 
 /// Dispatches the decoded version without adding trust to the supplied headers or chain.
@@ -759,15 +593,5 @@ impl crate::BuildUnchecked for TransactionInputs {
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
         let proto::transaction::transaction_inputs::DecodedVersion::V1(inputs) = self.version;
         inputs.build_unchecked()
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::transaction::TransactionInputs>
-    for miden_protocol::transaction::TransactionInputs
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::transaction::TransactionInputs) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
     }
 }

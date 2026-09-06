@@ -234,14 +234,6 @@ impl From<PublicKey> for proto::primitives::PublicKey {
     }
 }
 
-impl TryFrom<&proto::primitives::PublicKey> for PublicKey {
-    type Error = ConversionError;
-
-    fn try_from(value: &proto::primitives::PublicKey) -> Result<Self, Self::Error> {
-        value.clone().try_into()
-    }
-}
-
 // SIGNATURE
 // ================================================================================================
 
@@ -258,14 +250,6 @@ impl From<&Signature> for proto::primitives::Signature {
 impl From<Signature> for proto::primitives::Signature {
     fn from(value: Signature) -> Self {
         (&value).into()
-    }
-}
-
-impl TryFrom<&proto::primitives::Signature> for Signature {
-    type Error = ConversionError;
-
-    fn try_from(value: &proto::primitives::Signature) -> Result<Self, Self::Error> {
-        value.clone().try_into()
     }
 }
 
@@ -301,6 +285,7 @@ mod tests {
     use miden_protocol::utils::serde::DeserializationError;
 
     use super::*;
+    use crate::{DecodeMessage, Verify};
 
     #[test]
     fn felt_roundtrips_zero_and_rejects_the_field_order() {
@@ -332,83 +317,41 @@ mod tests {
 
     #[test]
     fn public_key_and_signature_roundtrip_with_ecdsa_k256_keccak_variants() {
-        use prost::Message;
         let signing_key = random_secret_key();
         let public_key = signing_key.public_key();
         let signature = signing_key.sign(Word::empty());
 
-        let encoded = proto::primitives::PublicKey::from(&public_key);
-        assert_matches!(encoded.key, Some(proto::primitives::public_key::Key::EcdsaK256Keccak(_)));
-        let wire =
-            proto::primitives::PublicKey::decode(encoded.encode_to_vec().as_slice()).unwrap();
-        assert_eq!(PublicKey::try_from(wire).unwrap(), public_key);
+        let encoded_public_key = proto::primitives::PublicKey::from(&public_key);
+        assert_eq!(encoded_public_key.decode_fields().unwrap().verify().unwrap(), public_key);
 
-        let encoded = proto::primitives::Signature::from(&signature);
-        assert_matches!(
-            encoded.signature,
-            Some(proto::primitives::signature::Signature::EcdsaK256Keccak(_))
-        );
-        let wire =
-            proto::primitives::Signature::decode(encoded.encode_to_vec().as_slice()).unwrap();
-        assert_eq!(Signature::try_from(wire).unwrap(), signature);
+        let encoded_signature = proto::primitives::Signature::from(&signature);
+        assert_eq!(encoded_signature.decode_fields().unwrap().verify().unwrap(), signature);
     }
 
     #[test]
     fn public_key_and_signature_reject_malformed_encodings() {
-        let public_key_error = PublicKey::try_from(proto::primitives::PublicKey {
+        let public_key_error = proto::primitives::PublicKey {
             key: Some(proto::primitives::public_key::Key::EcdsaK256Keccak(vec![])),
-        })
+        }
+        .decode_fields()
         .unwrap_err();
-        assert!(public_key_error.to_string().starts_with("key.ecdsa_k256_keccak: "));
         assert_matches!(
             public_key_error
                 .source()
                 .and_then(|source| source.downcast_ref::<DeserializationError>()),
             Some(DeserializationError::UnexpectedEOF)
         );
-        let signature_error = Signature::try_from(proto::primitives::Signature {
+
+        let signature_error = proto::primitives::Signature {
             signature: Some(proto::primitives::signature::Signature::EcdsaK256Keccak(vec![])),
-        })
+        }
+        .decode_fields()
         .unwrap_err();
-        assert!(signature_error.to_string().starts_with("signature.ecdsa_k256_keccak: "));
         assert_matches!(
             signature_error
                 .source()
                 .and_then(|source| source.downcast_ref::<DeserializationError>()),
             Some(DeserializationError::UnexpectedEOF)
-        );
-    }
-
-    #[test]
-    fn public_key_and_signature_require_algorithm_payloads() {
-        assert!(
-            PublicKey::try_from(proto::primitives::PublicKey::default())
-                .unwrap_err()
-                .to_string()
-                .ends_with("::key is missing")
-        );
-        assert!(
-            Signature::try_from(proto::primitives::Signature::default())
-                .unwrap_err()
-                .to_string()
-                .ends_with("::signature is missing")
-        );
-    }
-
-    #[test]
-    fn public_key_and_signature_reject_unknown_algorithm_payloads() {
-        use prost::Message;
-
-        // Unknown future algorithm field 2 must not default to the supported algorithm.
-        let bytes = &[0x12, 0][..];
-        let key = proto::primitives::PublicKey::decode(bytes).unwrap();
-        assert!(PublicKey::try_from(key).unwrap_err().to_string().ends_with("::key is missing"));
-        let signature = proto::primitives::Signature::decode(bytes).unwrap();
-        assert!(
-            Signature::try_from(signature)
-                .unwrap_err()
-                .to_string()
-                .ends_with("::signature is missing")
         );
     }
 

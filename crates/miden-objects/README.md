@@ -33,7 +33,10 @@ Domain construction is opt-in and handwritten: `Verify::verify()` needs no exter
 `BuildUnchecked::build_unchecked()` uses a supported unchecked constructor. Unchecked construction
 can still fail and must document the invariants the caller must ensure. None of these operations
 is invoked automatically by field decoding, and verification errors do not get generated wire
-paths. Existing conversion APIs are retained as compatibility bridges during migration.
+paths. Direct protobuf-to-domain `TryFrom`/`From` conversions and combined decoding helpers
+are intentionally unavailable for generated records. Callers must decode the fields and
+explicitly select a construction capability; only atomic representation adapters retain their
+`TryFrom` implementations.
 
 All 97 Miden messages are integrated: 93 generated records and four canonical atomic adapters.
 Construction capabilities, trust boundaries, and unreleased wire changes are detailed in

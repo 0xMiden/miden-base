@@ -11,7 +11,7 @@ use miden_protocol::block::{
 use miden_protocol::protocol_config::NextProtocolConfig;
 use miden_protocol::transaction::{OutputNote, PartialBlockchain};
 
-use crate::{ConversionError, proto};
+use crate::proto;
 
 // BLOCK NUMBER
 // ================================================================================================
@@ -19,12 +19,6 @@ use crate::{ConversionError, proto};
 impl From<BlockNumber> for proto::blockchain::BlockNumber {
     fn from(value: BlockNumber) -> Self {
         Self { block_num: value.as_u32() }
-    }
-}
-
-impl From<proto::blockchain::BlockNumber> for BlockNumber {
-    fn from(value: proto::blockchain::BlockNumber) -> Self {
-        value.block_num.into()
     }
 }
 
@@ -86,14 +80,6 @@ impl From<BlockHeader> for proto::blockchain::BlockHeader {
     }
 }
 
-impl TryFrom<&proto::blockchain::BlockHeader> for BlockHeader {
-    type Error = ConversionError;
-
-    fn try_from(value: &proto::blockchain::BlockHeader) -> Result<Self, Self::Error> {
-        value.clone().try_into()
-    }
-}
-
 // BLOCK BODY
 // ================================================================================================
 
@@ -115,14 +101,6 @@ impl From<&BlockBody> for proto::blockchain::BlockBody {
 impl From<BlockBody> for proto::blockchain::BlockBody {
     fn from(body: BlockBody) -> Self {
         (&body).into()
-    }
-}
-
-impl TryFrom<&proto::blockchain::BlockBody> for BlockBody {
-    type Error = ConversionError;
-
-    fn try_from(value: &proto::blockchain::BlockBody) -> Result<Self, Self::Error> {
-        value.clone().try_into()
     }
 }
 
@@ -176,14 +154,6 @@ impl From<SignedBlock> for proto::blockchain::SignedBlock {
     }
 }
 
-impl TryFrom<&proto::blockchain::SignedBlock> for SignedBlock {
-    type Error = ConversionError;
-
-    fn try_from(value: &proto::blockchain::SignedBlock) -> Result<Self, Self::Error> {
-        value.clone().try_into()
-    }
-}
-
 // VALIDATOR AND PROTOCOL CONFIGURATION
 // ================================================================================================
 
@@ -214,12 +184,6 @@ impl From<&NextProtocolConfig> for proto::blockchain::NextProtocolConfig {
 impl From<NextProtocolConfig> for proto::blockchain::NextProtocolConfig {
     fn from(value: NextProtocolConfig) -> Self {
         (&value).into()
-    }
-}
-
-impl From<proto::blockchain::FeeParameters> for FeeParameters {
-    fn from(value: proto::blockchain::FeeParameters) -> Self {
-        Self::new(value.verification_base_fee)
     }
 }
 

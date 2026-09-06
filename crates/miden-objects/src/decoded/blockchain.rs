@@ -1,23 +1,13 @@
 //! Domain construction for decoded blockchain messages.
 pub use proto::blockchain::DecodedTrackedMmrLeaf as TrackedMmrLeaf;
 
-use crate::{ConversionError, DecodeMessage, Verify, proto};
+use crate::{Verify, proto};
 
 impl Verify for TrackedMmrLeaf {
     type Verified = (u64, miden_protocol::Word, alloc::vec::Vec<miden_protocol::Word>);
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((self.position, self.leaf, self.path))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::TrackedMmrLeaf>
-    for (u64, miden_protocol::Word, alloc::vec::Vec<miden_protocol::Word>)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::TrackedMmrLeaf) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -52,16 +42,6 @@ impl Verify for NextProtocolConfig {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::NextProtocolConfig>
-    for miden_protocol::protocol_config::NextProtocolConfig
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::NextProtocolConfig) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::blockchain::DecodedValidatorConfig as ValidatorConfig;
 
 impl Verify for ValidatorConfig {
@@ -84,14 +64,6 @@ pub enum ValidatorConfigError {
     Quorum(#[from] core::num::TryFromIntError),
     #[error("{0}")]
     Config(#[from] miden_protocol::errors::ValidatorConfigError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::ValidatorConfig> for miden_protocol::block::ValidatorConfig {
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::ValidatorConfig) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::blockchain::DecodedBlockHeader as BlockHeader;
@@ -129,14 +101,6 @@ pub enum BlockHeaderError {
     Validators(#[from] ValidatorConfigError),
     #[error("{0}")]
     Upgrade(#[from] miden_protocol::errors::ProtocolConfigError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::BlockHeader> for miden_protocol::block::BlockHeader {
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::BlockHeader) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
 }
 
 pub use proto::blockchain::DecodedPartialBlockchain as PartialBlockchain;
@@ -199,16 +163,6 @@ pub enum PartialBlockchainError {
     HeaderOrder,
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::PartialBlockchain>
-    for miden_protocol::transaction::PartialBlockchain
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::PartialBlockchain) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
-}
-
 pub use proto::blockchain::DecodedBlockAccountUpdate as BlockAccountUpdate;
 
 impl Verify for BlockAccountUpdate {
@@ -233,14 +187,6 @@ pub enum BlockAccountUpdateError {
     Update(#[from] miden_protocol::errors::BlockAccountUpdateError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::BlockAccountUpdate> for miden_protocol::block::BlockAccountUpdate {
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::BlockAccountUpdate) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::blockchain::DecodedIndexedOutputNote as IndexedOutputNote;
 
 impl Verify for IndexedOutputNote {
@@ -259,16 +205,6 @@ pub enum IndexedOutputNoteError {
     Note(#[from] super::transaction::OutputNoteError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::IndexedOutputNote>
-    for (usize, miden_protocol::transaction::OutputNote)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::IndexedOutputNote) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::blockchain::DecodedOutputNoteBatch as OutputNoteBatch;
 
 impl Verify for OutputNoteBatch {
@@ -276,14 +212,6 @@ impl Verify for OutputNoteBatch {
     type Error = IndexedOutputNoteError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         self.notes.into_iter().map(Verify::verify).collect()
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::OutputNoteBatch> for miden_protocol::block::OutputNoteBatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::OutputNoteBatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -335,14 +263,6 @@ pub enum BlockBodyError {
     Body(#[from] miden_protocol::errors::BlockBodyError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::BlockBody> for miden_protocol::block::BlockBody {
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::BlockBody) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
-}
-
 pub use proto::blockchain::DecodedSignedBlock as SignedBlock;
 
 /// Checks header/body consistency but does not authenticate against a trusted parent.
@@ -376,14 +296,6 @@ pub enum SignedBlockError {
     Signatures(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
     #[error("{0}")]
     Block(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::blockchain::SignedBlock> for miden_protocol::block::SignedBlock {
-    type Error = ConversionError;
-    fn try_from(value: proto::blockchain::SignedBlock) -> Result<Self, Self::Error> {
-        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
-    }
 }
 
 /// Authenticates the block against an already-trusted parent, in addition to self-consistency.

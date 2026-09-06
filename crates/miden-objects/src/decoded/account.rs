@@ -5,7 +5,7 @@ pub use proto::account::{
     DecodedStorageSlotId as StorageSlotId,
 };
 
-use crate::{ConversionError, DecodeMessage, Verify, proto};
+use crate::{Verify, proto};
 
 impl Verify for AccountId {
     type Verified = miden_protocol::account::AccountId;
@@ -20,30 +20,12 @@ impl Verify for AccountId {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountId> for miden_protocol::account::AccountId {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::account::AccountId) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 impl Verify for AccountIdV1 {
     type Verified = miden_protocol::account::AccountIdV1;
     type Error = miden_protocol::errors::AccountIdError;
 
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Self::Verified::try_from_elements(self.suffix, self.prefix)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountIdV1> for miden_protocol::account::AccountIdV1 {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::account::AccountIdV1) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -55,14 +37,6 @@ impl Verify for StorageSlotId {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::StorageSlotId> for miden_protocol::account::StorageSlotId {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::StorageSlotId) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::account::DecodedStorageMapEntry as StorageMapEntry;
 
 impl Verify for StorageMapEntry {
@@ -70,16 +44,6 @@ impl Verify for StorageMapEntry {
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((miden_protocol::account::StorageMapKey::from_raw(self.key), self.value))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::StorageMapEntry>
-    for (miden_protocol::account::StorageMapKey, miden_protocol::Word)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::StorageMapEntry) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -95,14 +59,6 @@ impl Verify for AccountCode {
             .map(miden_protocol::account::AccountProcedureRoot::from_raw)
             .collect();
         Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), roots)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountCode> for miden_protocol::account::AccountCode {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountCode) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -129,16 +85,6 @@ pub enum AccountWitnessError {
     Witness(#[from] miden_protocol::errors::AccountTreeError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountWitness>
-    for miden_protocol::block::account_tree::AccountWitness
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountWitness) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::account::DecodedAccountVaultPatchEntry as AccountVaultPatchEntry;
 
 impl Verify for AccountVaultPatchEntry {
@@ -146,16 +92,6 @@ impl Verify for AccountVaultPatchEntry {
     type Error = miden_protocol::errors::AssetError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((self.asset_id.try_into()?, self.value))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountVaultPatchEntry>
-    for (miden_protocol::asset::AssetId, miden_protocol::Word)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountVaultPatchEntry) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -183,14 +119,6 @@ pub enum VaultPatchError {
     DuplicateAssetId(miden_protocol::asset::AssetId),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountVaultPatch> for miden_protocol::account::AccountVaultPatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountVaultPatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::account::DecodedPrivateAccountUpdate as PrivateAccountUpdate;
 
 impl Verify for PrivateAccountUpdate {
@@ -198,16 +126,6 @@ impl Verify for PrivateAccountUpdate {
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::Private)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::PrivateAccountUpdate>
-    for miden_protocol::account::AccountUpdateDetails
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::PrivateAccountUpdate) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -241,13 +159,6 @@ pub enum AccountHeaderError {
     #[error("invalid account nonce: {0}")]
     Nonce(#[source] <miden_protocol::Felt as TryFrom<u64>>::Error),
 }
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountHeader> for miden_protocol::account::AccountHeader {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountHeader) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
 
 pub use proto::account::account_storage_header::DecodedStorageSlot as AccountStorageHeaderStorageSlot;
 
@@ -277,17 +188,6 @@ pub enum StorageHeaderError {
     #[error("storage slot type is unspecified")]
     UnspecifiedSlotType,
 }
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::account_storage_header::StorageSlot>
-    for miden_protocol::account::StorageSlotHeader
-{
-    type Error = ConversionError;
-    fn try_from(
-        value: proto::account::account_storage_header::StorageSlot,
-    ) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
 
 pub use proto::account::DecodedAccountStorageHeader as AccountStorageHeader;
 
@@ -297,16 +197,6 @@ impl Verify for AccountStorageHeader {
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let slots = self.slots.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
         Ok(Self::Verified::new(slots)?)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountStorageHeader>
-    for miden_protocol::account::AccountStorageHeader
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountStorageHeader) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -348,13 +238,6 @@ pub enum StorageMapPatchError {
     #[error("duplicate storage map key {0:?}")]
     DuplicateKey(miden_protocol::account::StorageMapKey),
 }
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::StorageMapPatch> for miden_protocol::account::StorageMapPatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::StorageMapPatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
 
 pub use proto::account::DecodedStorageValuePatch as StorageValuePatch;
 
@@ -368,14 +251,6 @@ impl Verify for StorageValuePatch {
             DecodedOperation::Update(value) => Self::Verified::Update { value },
             DecodedOperation::Remove(()) => Self::Verified::Remove,
         })
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::StorageValuePatch> for miden_protocol::account::StorageValuePatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::StorageValuePatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -411,19 +286,6 @@ pub enum StoragePatchError {
     Storage(#[from] miden_protocol::errors::AccountPatchError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::StorageSlotPatch>
-    for (
-        miden_protocol::account::StorageSlotName,
-        miden_protocol::account::StorageSlotPatch,
-    )
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::StorageSlotPatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::account::DecodedAccountStoragePatch as AccountStoragePatch;
 
 impl Verify for AccountStoragePatch {
@@ -436,14 +298,6 @@ impl Verify for AccountStoragePatch {
             .map(Verify::verify)
             .collect::<Result<alloc::vec::Vec<_>, _>>()?;
         Ok(Self::Verified::from_entries(slots)?)
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountStoragePatch> for miden_protocol::account::AccountStoragePatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountStoragePatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -482,14 +336,6 @@ pub enum AccountPatchError {
     Patch(#[from] miden_protocol::errors::AccountPatchError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountPatch> for miden_protocol::account::AccountPatch {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountPatch) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::account::DecodedAccountUpdateDetails as AccountUpdateDetails;
 
 impl Verify for AccountUpdateDetails {
@@ -501,16 +347,6 @@ impl Verify for AccountUpdateDetails {
             DecodedUpdate::Private(value) => Ok(value.verify().expect("infallible private update")),
             DecodedUpdate::Public(patch) => Ok(Self::Verified::Public(patch.verify()?)),
         }
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::AccountUpdateDetails>
-    for miden_protocol::account::AccountUpdateDetails
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::account::AccountUpdateDetails) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -533,14 +369,6 @@ pub enum PartialStorageMapError {
     Smt(#[from] super::primitives::PartialSmtError),
     #[error("{0}")]
     Storage(#[from] miden_protocol::crypto::merkle::MerkleError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::PartialStorageMap> for miden_protocol::account::PartialStorageMap {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::PartialStorageMap) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::account::DecodedPartialStorage as PartialStorage;
@@ -574,14 +402,6 @@ pub enum PartialStorageError {
     Storage(#[from] miden_protocol::errors::AccountError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::PartialStorage> for miden_protocol::account::PartialStorage {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::PartialStorage) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::account::DecodedPartialVault as PartialVault;
 
 impl Verify for PartialVault {
@@ -605,14 +425,6 @@ pub enum PartialVaultError {
     Asset(#[from] miden_protocol::errors::AssetError),
     #[error("{0}")]
     Vault(#[from] miden_protocol::errors::PartialAssetVaultError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::PartialVault> for miden_protocol::asset::PartialVault {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::PartialVault) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::account::DecodedPartialAccount as PartialAccount;
@@ -642,12 +454,4 @@ pub enum PartialAccountError {
     Storage(#[from] PartialStorageError),
     #[error("{0}")]
     Vault(#[from] PartialVaultError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::account::PartialAccount> for miden_protocol::account::PartialAccount {
-    type Error = ConversionError;
-    fn try_from(value: proto::account::PartialAccount) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }

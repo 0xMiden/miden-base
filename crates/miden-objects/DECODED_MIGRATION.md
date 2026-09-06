@@ -27,9 +27,12 @@ representation parsing and leaf diagnostics remain handwritten. This is not 97 f
 generated domain conversions.
 
 Generated-record selection and the two byte adapter attributes live in [build.rs](build.rs).
-Handwritten construction lives in [src/decoded](src/decoded). Existing combined conversion
-APIs delegate to decoding and the appropriate construction capability. The old required-field
-helper and handwritten proven-batch parts struct have been removed.
+Handwritten construction lives in [src/decoded](src/decoded). Combined protobuf-to-domain
+`TryFrom`/`From` conversions, including borrowed wrappers and batch decoding helpers, have been
+removed. Callers must use `decode_fields()` and explicitly choose `verify()`, `verify_with(context)`,
+or `build_unchecked()`. Generated `TryFrom` implementations target decoded records, not domain
+objects; atomic representation adapters retain their own `TryFrom` implementations.
+The old required-field helper and handwritten proven-batch parts struct have also been removed.
 
 ## Structural Decoding
 

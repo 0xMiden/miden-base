@@ -1,6 +1,6 @@
 use miden_protocol::batch::{BatchAccountUpdate, ProposedBatch, ProvenBatch};
 
-use crate::{ConversionError, proto};
+use crate::proto;
 
 impl From<&BatchAccountUpdate> for proto::transaction::BatchAccountUpdate {
     fn from(value: &BatchAccountUpdate) -> Self {
@@ -32,20 +32,6 @@ impl From<ProposedBatch> for proto::transaction::ProposedBatch {
     }
 }
 
-/// Decodes and structurally validates a proposed batch, including transaction proof verification.
-///
-/// Callers handling untrusted requests should invoke this in a blocking task.
-pub fn decode_proposed_batch(
-    value: proto::transaction::ProposedBatch,
-    proof_security_level: u32,
-) -> Result<ProposedBatch, ConversionError> {
-    use crate::{DecodeMessage, VerifyWith};
-    value
-        .decode_fields()?
-        .verify_with(proof_security_level)
-        .map_err(ConversionError::new)
-}
-
 impl From<&ProvenBatch> for proto::transaction::ProvenBatch {
     fn from(value: &ProvenBatch) -> Self {
         Self {
@@ -65,22 +51,4 @@ impl From<ProvenBatch> for proto::transaction::ProvenBatch {
     fn from(value: ProvenBatch) -> Self {
         Self::from(&value)
     }
-}
-
-/// Decodes a proven batch without a proposal and validates every invariant available from the
-/// transmitted fields. Cryptographic proof verification remains a service-boundary concern.
-pub fn decode_standalone_proven_batch(
-    value: proto::transaction::ProvenBatch,
-) -> Result<ProvenBatch, ConversionError> {
-    crate::BuildUnchecked::build_unchecked(crate::DecodeMessage::decode_fields(value)?)
-        .map_err(ConversionError::new)
-}
-
-/// Decodes a proven batch and checks every public field duplicated from its proposal.
-pub fn decode_proven_batch(
-    value: proto::transaction::ProvenBatch,
-    proposed: &ProposedBatch,
-) -> Result<ProvenBatch, ConversionError> {
-    use crate::{DecodeMessage, VerifyWith};
-    value.decode_fields()?.verify_with(proposed).map_err(ConversionError::new)
 }

@@ -1,21 +1,13 @@
 //! Domain construction for decoded primitives messages.
 pub use proto::primitives::DecodedMerklePath as MerklePath;
 
-use crate::{ConversionError, DecodeMessage, Verify, proto};
+use crate::{Verify, proto};
 
 impl Verify for MerklePath {
     type Verified = miden_protocol::crypto::merkle::MerklePath;
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(self.siblings))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::MerklePath> for miden_protocol::crypto::merkle::MerklePath {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::MerklePath) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -29,16 +21,6 @@ impl Verify for SparseMerklePath {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::SparseMerklePath>
-    for miden_protocol::crypto::merkle::SparseMerklePath
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::SparseMerklePath) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedSmtLeafEntry as SmtLeafEntry;
 
 impl Verify for SmtLeafEntry {
@@ -49,14 +31,6 @@ impl Verify for SmtLeafEntry {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::SmtLeafEntry> for (miden_protocol::Word, miden_protocol::Word) {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::SmtLeafEntry) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedPartialSmtNode as PartialSmtNode;
 
 impl Verify for PartialSmtNode {
@@ -64,14 +38,6 @@ impl Verify for PartialSmtNode {
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((self.index, self.digest))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::PartialSmtNode> for (u64, miden_protocol::Word) {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::PartialSmtNode) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -88,16 +54,6 @@ impl Verify for PartialSmtNodeLevel {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::PartialSmtNodeLevel>
-    for (u32, alloc::vec::Vec<(u64, miden_protocol::Word)>)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::PartialSmtNodeLevel) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedIndexedDigest as IndexedDigest;
 
 impl Verify for IndexedDigest {
@@ -108,14 +64,6 @@ impl Verify for IndexedDigest {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::IndexedDigest> for (u64, miden_protocol::Word) {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::IndexedDigest) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedSmtLeafEntryList as SmtLeafEntryList;
 
 impl Verify for SmtLeafEntryList {
@@ -123,16 +71,6 @@ impl Verify for SmtLeafEntryList {
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         self.entries.into_iter().map(Verify::verify).collect()
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::SmtLeafEntryList>
-    for alloc::vec::Vec<(miden_protocol::Word, miden_protocol::Word)>
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::SmtLeafEntryList) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -150,14 +88,6 @@ impl Verify for MerkleStoreNode {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::MerkleStoreNode> for miden_protocol::crypto::merkle::InnerNodeInfo {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::MerkleStoreNode) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedAdviceMapEntry as AdviceMapEntry;
 
 impl Verify for AdviceMapEntry {
@@ -168,16 +98,6 @@ impl Verify for AdviceMapEntry {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::AdviceMapEntry>
-    for (miden_protocol::Word, alloc::vec::Vec<miden_protocol::Felt>)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::AdviceMapEntry) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedAdviceStack as AdviceStack;
 
 impl Verify for AdviceStack {
@@ -185,14 +105,6 @@ impl Verify for AdviceStack {
     type Error = core::convert::Infallible;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(self.values.into_iter().collect())
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::AdviceStack> for miden_protocol::vm::AdviceStack {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::AdviceStack) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -219,14 +131,6 @@ pub enum AdviceError {
     DuplicateMerkleParent(miden_protocol::Word),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::AdviceMap> for miden_protocol::vm::AdviceMap {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::AdviceMap) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedMerkleStore as MerkleStore;
 
 impl Verify for MerkleStore {
@@ -246,16 +150,6 @@ impl Verify for MerkleStore {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::MerkleStore>
-    for miden_protocol::crypto::merkle::store::MerkleStore
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::MerkleStore) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedAdviceInputs as AdviceInputs;
 
 impl Verify for AdviceInputs {
@@ -267,14 +161,6 @@ impl Verify for AdviceInputs {
             self.advice_map.verify()?,
             self.merkle_store.verify()?,
         ))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::AdviceInputs> for miden_protocol::vm::AdviceInputs {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::AdviceInputs) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -294,14 +180,6 @@ pub enum MmrDeltaError {
     Size(#[from] core::num::TryFromIntError),
     #[error("forest size out of range: {0}")]
     Forest(#[from] miden_protocol::utils::serde::DeserializationError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::MmrDelta> for miden_protocol::crypto::merkle::mmr::MmrDelta {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::MmrDelta) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::primitives::DecodedSmtLeaf as SmtLeaf;
@@ -324,14 +202,6 @@ impl Verify for SmtLeaf {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::SmtLeaf> for miden_protocol::crypto::merkle::smt::SmtLeaf {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::SmtLeaf) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedIndexedSmtLeaf as IndexedSmtLeaf;
 
 impl Verify for IndexedSmtLeaf {
@@ -339,16 +209,6 @@ impl Verify for IndexedSmtLeaf {
     type Error = miden_protocol::crypto::merkle::smt::SmtLeafError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((self.index, self.leaf.verify()?))
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::IndexedSmtLeaf>
-    for (u64, miden_protocol::crypto::merkle::smt::SmtLeaf)
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::IndexedSmtLeaf) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
 
@@ -370,14 +230,6 @@ pub enum SmtOpeningError {
     Leaf(#[from] miden_protocol::crypto::merkle::smt::SmtLeafError),
     #[error("{0}")]
     Proof(#[from] miden_protocol::crypto::merkle::smt::SmtProofError),
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::SmtOpening> for miden_protocol::crypto::merkle::smt::SmtProof {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::SmtOpening) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
 }
 
 pub use proto::primitives::DecodedPartialSmt as PartialSmt;
@@ -464,14 +316,6 @@ pub enum PartialSmtError {
     Reconstruction(#[from] miden_protocol::utils::serde::DeserializationError),
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::PartialSmt> for miden_protocol::crypto::merkle::smt::PartialSmt {
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::PartialSmt) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 /// A canonically deserialized byte payload, with no verification of its application use.
 #[derive(Debug)]
 pub struct Canonical<T>(T);
@@ -507,16 +351,6 @@ impl Verify for PublicKey {
     }
 }
 
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::PublicKey>
-    for miden_protocol::crypto::dsa::ecdsa_k256_keccak::PublicKey
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::PublicKey) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
-    }
-}
-
 pub use proto::primitives::DecodedSignature as Signature;
 
 /// Returns the canonical signature; authenticity requires a public key and signed message.
@@ -527,15 +361,5 @@ impl Verify for Signature {
         let proto::primitives::signature::DecodedSignature::EcdsaK256Keccak(signature) =
             self.signature;
         Ok(signature.into_inner())
-    }
-}
-
-// Compatibility bridge for callers using the combined conversion API.
-impl TryFrom<proto::primitives::Signature>
-    for miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature
-{
-    type Error = ConversionError;
-    fn try_from(value: proto::primitives::Signature) -> Result<Self, Self::Error> {
-        value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

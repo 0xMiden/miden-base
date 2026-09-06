@@ -1,6 +1,4 @@
-use miden_objects::proto;
-use miden_protocol::note::Note;
-use miden_protocol::transaction::TransactionInputs;
+use miden_objects::{BuildUnchecked, DecodeMessage, Verify, proto};
 use prost::Message;
 
 use super::common;
@@ -18,11 +16,18 @@ fn transaction_inputs_roundtrip_preserves_all_nested_fields_and_ordered_collecti
         .notes
         .iter()
         .map(|note| match note.note.as_ref().unwrap() {
-            proto::transaction::input_note::Note::Authenticated(note) => {
-                Note::try_from(note.note.as_ref().unwrap().clone()).unwrap().id()
-            },
+            proto::transaction::input_note::Note::Authenticated(note) => note
+                .note
+                .as_ref()
+                .unwrap()
+                .clone()
+                .decode_fields()
+                .unwrap()
+                .verify()
+                .unwrap()
+                .id(),
             proto::transaction::input_note::Note::Unauthenticated(note) => {
-                Note::try_from(note.clone()).unwrap().id()
+                note.clone().decode_fields().unwrap().verify().unwrap().id()
             },
         })
         .collect::<Vec<_>>();
@@ -35,7 +40,7 @@ fn transaction_inputs_roundtrip_preserves_all_nested_fields_and_ordered_collecti
     let encoded = message.encode_to_vec();
     let decoded_message =
         proto::transaction::TransactionInputs::decode(encoded.as_slice()).unwrap();
-    let actual = TransactionInputs::try_from(decoded_message).unwrap();
+    let actual = decoded_message.decode_fields().unwrap().build_unchecked().unwrap();
 
     assert_eq!(actual, expected);
     assert_eq!(actual.foreign_account_code(), expected.foreign_account_code());
@@ -53,8 +58,8 @@ fn transaction_inputs_roundtrip_preserves_all_nested_fields_and_ordered_collecti
         .map(|entry| entry.slot_id.unwrap())
         .collect::<Vec<_>>();
     assert!(normalized_slot_ids.windows(2).all(|ids| {
-        miden_protocol::account::StorageSlotId::try_from(ids[0]).unwrap()
-            < miden_protocol::account::StorageSlotId::try_from(ids[1]).unwrap()
+        ids[0].decode_fields().unwrap().verify().unwrap()
+            < ids[1].decode_fields().unwrap().verify().unwrap()
     }));
 
     let decoded_code = actual.foreign_account_code();

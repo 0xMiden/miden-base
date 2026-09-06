@@ -15,7 +15,7 @@ use miden_protocol::note::{
     PartialNoteMetadata,
 };
 
-use crate::{ConversionError, proto};
+use crate::proto;
 
 // NOTE TYPE
 // ================================================================================================
@@ -25,20 +25,6 @@ impl From<NoteType> for proto::note::NoteType {
         match note_type {
             NoteType::Private => proto::note::NoteType::Private,
             NoteType::Public => proto::note::NoteType::Public,
-        }
-    }
-}
-
-impl TryFrom<proto::note::NoteType> for NoteType {
-    type Error = ConversionError;
-
-    fn try_from(note_type: proto::note::NoteType) -> Result<Self, Self::Error> {
-        match note_type {
-            proto::note::NoteType::Private => Ok(NoteType::Private),
-            proto::note::NoteType::Public => Ok(NoteType::Public),
-            proto::note::NoteType::Unspecified => {
-                Err(ConversionError::message("enum variant discriminant out of range"))
-            },
         }
     }
 }
@@ -174,13 +160,6 @@ impl From<(&NoteId, &NoteInclusionProof)> for proto::note::NoteInclusionProof {
             note_index_in_block: proof.location().block_note_tree_index().into(),
             inclusion_path: Some(proof.note_path().clone().into()),
         }
-    }
-}
-
-impl TryFrom<&proto::note::NoteInclusionProof> for (NoteId, NoteInclusionProof) {
-    type Error = ConversionError;
-    fn try_from(value: &proto::note::NoteInclusionProof) -> Result<Self, Self::Error> {
-        value.clone().try_into()
     }
 }
 
