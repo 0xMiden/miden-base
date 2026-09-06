@@ -441,3 +441,34 @@ impl TryFrom<proto::transaction::TxAccountUpdate> for miden_protocol::transactio
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedBatchAccountUpdate as BatchAccountUpdate;
+
+impl Verify for BatchAccountUpdate {
+    type Verified = miden_protocol::batch::BatchAccountUpdate;
+    type Error = BatchAccountUpdateError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.account_id,
+            self.initial_state_commitment,
+            self.final_state_commitment,
+            self.details.verify()?,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum BatchAccountUpdateError {
+    #[error("{0}")]
+    Details(#[from] super::account::AccountPatchError),
+    #[error("{0}")]
+    Update(#[from] miden_protocol::errors::BatchAccountUpdateError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::BatchAccountUpdate> for miden_protocol::batch::BatchAccountUpdate {
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::BatchAccountUpdate) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
