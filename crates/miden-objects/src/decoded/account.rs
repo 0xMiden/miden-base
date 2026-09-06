@@ -418,13 +418,13 @@ impl Verify for AccountPatch {
 pub enum AccountPatchError {
     #[error("account patch version is unspecified")]
     UnspecifiedVersion,
-    #[error(transparent)]
+    #[error("{0}")]
     Storage(#[from] StoragePatchError),
-    #[error(transparent)]
+    #[error("{0}")]
     Vault(#[from] VaultPatchError),
-    #[error(transparent)]
+    #[error("{0}")]
     Code(#[from] miden_protocol::errors::AccountError),
-    #[error(transparent)]
+    #[error("{0}")]
     Patch(#[from] miden_protocol::errors::AccountPatchError),
 }
 
@@ -456,6 +456,35 @@ impl TryFrom<proto::account::AccountUpdateDetails>
 {
     type Error = ConversionError;
     fn try_from(value: proto::account::AccountUpdateDetails) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::account::DecodedPartialStorageMap as PartialStorageMap;
+
+impl Verify for PartialStorageMap {
+    type Verified = miden_protocol::account::PartialStorageMap;
+    type Error = PartialStorageMapError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::try_from_parts(
+            self.smt.verify()?,
+            self.keys.into_iter().map(miden_protocol::account::StorageMapKey::from_raw),
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PartialStorageMapError {
+    #[error("{0}")]
+    Smt(#[from] super::primitives::PartialSmtError),
+    #[error("{0}")]
+    Storage(#[from] miden_protocol::crypto::merkle::MerkleError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::PartialStorageMap> for miden_protocol::account::PartialStorageMap {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::PartialStorageMap) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

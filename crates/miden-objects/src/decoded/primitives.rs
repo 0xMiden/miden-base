@@ -364,11 +364,11 @@ impl Verify for SmtOpening {
 
 #[derive(Debug, thiserror::Error)]
 pub enum SmtOpeningError {
-    #[error(transparent)]
+    #[error("{0}")]
     Path(#[from] miden_protocol::crypto::merkle::MerkleError),
-    #[error(transparent)]
+    #[error("{0}")]
     Leaf(#[from] miden_protocol::crypto::merkle::smt::SmtLeafError),
-    #[error(transparent)]
+    #[error("{0}")]
     Proof(#[from] miden_protocol::crypto::merkle::smt::SmtProofError),
 }
 
@@ -442,7 +442,7 @@ impl PartialSmt {
 }
 #[derive(Debug, thiserror::Error)]
 pub enum PartialSmtError {
-    #[error(transparent)]
+    #[error("{0}")]
     DepthOverflow(#[from] core::num::TryFromIntError),
     #[error("partial SMT node depth {0} must be in the range 1..64")]
     Depth(u8),
@@ -456,9 +456,9 @@ pub enum PartialSmtError {
     DuplicateValueOnlyLeaf(u64),
     #[error("partial SMT leaf index {0} has both a leaf and a value-only leaf")]
     OverlappingLeaf(u64),
-    #[error(transparent)]
+    #[error("{0}")]
     Index(#[from] miden_protocol::crypto::merkle::MerkleError),
-    #[error(transparent)]
+    #[error("{0}")]
     Leaf(#[from] miden_protocol::crypto::merkle::smt::SmtLeafError),
     #[error("failed to deserialize PartialSmt: {0}")]
     Reconstruction(#[from] miden_protocol::utils::serde::DeserializationError),

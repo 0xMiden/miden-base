@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".account.PartialStorageMap",
             ".primitives.PartialSmt",
             ".primitives.SmtOpening",
             ".primitives.IndexedSmtLeaf",

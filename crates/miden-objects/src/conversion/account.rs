@@ -12,7 +12,6 @@ use miden_protocol::account::{
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
-    StorageMapKey,
     StorageSlotId,
     StorageSlotType,
 };
@@ -125,27 +124,6 @@ impl From<AccountStorageHeader> for proto::account::AccountStorageHeader {
 
 // PARTIAL STORAGE MAP
 // ================================================================================================
-
-impl TryFrom<proto::account::PartialStorageMap> for PartialStorageMap {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::PartialStorageMap) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let smt = required!(decoder, message.smt)?;
-        let keys = message
-            .keys
-            .into_iter()
-            .enumerate()
-            .map(|(index, key)| {
-                Word::try_from(key)
-                    .map(StorageMapKey::from_raw)
-                    .context(format!("keys[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        PartialStorageMap::try_from_parts(smt, keys).map_err(ConversionError::new)
-    }
-}
 
 impl From<&PartialStorageMap> for proto::account::PartialStorageMap {
     fn from(map: &PartialStorageMap) -> Self {
