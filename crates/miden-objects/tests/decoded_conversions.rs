@@ -784,3 +784,15 @@ fn note_details_reports_repeated_asset_enum_paths() {
         "{error}"
     );
 }
+
+#[test]
+fn note_header_defers_metadata_verification() {
+    let header = *miden_protocol::note::Note::mock_noop(Word::empty()).header();
+    let mut wire = proto::note::NoteHeader::from(header);
+    assert_eq!(wire.clone().decode_fields().unwrap().verify().unwrap(), header);
+    wire.metadata.as_mut().unwrap().note_type = 0;
+    assert!(wire.clone().decode_fields().unwrap().verify().is_err());
+    wire.metadata.as_mut().unwrap().note_type = 99;
+    let error = wire.decode_fields().unwrap_err();
+    assert!(error.to_string().starts_with("metadata.note_type: "), "{error}");
+}

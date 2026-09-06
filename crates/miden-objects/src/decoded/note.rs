@@ -241,3 +241,24 @@ impl TryFrom<proto::note::NoteDetails> for miden_protocol::note::NoteDetails {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedNoteHeader as NoteHeader;
+
+impl Verify for NoteHeader {
+    type Verified = miden_protocol::note::NoteHeader;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            miden_protocol::note::NoteDetailsCommitment::from_raw(self.details_commitment),
+            self.metadata.verify()?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteHeader> for miden_protocol::note::NoteHeader {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteHeader) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

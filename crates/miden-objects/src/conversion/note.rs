@@ -6,7 +6,6 @@ use miden_protocol::note::{
     NoteAttachment,
     NoteAttachments,
     NoteDetails,
-    NoteDetailsCommitment,
     NoteHeader,
     NoteId,
     NoteInclusionProof,
@@ -238,21 +237,6 @@ impl From<NoteHeader> for proto::note::NoteHeader {
             details_commitment: Some(header.details_commitment().as_word().into()),
             metadata: Some(header.into_metadata().into()),
         }
-    }
-}
-
-impl TryFrom<proto::note::NoteHeader> for NoteHeader {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::note::NoteHeader) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let details_commitment_word = required!(decoder, value.details_commitment)?;
-        let metadata: NoteMetadata = required!(decoder, value.metadata)?;
-
-        Ok(NoteHeader::new(
-            NoteDetailsCommitment::from_raw(details_commitment_word),
-            metadata,
-        ))
     }
 }
 
