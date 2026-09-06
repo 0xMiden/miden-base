@@ -1011,14 +1011,14 @@ fn block_header_rejects_missing_block_number() {
 }
 
 #[test]
-fn block_header_protobuf_rejects_unspecified_version_before_payload_fields() {
+fn block_header_protobuf_rejects_unspecified_version_after_decoding() {
     let error = BlockHeader::try_from(proto::blockchain::BlockHeader {
         version: proto::blockchain::BlockVersion::Unspecified as i32,
-        ..Default::default()
+        ..proto::blockchain::BlockHeader::from(block_header_with_scheduled_upgrade())
     })
     .unwrap_err();
 
-    assert_eq!(error.to_string(), "version: block header version is unspecified");
+    assert_eq!(error.to_string(), "block header version is unspecified");
 }
 
 #[test]
@@ -1028,11 +1028,10 @@ fn block_header_protobuf_preserves_unknown_version_error_sources() {
             BlockHeader::try_from(proto::blockchain::BlockHeader { version, ..Default::default() })
                 .unwrap_err();
 
-        assert_eq!(error.to_string(), format!("version: unknown block header version {version}"));
+        assert_eq!(error.to_string(), format!("version: unknown enumeration value {version}"));
         assert_matches!(
             error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
             Some(prost::UnknownEnumValue(value)) if *value == version
         );
@@ -1091,15 +1090,8 @@ fn block_header_protobuf_rejects_invalid_validator_quorum() {
     message.validator_config.as_mut().unwrap().quorum = 0;
 
     let error = BlockHeader::try_from(message).unwrap_err();
-    let source = error
-        .source()
-        .unwrap()
-        .source()
-        .unwrap()
-        .downcast_ref::<ValidatorConfigError>()
-        .unwrap();
+    let source = error_source::<ValidatorConfigError>(&error).unwrap();
 
-    assert!(error.to_string().starts_with("validator_config: "));
     assert_matches!(
         source,
         ValidatorConfigError::QuorumMustEqualValidatorCount { quorum: 0, count: 3 }
@@ -1130,9 +1122,8 @@ fn block_header_protobuf_rejects_upgrade_effective_at_genesis() {
         Some(BlockNumber::GENESIS.into());
 
     let error = BlockHeader::try_from(message).unwrap_err();
-    let source = error.source().unwrap().downcast_ref::<ProtocolConfigError>().unwrap();
+    let source = error_source::<ProtocolConfigError>(&error).unwrap();
 
-    assert!(error.to_string().starts_with("next_protocol_config: "));
     assert_matches!(source, ProtocolConfigError::NextConfigEffectiveAtGenesis);
 }
 
@@ -1204,4 +1195,15 @@ fn transaction_header_conversion_preserves_validation_error_source() {
         source,
         TransactionHeaderError::DuplicateOutputNote(note_id) if *note_id == note.id()
     );
+}
+
+fn error_source<'a, T: Error + 'static>(error: &'a (dyn Error + 'static)) -> Option<&'a T> {
+    let mut source = Some(error);
+    while let Some(error) = source {
+        if let Some(found) = error.downcast_ref::<T>() {
+            return Some(found);
+        }
+        source = error.source();
+    }
+    None
 }

@@ -93,3 +93,48 @@ impl TryFrom<proto::blockchain::ValidatorConfig> for miden_protocol::block::Vali
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedBlockHeader as BlockHeader;
+
+/// Builds a header without validating its parent linkage, signatures, or protocol transition.
+impl crate::BuildUnchecked for BlockHeader {
+    type Output = miden_protocol::block::BlockHeader;
+    type Error = BlockHeaderError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        if self.version != proto::blockchain::BlockVersion::V1 {
+            return Err(BlockHeaderError::UnspecifiedVersion);
+        }
+        Ok(Self::Output::new(
+            self.prev_block_commitment,
+            self.block_num.verify().expect("infallible block number"),
+            self.chain_commitment,
+            self.account_root,
+            self.nullifier_root,
+            self.note_root,
+            self.tx_commitment,
+            self.validator_config.verify()?,
+            self.fee_parameters.verify().expect("infallible fee parameters"),
+            self.protocol_config_commitment,
+            self.next_protocol_config.map(Verify::verify).transpose()?,
+            self.timestamp,
+        ))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum BlockHeaderError {
+    #[error("block header version is unspecified")]
+    UnspecifiedVersion,
+    #[error("{0}")]
+    Validators(#[from] ValidatorConfigError),
+    #[error("{0}")]
+    Upgrade(#[from] miden_protocol::errors::ProtocolConfigError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::BlockHeader> for miden_protocol::block::BlockHeader {
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::BlockHeader) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}
