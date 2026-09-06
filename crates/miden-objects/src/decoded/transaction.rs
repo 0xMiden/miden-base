@@ -741,3 +741,25 @@ impl TryFrom<proto::transaction::TransactionInputsV1>
         crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedTransactionInputs as TransactionInputs;
+
+/// Dispatches the decoded version without adding trust to the supplied headers or chain.
+impl crate::BuildUnchecked for TransactionInputs {
+    type Output = miden_protocol::transaction::TransactionInputs;
+    type Error = TransactionInputsError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let proto::transaction::transaction_inputs::DecodedVersion::V1(inputs) = self.version;
+        inputs.build_unchecked()
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::TransactionInputs>
+    for miden_protocol::transaction::TransactionInputs
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::TransactionInputs) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}

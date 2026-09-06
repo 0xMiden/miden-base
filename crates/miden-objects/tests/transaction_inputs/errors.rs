@@ -49,7 +49,7 @@ fn transaction_inputs_v1_requires_every_singular_message() {
         let error = TransactionInputs::try_from(message).unwrap_err();
 
         assert!(
-            error.to_string().starts_with(&format!("v1.{field}: field ")),
+            error.to_string().starts_with(&format!("version.v1.{field}: field ")),
             "unexpected error for {field}: {error}"
         );
         assert!(error.to_string().ends_with(&format!("::{field} is missing")));
@@ -76,7 +76,7 @@ fn input_notes_require_their_oneof_and_authenticated_fields() {
     assert!(
         error
             .to_string()
-            .starts_with("v1.input_notes.notes[0].note.authenticated.note: field ")
+            .starts_with("version.v1.input_notes.notes[0].note.authenticated.note: field ")
     );
     assert!(error.to_string().ends_with("::note is missing"));
 
@@ -86,7 +86,7 @@ fn input_notes_require_their_oneof_and_authenticated_fields() {
     assert!(
         error
             .to_string()
-            .starts_with("v1.input_notes.notes[0].note.authenticated.proof: field ")
+            .starts_with("version.v1.input_notes.notes[0].note.authenticated.proof: field ")
     );
     assert!(error.to_string().ends_with("::proof is missing"));
 }
@@ -102,10 +102,7 @@ fn authenticated_input_note_rejects_a_proof_for_a_different_note() {
 
     let error = TransactionInputs::try_from(message).unwrap_err();
 
-    assert!(
-        error.to_string().starts_with("v1: note ID mismatch:"),
-        "unexpected error: {error}"
-    );
+    assert!(error.to_string().starts_with("note ID mismatch:"), "unexpected error: {error}");
 }
 
 #[test]
@@ -118,7 +115,7 @@ fn input_notes_reject_duplicate_nullifiers_and_preserve_the_domain_source() {
     let error = TransactionInputs::try_from(message).unwrap_err();
 
     assert!(
-        error.to_string().starts_with("v1: transaction input note with nullifier"),
+        error.to_string().starts_with("transaction input note with nullifier"),
         "unexpected error: {error}"
     );
     assert_matches!(transaction_input_error(&error), TransactionInputError::DuplicateInputNote(_));

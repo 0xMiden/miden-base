@@ -2,7 +2,7 @@ use alloc::string::String;
 
 use miden_protocol::transaction::{InputNote, InputNotes, TransactionInputs};
 
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::proto;
 
 impl From<&InputNote> for proto::transaction::InputNote {
     fn from(value: &InputNote) -> Self {
@@ -66,20 +66,5 @@ impl From<&TransactionInputs> for proto::transaction::TransactionInputs {
 impl From<TransactionInputs> for proto::transaction::TransactionInputs {
     fn from(value: TransactionInputs) -> Self {
         (&value).into()
-    }
-}
-
-impl TryFrom<proto::transaction::TransactionInputs> for TransactionInputs {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::transaction::TransactionInputs) -> Result<Self, Self::Error> {
-        use proto::transaction::transaction_inputs::Version;
-
-        match value.version {
-            Some(Version::V1(v1)) => Self::try_from(v1).context("v1"),
-            None => Err(ConversionError::missing_field::<proto::transaction::TransactionInputs>(
-                "version",
-            )),
-        }
     }
 }
