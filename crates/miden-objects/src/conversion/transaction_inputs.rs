@@ -4,7 +4,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use miden_protocol::account::{AccountCode, StorageSlotId, StorageSlotName};
-use miden_protocol::note::{Note, NoteId, NoteInclusionProof};
+use miden_protocol::note::Note;
 use miden_protocol::transaction::{InputNote, InputNotes, TransactionInputs};
 
 use super::{MessageDecodeExt, required};
@@ -38,7 +38,7 @@ impl TryFrom<proto::transaction::InputNote> for InputNote {
 
         match value.note {
             Some(ProtoInputNote::Authenticated(authenticated)) => {
-                decode_authenticated_input_note(authenticated).context("authenticated")
+                authenticated.try_into().context("authenticated")
             },
             Some(ProtoInputNote::Unauthenticated(note)) => {
                 Note::try_from(note).map(InputNote::unauthenticated).context("unauthenticated")
@@ -46,25 +46,6 @@ impl TryFrom<proto::transaction::InputNote> for InputNote {
             None => Err(ConversionError::missing_field::<proto::transaction::InputNote>("note")),
         }
     }
-}
-
-fn decode_authenticated_input_note(
-    authenticated: proto::transaction::AuthenticatedInputNote,
-) -> Result<InputNote, ConversionError> {
-    let decoder = authenticated.decoder();
-    let note: Note = required!(decoder, authenticated.note)?;
-    let proof_message: proto::note::NoteInclusionProof = required!(decoder, authenticated.proof)?;
-    let (proof_note_id, proof): (NoteId, NoteInclusionProof) =
-        (&proof_message).try_into().context("proof")?;
-    if proof_note_id != note.id() {
-        return Err(ConversionError::message(format!(
-            "note ID mismatch: transmitted {proof_note_id}, decoded {}",
-            note.id()
-        ))
-        .context("proof.note_id"));
-    }
-
-    Ok(InputNote::authenticated(note, proof))
 }
 
 impl From<&InputNotes<InputNote>> for proto::transaction::InputNotes {

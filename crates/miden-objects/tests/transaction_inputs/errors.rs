@@ -69,13 +69,21 @@ fn input_notes_require_their_oneof_and_authenticated_fields() {
     let mut message = common::dummy_transaction_inputs_message();
     common::authenticated_input_note_mut(&mut message).note = None;
     let error = TransactionInputs::try_from(message).unwrap_err();
-    assert!(error.to_string().starts_with("v1.input_notes.notes[0].authenticated: field "));
+    assert!(
+        error
+            .to_string()
+            .starts_with("v1.input_notes.notes[0].authenticated.note: field ")
+    );
     assert!(error.to_string().ends_with("::note is missing"));
 
     let mut message = common::dummy_transaction_inputs_message();
     common::authenticated_input_note_mut(&mut message).proof = None;
     let error = TransactionInputs::try_from(message).unwrap_err();
-    assert!(error.to_string().starts_with("v1.input_notes.notes[0].authenticated: field "));
+    assert!(
+        error
+            .to_string()
+            .starts_with("v1.input_notes.notes[0].authenticated.proof: field ")
+    );
     assert!(error.to_string().ends_with("::proof is missing"));
 }
 
@@ -93,7 +101,7 @@ fn authenticated_input_note_rejects_a_proof_for_a_different_note() {
     assert!(
         error
             .to_string()
-            .starts_with("v1.input_notes.notes[0].authenticated.proof.note_id: note ID mismatch:"),
+            .starts_with("v1.input_notes.notes[0].authenticated: note ID mismatch:"),
         "unexpected error: {error}"
     );
 }

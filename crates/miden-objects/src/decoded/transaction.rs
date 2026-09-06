@@ -317,3 +317,42 @@ impl TryFrom<proto::transaction::OutputNote> for miden_protocol::transaction::Ou
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedAuthenticatedInputNote as AuthenticatedInputNote;
+
+impl Verify for AuthenticatedInputNote {
+    type Verified = miden_protocol::transaction::InputNote;
+    type Error = InputNoteError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let note = self.note.verify()?;
+        let (proof_id, proof) = self.proof.verify()?;
+        if proof_id != note.id() {
+            return Err(InputNoteError::IdMismatch {
+                transmitted: proof_id,
+                decoded: note.id(),
+            });
+        }
+        Ok(Self::Verified::authenticated(note, proof))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum InputNoteError {
+    #[error("{0}")]
+    Note(#[from] super::note::VerificationError),
+    #[error("note ID mismatch: transmitted {transmitted}, decoded {decoded}")]
+    IdMismatch {
+        transmitted: miden_protocol::note::NoteId,
+        decoded: miden_protocol::note::NoteId,
+    },
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::AuthenticatedInputNote>
+    for miden_protocol::transaction::InputNote
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::AuthenticatedInputNote) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
