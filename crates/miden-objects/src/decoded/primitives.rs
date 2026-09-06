@@ -331,3 +331,23 @@ impl TryFrom<proto::primitives::SmtLeaf> for miden_protocol::crypto::merkle::smt
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedIndexedSmtLeaf as IndexedSmtLeaf;
+
+impl Verify for IndexedSmtLeaf {
+    type Verified = (u64, miden_protocol::crypto::merkle::smt::SmtLeaf);
+    type Error = miden_protocol::crypto::merkle::smt::SmtLeafError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.index, self.leaf.verify()?))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::IndexedSmtLeaf>
+    for (u64, miden_protocol::crypto::merkle::smt::SmtLeaf)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::IndexedSmtLeaf) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
