@@ -53,27 +53,6 @@ impl From<&StorageValuePatch> for proto::account::StorageValuePatch {
     }
 }
 
-impl TryFrom<proto::account::StorageValuePatch> for StorageValuePatch {
-    type Error = ConversionError;
-
-    fn try_from(patch: proto::account::StorageValuePatch) -> Result<Self, Self::Error> {
-        use proto::account::storage_value_patch::Operation;
-
-        match patch.operation {
-            Some(Operation::Create(value)) => Ok(Self::Create {
-                value: value.try_into().context("operation.create")?,
-            }),
-            Some(Operation::Update(value)) => Ok(Self::Update {
-                value: value.try_into().context("operation.update")?,
-            }),
-            Some(Operation::Remove(())) => Ok(Self::Remove),
-            None => Err(ConversionError::missing_field::<proto::account::StorageValuePatch>(
-                "operation",
-            )),
-        }
-    }
-}
-
 impl From<&StorageMapPatch> for proto::account::StorageMapPatch {
     fn from(patch: &StorageMapPatch) -> Self {
         use proto::account::storage_map_patch::Operation;

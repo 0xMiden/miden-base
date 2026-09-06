@@ -883,3 +883,14 @@ fn transaction_header_unchecked_build_still_checks_id_and_duplicates() {
         Err(miden_objects::decoded::transaction::TransactionHeaderBuildError::Input(_))
     ));
 }
+
+#[test]
+fn decoded_storage_value_patch_is_a_typed_oneof() {
+    use miden_objects::proto::account::StorageValuePatch;
+    use miden_objects::proto::account::storage_value_patch::Operation;
+    let decoded = StorageValuePatch { operation: Some(Operation::Remove(())) }
+        .decode_fields()
+        .unwrap();
+    assert_eq!(decoded.verify().unwrap(), miden_protocol::account::StorageValuePatch::Remove);
+    assert!(StorageValuePatch::default().decode_fields().is_err());
+}

@@ -303,3 +303,26 @@ impl TryFrom<proto::account::StorageMapPatch> for miden_protocol::account::Stora
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedStorageValuePatch as StorageValuePatch;
+
+impl Verify for StorageValuePatch {
+    type Verified = miden_protocol::account::StorageValuePatch;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use proto::account::storage_value_patch::DecodedOperation;
+        Ok(match self.operation {
+            DecodedOperation::Create(value) => Self::Verified::Create { value },
+            DecodedOperation::Update(value) => Self::Verified::Update { value },
+            DecodedOperation::Remove(()) => Self::Verified::Remove,
+        })
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::StorageValuePatch> for miden_protocol::account::StorageValuePatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::StorageValuePatch) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
