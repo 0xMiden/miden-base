@@ -13,7 +13,7 @@ use miden_protocol::account::{
     StorageValuePatch,
 };
 
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::proto;
 
 // ACCOUNT CODE
 // ================================================================================================
@@ -151,23 +151,5 @@ impl From<&AccountUpdateDetails> for proto::account::AccountUpdateDetails {
 impl From<AccountUpdateDetails> for proto::account::AccountUpdateDetails {
     fn from(details: AccountUpdateDetails) -> Self {
         Self::from(&details)
-    }
-}
-
-impl TryFrom<proto::account::AccountUpdateDetails> for AccountUpdateDetails {
-    type Error = ConversionError;
-
-    fn try_from(details: proto::account::AccountUpdateDetails) -> Result<Self, Self::Error> {
-        use proto::account::account_update_details::Update;
-
-        match details.update {
-            Some(Update::Private(_)) => Ok(AccountUpdateDetails::Private),
-            Some(Update::Public(patch)) => {
-                patch.try_into().map(AccountUpdateDetails::Public).context("public")
-            },
-            None => Err(ConversionError::missing_field::<proto::account::AccountUpdateDetails>(
-                "update",
-            )),
-        }
     }
 }

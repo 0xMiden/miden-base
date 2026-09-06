@@ -435,3 +435,27 @@ impl TryFrom<proto::account::AccountPatch> for miden_protocol::account::AccountP
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountUpdateDetails as AccountUpdateDetails;
+
+impl Verify for AccountUpdateDetails {
+    type Verified = miden_protocol::account::AccountUpdateDetails;
+    type Error = AccountPatchError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use proto::account::account_update_details::DecodedUpdate;
+        match self.update {
+            DecodedUpdate::Private(value) => Ok(value.verify().expect("infallible private update")),
+            DecodedUpdate::Public(patch) => Ok(Self::Verified::Public(patch.verify()?)),
+        }
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountUpdateDetails>
+    for miden_protocol::account::AccountUpdateDetails
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountUpdateDetails) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
