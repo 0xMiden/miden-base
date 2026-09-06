@@ -907,3 +907,22 @@ fn storage_slot_patch_defers_slot_name_validation() {
     };
     assert!(wire.decode_fields().unwrap().verify().is_err());
 }
+
+#[test]
+fn smt_leaf_oneof_reports_nested_entry_errors() {
+    let wire = proto::primitives::SmtLeaf {
+        leaf: Some(proto::primitives::smt_leaf::Leaf::Multiple(
+            proto::primitives::SmtLeafEntryList {
+                entries: vec![proto::primitives::SmtLeafEntry { key: None, value: None }],
+            },
+        )),
+    };
+    let error = wire.decode_fields().unwrap_err();
+    assert!(error.to_string().starts_with("leaf.multiple.entries[0].key:"), "{error}");
+    let wire = proto::primitives::SmtLeaf {
+        leaf: Some(proto::primitives::smt_leaf::Leaf::Multiple(
+            proto::primitives::SmtLeafEntryList { entries: vec![] },
+        )),
+    };
+    assert!(wire.decode_fields().unwrap().verify().is_err());
+}

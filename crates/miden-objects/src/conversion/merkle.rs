@@ -4,14 +4,7 @@ use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::crypto::merkle::mmr::MmrDelta;
-use miden_protocol::crypto::merkle::smt::{
-    LeafIndex,
-    PartialSmt,
-    SMT_DEPTH,
-    SmtLeaf,
-    SmtProof,
-    UniqueNodes,
-};
+use miden_protocol::crypto::merkle::smt::{PartialSmt, SMT_DEPTH, SmtLeaf, SmtProof, UniqueNodes};
 use miden_protocol::crypto::merkle::{MerklePath, NodeIndex, SparseMerklePath};
 
 use super::{MessageDecodeExt, required};
@@ -71,36 +64,6 @@ impl From<MmrDelta> for proto::primitives::MmrDelta {
 
 // SMT LEAF
 // ------------------------------------------------------------------------------------------------
-
-impl TryFrom<proto::primitives::SmtLeaf> for SmtLeaf {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::SmtLeaf) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let leaf = required!(decoder, value.leaf)?;
-
-        match leaf {
-            proto::primitives::smt_leaf::Leaf::EmptyLeafIndex(leaf_index) => {
-                Ok(Self::new_empty(LeafIndex::new_max_depth(leaf_index)))
-            },
-            proto::primitives::smt_leaf::Leaf::Single(entry) => {
-                let (key, value) = entry.try_into().context("entry")?;
-
-                Ok(SmtLeaf::new_single(key, value))
-            },
-            proto::primitives::smt_leaf::Leaf::Multiple(entries) => {
-                let domain_entries = entries
-                    .entries
-                    .into_iter()
-                    .map(TryInto::try_into)
-                    .collect::<Result<_, _>>()
-                    .context("entries")?;
-
-                Ok(SmtLeaf::new_multiple(domain_entries).map_err(ConversionError::new)?)
-            },
-        }
-    }
-}
 
 impl From<SmtLeaf> for proto::primitives::SmtLeaf {
     fn from(smt_leaf: SmtLeaf) -> Self {
@@ -312,7 +275,7 @@ mod tests {
     use alloc::string::ToString;
     use alloc::vec;
 
-    use miden_protocol::crypto::merkle::smt::{PartialSmt, Smt, UniqueNodes};
+    use miden_protocol::crypto::merkle::smt::{LeafIndex, PartialSmt, Smt, UniqueNodes};
     use prost::Message;
 
     use super::*;

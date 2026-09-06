@@ -303,3 +303,31 @@ impl TryFrom<proto::primitives::MmrDelta> for miden_protocol::crypto::merkle::mm
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedSmtLeaf as SmtLeaf;
+
+impl Verify for SmtLeaf {
+    type Verified = miden_protocol::crypto::merkle::smt::SmtLeaf;
+    type Error = miden_protocol::crypto::merkle::smt::SmtLeafError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use miden_protocol::crypto::merkle::smt::LeafIndex;
+        use proto::primitives::smt_leaf::DecodedLeaf;
+        match self.leaf {
+            DecodedLeaf::EmptyLeafIndex(index) => {
+                Ok(Self::Verified::new_empty(LeafIndex::new_max_depth(index)))
+            },
+            DecodedLeaf::Single(entry) => Ok(Self::Verified::new_single(entry.key, entry.value)),
+            DecodedLeaf::Multiple(entries) => {
+                Self::Verified::new_multiple(entries.verify().expect("infallible leaf entries"))
+            },
+        }
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::SmtLeaf> for miden_protocol::crypto::merkle::smt::SmtLeaf {
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::SmtLeaf) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
