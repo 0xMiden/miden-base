@@ -261,28 +261,11 @@ impl From<Signature> for proto::primitives::Signature {
     }
 }
 
-impl TryFrom<proto::primitives::Signature> for Signature {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::Signature) -> Result<Self, Self::Error> {
-        Self::try_from(&value)
-    }
-}
-
 impl TryFrom<&proto::primitives::Signature> for Signature {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::Signature) -> Result<Self, Self::Error> {
-        match &value.signature {
-            Some(proto::primitives::signature::Signature::EcdsaK256Keccak(encoded)) => {
-                Self::read_from_bytes(encoded)
-                    .map_err(|error| ConversionError::deserialization("Signature", error))
-                    .context("signature.ecdsa_k256_keccak")
-            },
-            None => {
-                Err(ConversionError::missing_field::<proto::primitives::Signature>("signature"))
-            },
-        }
+        value.clone().try_into()
     }
 }
 
@@ -391,7 +374,6 @@ mod tests {
         assert_matches!(
             signature_error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<DeserializationError>()),
             Some(DeserializationError::UnexpectedEOF)
         );

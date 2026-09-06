@@ -515,3 +515,25 @@ impl TryFrom<proto::primitives::PublicKey>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::primitives::DecodedSignature as Signature;
+
+impl Verify for Signature {
+    type Verified = miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let proto::primitives::signature::DecodedSignature::EcdsaK256Keccak(signature) =
+            self.signature;
+        Ok(signature.into_inner())
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::Signature>
+    for miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::Signature) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

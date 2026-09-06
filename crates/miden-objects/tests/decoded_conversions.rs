@@ -956,3 +956,37 @@ fn public_key_oneof_rejects_missing_and_noncanonical_payloads() {
     let wire = proto::primitives::PublicKey::decode(&[0x12, 0][..]).unwrap();
     assert!(wire.decode_fields().is_err());
 }
+
+#[test]
+fn signature_oneof_rejects_missing_unknown_and_noncanonical_payloads() {
+    use miden_protocol::testing::random_secret_key::random_secret_key;
+    use prost::Message;
+    let signature = random_secret_key().sign(miden_protocol::Word::empty());
+    let wire: proto::primitives::Signature = (&signature).into();
+    assert_eq!(
+        proto::primitives::Signature::decode(wire.encode_to_vec().as_slice())
+            .unwrap()
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .unwrap(),
+        signature
+    );
+    assert!(proto::primitives::Signature::default().decode_fields().is_err());
+    let mut wire: proto::primitives::Signature = signature.into();
+    let proto::primitives::signature::Signature::EcdsaK256Keccak(bytes) =
+        wire.signature.as_mut().unwrap();
+    bytes.push(0);
+    assert!(
+        wire.decode_fields()
+            .unwrap_err()
+            .to_string()
+            .starts_with("signature.ecdsa_k256_keccak:")
+    );
+    assert!(
+        proto::primitives::Signature::decode(&[0x12, 0][..])
+            .unwrap()
+            .decode_fields()
+            .is_err()
+    );
+}
