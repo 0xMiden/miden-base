@@ -926,3 +926,33 @@ fn smt_leaf_oneof_reports_nested_entry_errors() {
     };
     assert!(wire.decode_fields().unwrap().verify().is_err());
 }
+
+#[test]
+fn public_key_oneof_rejects_missing_and_noncanonical_payloads() {
+    use miden_protocol::testing::random_secret_key::random_secret_key;
+    use prost::Message;
+    let key = random_secret_key().public_key();
+    let wire: proto::primitives::PublicKey = (&key).into();
+    assert_eq!(
+        proto::primitives::PublicKey::decode(wire.encode_to_vec().as_slice())
+            .unwrap()
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .unwrap(),
+        key
+    );
+    assert!(proto::primitives::PublicKey::default().decode_fields().is_err());
+    let mut wire: proto::primitives::PublicKey = key.into();
+    let proto::primitives::public_key::Key::EcdsaK256Keccak(bytes) = wire.key.as_mut().unwrap();
+    bytes.push(0);
+    assert!(
+        wire.decode_fields()
+            .unwrap_err()
+            .to_string()
+            .starts_with("key.ecdsa_k256_keccak:")
+    );
+    // An unknown algorithm does not become the default supported algorithm.
+    let wire = proto::primitives::PublicKey::decode(&[0x12, 0][..]).unwrap();
+    assert!(wire.decode_fields().is_err());
+}

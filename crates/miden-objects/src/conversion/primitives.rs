@@ -234,26 +234,11 @@ impl From<PublicKey> for proto::primitives::PublicKey {
     }
 }
 
-impl TryFrom<proto::primitives::PublicKey> for PublicKey {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::PublicKey) -> Result<Self, Self::Error> {
-        Self::try_from(&value)
-    }
-}
-
 impl TryFrom<&proto::primitives::PublicKey> for PublicKey {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::PublicKey) -> Result<Self, Self::Error> {
-        match &value.key {
-            Some(proto::primitives::public_key::Key::EcdsaK256Keccak(encoded)) => {
-                Self::read_from_bytes(encoded)
-                    .map_err(|error| ConversionError::deserialization("PublicKey", error))
-                    .context("key.ecdsa_k256_keccak")
-            },
-            None => Err(ConversionError::missing_field::<proto::primitives::PublicKey>("key")),
-        }
+        value.clone().try_into()
     }
 }
 
@@ -395,7 +380,6 @@ mod tests {
         assert_matches!(
             public_key_error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<DeserializationError>()),
             Some(DeserializationError::UnexpectedEOF)
         );

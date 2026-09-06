@@ -471,3 +471,47 @@ impl TryFrom<proto::primitives::PartialSmt> for miden_protocol::crypto::merkle::
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+/// A canonically deserialized byte payload, with no verification of its application use.
+#[derive(Debug)]
+pub struct Canonical<T>(T);
+impl<T> Canonical<T> {
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+impl<T: miden_protocol::utils::serde::Deserializable + miden_protocol::utils::serde::Serializable>
+    TryFrom<alloc::vec::Vec<u8>> for Canonical<T>
+{
+    type Error = miden_protocol::utils::serde::DeserializationError;
+    fn try_from(bytes: alloc::vec::Vec<u8>) -> Result<Self, Self::Error> {
+        let value = T::read_from_bytes(&bytes)?;
+        if value.to_bytes() != bytes {
+            return Err(Self::Error::InvalidValue(alloc::string::String::from(
+                "non-canonical encoding or trailing bytes",
+            )));
+        }
+        Ok(Self(value))
+    }
+}
+
+pub use proto::primitives::DecodedPublicKey as PublicKey;
+
+impl Verify for PublicKey {
+    type Verified = miden_protocol::crypto::dsa::ecdsa_k256_keccak::PublicKey;
+    type Error = core::convert::Infallible;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let proto::primitives::public_key::DecodedKey::EcdsaK256Keccak(key) = self.key;
+        Ok(key.into_inner())
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::primitives::PublicKey>
+    for miden_protocol::crypto::dsa::ecdsa_k256_keccak::PublicKey
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::primitives::PublicKey) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

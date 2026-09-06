@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".primitives.PublicKey",
             ".account.PartialAccount",
             ".account.PartialVault",
             ".account.PartialStorage",
@@ -105,6 +106,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ".protocol_config.KernelConfig",
         ],
     )?;
+    prost.field_attribute(
+        ".primitives.PublicKey.key.ecdsa_k256_keccak",
+        quote::quote!(#[proto_decode(bytes = crate::decoded::primitives::Canonical<
+            miden_protocol::crypto::dsa::ecdsa_k256_keccak::PublicKey
+        >)])
+        .to_string(),
+    );
     prost.compile_fds(descriptors)?;
     Ok(())
 }

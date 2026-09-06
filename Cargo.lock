@@ -2574,6 +2574,7 @@ dependencies = [
  "prost-build",
  "prost-types",
  "protox",
+ "quote",
  "thiserror",
 ]
 
