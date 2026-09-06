@@ -708,3 +708,29 @@ fn storage_map_patch_verifies_operation_constraints_after_decoding() {
         assert_eq!(decoded.verify().is_ok(), valid, "{operation:?}, {count}");
     }
 }
+
+#[test]
+fn asset_id_decodes_named_enums_before_verifying_composition() {
+    use miden_protocol::asset::FungibleAsset;
+    let wire = proto::asset::AssetId {
+        version: proto::asset::AssetVersion::V1 as i32,
+        asset_class: Some(proto::asset::AssetClass {
+            suffix: Some(miden_protocol::Felt::ZERO.into()),
+            prefix: Some(miden_protocol::Felt::ZERO.into()),
+        }),
+        composition: proto::asset::AssetComposition::Fungible as i32,
+        faucet_id: Some(FungibleAsset::mock_issuer().into()),
+    };
+    let decoded = wire.clone().decode_fields().unwrap();
+    assert_eq!(decoded.version, proto::asset::AssetVersion::V1);
+    assert_eq!(decoded.composition, proto::asset::AssetComposition::Fungible);
+    assert!(decoded.verify().is_ok());
+    let decoded = proto::asset::AssetId {
+        composition: proto::asset::AssetComposition::Custom as i32,
+        ..wire
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.composition, proto::asset::AssetComposition::Custom);
+    assert!(decoded.verify().is_err());
+}

@@ -249,7 +249,10 @@ fn structured_asset_conversion_rejects_missing_unknown_and_custom_compositions()
     })
     .unwrap_err();
     assert_matches!(
-        custom.source().and_then(|source| source.downcast_ref::<AssetError>()),
+        custom
+            .source()
+            .and_then(Error::source)
+            .and_then(|source| source.downcast_ref::<AssetError>()),
         Some(AssetError::UnsupportedAssetComposition(ProtocolAssetComposition::Custom))
     );
 }
@@ -279,14 +282,19 @@ fn structured_asset_conversion_rejects_invalid_fungible_values() {
 }
 
 #[test]
-fn asset_id_protobuf_rejects_unspecified_version_before_payload_fields() {
+fn asset_id_protobuf_rejects_unspecified_version_after_decoding() {
     let error = AssetId::try_from(proto::asset::AssetId {
         version: proto::asset::AssetVersion::Unspecified as i32,
-        ..Default::default()
+        asset_class: Some(proto::asset::AssetClass {
+            suffix: Some(Felt::ZERO.into()),
+            prefix: Some(Felt::ZERO.into()),
+        }),
+        composition: proto::asset::AssetComposition::Fungible as i32,
+        faucet_id: Some(FungibleAsset::mock_issuer().into()),
     })
     .unwrap_err();
 
-    assert_eq!(error.to_string(), "version: asset id version is unspecified");
+    assert_eq!(error.to_string(), "asset id version is unspecified");
 }
 
 #[test]
@@ -295,11 +303,10 @@ fn asset_id_protobuf_preserves_unknown_version_error_sources() {
         let error =
             AssetId::try_from(proto::asset::AssetId { version, ..Default::default() }).unwrap_err();
 
-        assert_eq!(error.to_string(), format!("version: unknown asset id version {version}"));
+        assert_eq!(error.to_string(), format!("version: {}", prost::UnknownEnumValue(version)));
         assert_matches!(
             error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
             Some(prost::UnknownEnumValue(value)) if *value == version
         );
