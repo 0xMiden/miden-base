@@ -243,3 +243,71 @@ fn unknown_enums_report_full_paths_and_preserve_prost_errors() {
         }
     }
 }
+
+#[derive(Debug, PartialEq)]
+struct ByteValue(u8);
+impl TryFrom<Vec<u8>> for ByteValue {
+    type Error = core::array::TryFromSliceError;
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        let [value] = <[u8; 1]>::try_from(bytes.as_slice())?;
+        Ok(Self(value))
+    }
+}
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct BytesMessage {
+    #[prost(bytes = "vec", tag = "1")]
+    #[proto_decode(bytes = ByteValue)]
+    value: Vec<u8>,
+    #[prost(bytes = "vec", optional, tag = "2")]
+    #[proto_decode(bytes = ByteValue)]
+    optional: Option<Vec<u8>>,
+    #[prost(bytes = "vec", repeated, tag = "3")]
+    #[proto_decode(bytes = ByteValue)]
+    repeated: Vec<Vec<u8>>,
+}
+#[derive(Clone, PartialEq, prost::Oneof, ProtoDecodeFields)]
+enum BytesChoice {
+    #[prost(bytes = "vec", tag = "1")]
+    #[proto_decode(name = "encoded", bytes = ByteValue)]
+    Encoded(Vec<u8>),
+}
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct BytesChoiceMessage {
+    #[prost(oneof = "BytesChoice", tags = "1")]
+    choice: Option<BytesChoice>,
+}
+#[test]
+fn bytes_adapters_keep_generated_paths_and_sources() {
+    use core::error::Error;
+    let decoded = BytesChoiceMessage {
+        choice: Some(BytesChoice::Encoded(vec![7])),
+    }
+    .decode_fields()
+    .unwrap();
+    let DecodedBytesChoice::Encoded(value) = decoded.choice;
+    assert_eq!(value, ByteValue(7));
+    let decoded = BytesMessage {
+        value: vec![1],
+        optional: Some(vec![2]),
+        repeated: vec![vec![3]],
+    }
+    .decode_fields()
+    .unwrap();
+    assert_eq!(decoded.value, ByteValue(1));
+    assert_eq!(decoded.optional, Some(ByteValue(2)));
+    assert_eq!(decoded.repeated, [ByteValue(3)]);
+    for (optional, repeated, path) in
+        [(Some(vec![]), vec![], "optional"), (None, vec![vec![1], vec![]], "repeated[1]")]
+    {
+        let error =
+            BytesMessage { value: vec![1], optional, repeated }.decode_fields().unwrap_err();
+        assert!(error.to_string().starts_with(&format!("{path}:")), "{error}");
+        assert!(error.source().unwrap().is::<core::array::TryFromSliceError>());
+    }
+    let error = BytesChoiceMessage {
+        choice: Some(BytesChoice::Encoded(vec![])),
+    }
+    .decode_fields()
+    .unwrap_err();
+    assert!(error.to_string().starts_with("choice.encoded:"), "{error}");
+}

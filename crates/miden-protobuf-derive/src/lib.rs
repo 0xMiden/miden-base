@@ -24,6 +24,9 @@ mod fields;
 /// Message cardinality and error paths come from Prost metadata and descriptor-injected presence.
 /// Enum fields use Prost's named enums and reject unknown discriminants during decoding.
 /// Oneofs produce decoded enums; descriptor metadata supplies exact wire variant names.
+/// `#[proto_decode(bytes = Adapter)]` opts a bytes field into `TryFrom` conversion to a local
+/// representation adapter. Cardinality and error paths are still generated; this is not a
+/// constructor or verification hook.
 /// Maps and boxed messages are not supported by this experimental derive.
 #[proc_macro_derive(ProtoDecodeFields, attributes(proto_decode))]
 pub fn derive_proto_decode_fields(input: TokenStream) -> TokenStream {
@@ -56,6 +59,7 @@ struct ProstField {
     repeated: bool,
     map: bool,
     boxed: bool,
+    bytes: bool,
     enumeration: Option<Path>,
     oneof: Option<Path>,
 }
@@ -68,6 +72,7 @@ impl ProstField {
             repeated: false,
             map: false,
             boxed: false,
+            bytes: false,
             enumeration: None,
             oneof: None,
         };
@@ -101,6 +106,7 @@ impl ProstField {
                 parsed.repeated |= meta.path.is_ident("repeated");
                 parsed.map |= meta.path.is_ident("map") || meta.path.is_ident("btree_map");
                 parsed.boxed |= meta.path.is_ident("boxed");
+                parsed.bytes |= meta.path.is_ident("bytes");
 
                 consume_meta_value(meta.input)
             })?;
@@ -148,6 +154,9 @@ impl FieldKindOverride {
                     Self::Required
                 } else if meta.path.is_ident("optional") {
                     Self::Optional
+                } else if meta.path.is_ident("bytes") {
+                    meta.value()?.parse::<syn::Type>()?;
+                    return Ok(());
                 } else {
                     return Err(meta.error("expected `required` or `optional`"));
                 };

@@ -41,6 +41,7 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
             ));
         }
         let presence = FieldKindOverride::parse(&field.attrs)?;
+        let bytes = bytes_adapter(&field.attrs, &prost)?;
         if presence.is_some()
             && prost.oneof.is_none()
             && (!prost.message || !prost.optional || prost.repeated)
@@ -51,7 +52,24 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
             ));
         }
 
-        let (ty, value) = if let Some(oneof) = &prost.oneof {
+        let (ty, value) = if let Some(ty) = bytes {
+            if prost.repeated {
+                (
+                    quote!(#runtime::Vec<#ty>),
+                    quote!(#runtime::decode(#runtime::RepeatedField::new(#name, message.#ident))?),
+                )
+            } else if prost.optional {
+                (
+                    quote!(::core::option::Option<#ty>),
+                    quote!(#runtime::decode(#runtime::OptionalField::new(#name, message.#ident))?),
+                )
+            } else {
+                (
+                    quote!(#ty),
+                    quote!(#runtime::decode(#runtime::ValueField::new(#name, message.#ident))?),
+                )
+            }
+        } else if let Some(oneof) = &prost.oneof {
             container_type(field, "Option")?;
             let decoded = quote!(<#oneof as #runtime::DecodeMessage>::Decoded);
             if matches!(presence, Some(FieldKindOverride::Optional)) {
@@ -171,8 +189,13 @@ fn expand_oneof(
             return Err(syn::Error::new(variant.span(), "unsupported Prost oneof payload"));
         }
         let mut name = None;
+        let bytes = bytes_adapter(&variant.attrs, &prost)?;
         for attribute in variant.attrs.iter().filter(|attr| attr.path().is_ident("proto_decode")) {
             attribute.parse_nested_meta(|meta| {
+                if meta.path.is_ident("bytes") {
+                    meta.value()?.parse::<Type>()?;
+                    return Ok(());
+                }
                 if !meta.path.is_ident("name") || name.is_some() {
                     return Err(meta.error("expected one descriptor-injected `name`"));
                 }
@@ -190,7 +213,9 @@ fn expand_oneof(
         let ty = &field.ty;
         // Prost represents google.protobuf.Empty as (), which needs no decoding.
         let empty = matches!(ty, Type::Tuple(tuple) if tuple.elems.is_empty());
-        let (decoded, value) = if let Some(enumeration) = &prost.enumeration {
+        let (decoded, value) = if let Some(ty) = bytes {
+            (quote!(#ty), quote!(#runtime::decode(#runtime::ValueField::new(#name, value))?))
+        } else if let Some(enumeration) = &prost.enumeration {
             (
                 quote!(#enumeration),
                 quote!(#runtime::decode(#runtime::ValueField::new(#name, value))?),
@@ -220,6 +245,24 @@ fn expand_oneof(
             }
         }
     })
+}
+
+fn bytes_adapter(attributes: &[syn::Attribute], prost: &ProstField) -> Result<Option<Type>> {
+    let mut adapter = None;
+    for attribute in attributes.iter().filter(|attr| attr.path().is_ident("proto_decode")) {
+        attribute.parse_nested_meta(|meta| {
+            if meta.path.is_ident("bytes") {
+                if !prost.bytes || adapter.is_some() {
+                    return Err(meta.error("configure at most one adapter on a Prost bytes field"));
+                }
+                adapter = Some(meta.value()?.parse()?);
+            } else if meta.path.is_ident("name") {
+                meta.value()?.parse::<syn::LitStr>()?;
+            }
+            Ok(())
+        })?;
+    }
+    Ok(adapter)
 }
 
 fn container_type<'a>(field: &'a Field, container: &str) -> Result<&'a Type> {
@@ -295,6 +338,17 @@ mod tests {
             ),
         ] {
             assert!(expand(syn::parse2(input).unwrap(), quote!(::runtime)).is_err());
+        }
+    }
+
+    #[test]
+    fn byte_adapters_reject_non_bytes_and_duplicates() {
+        for field in [
+            quote!(#[prost(uint32, tag = "1")] #[proto_decode(bytes = Adapter)] value: u32),
+            quote!(#[prost(bytes = "vec", tag = "1")] #[proto_decode(bytes = Adapter, bytes = Adapter)] value: Vec<u8>),
+        ] {
+            let input = syn::parse2(quote!(struct Message { #field })).unwrap();
+            assert!(expand(input, quote!(::runtime)).is_err());
         }
     }
 
