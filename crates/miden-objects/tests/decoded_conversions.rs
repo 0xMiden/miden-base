@@ -894,3 +894,16 @@ fn decoded_storage_value_patch_is_a_typed_oneof() {
     assert_eq!(decoded.verify().unwrap(), miden_protocol::account::StorageValuePatch::Remove);
     assert!(StorageValuePatch::default().decode_fields().is_err());
 }
+
+#[test]
+fn storage_slot_patch_defers_slot_name_validation() {
+    let wire = proto::account::StorageSlotPatch {
+        slot_name: String::new(),
+        patch: Some(proto::account::storage_slot_patch::Patch::Value(
+            proto::account::StorageValuePatch {
+                operation: Some(proto::account::storage_value_patch::Operation::Remove(())),
+            },
+        )),
+    };
+    assert!(wire.decode_fields().unwrap().verify().is_err());
+}
