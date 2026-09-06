@@ -1,7 +1,5 @@
-use alloc::format;
 use alloc::vec::Vec;
 
-use miden_protocol::Word;
 use miden_protocol::block::{
     BlockAccountUpdate,
     BlockBody,
@@ -14,14 +12,8 @@ use miden_protocol::block::{
     ValidatorConfig,
 };
 use miden_protocol::crypto::dsa::ecdsa_k256_keccak::Signature;
-use miden_protocol::note::Nullifier;
 use miden_protocol::protocol_config::NextProtocolConfig;
-use miden_protocol::transaction::{
-    OrderedTransactionHeaders,
-    OutputNote,
-    PartialBlockchain,
-    TransactionHeader,
-};
+use miden_protocol::transaction::{OutputNote, PartialBlockchain};
 
 use super::{MessageDecodeExt, required};
 use crate::{ConversionError, ConversionResultExt, proto};
@@ -128,55 +120,6 @@ impl From<&BlockBody> for proto::blockchain::BlockBody {
 impl From<BlockBody> for proto::blockchain::BlockBody {
     fn from(body: BlockBody) -> Self {
         (&body).into()
-    }
-}
-
-impl TryFrom<proto::blockchain::BlockBody> for BlockBody {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::blockchain::BlockBody) -> Result<Self, Self::Error> {
-        let updated_accounts = value
-            .updated_accounts
-            .into_iter()
-            .enumerate()
-            .map(|(index, update)| {
-                BlockAccountUpdate::try_from(update).context(format!("updated_accounts[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let output_note_batches = value
-            .output_note_batches
-            .into_iter()
-            .enumerate()
-            .map(|(index, batch)| {
-                OutputNoteBatch::try_from(batch).context(format!("output_note_batches[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let created_nullifiers = value
-            .created_nullifiers
-            .into_iter()
-            .enumerate()
-            .map(|(index, nullifier)| {
-                Word::try_from(nullifier)
-                    .map(Nullifier::from_raw)
-                    .context(format!("created_nullifiers[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let transactions = value
-            .transactions
-            .into_iter()
-            .enumerate()
-            .map(|(index, transaction)| {
-                TransactionHeader::try_from(transaction).context(format!("transactions[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        BlockBody::new(
-            updated_accounts,
-            output_note_batches,
-            created_nullifiers,
-            OrderedTransactionHeaders::new_unchecked(transactions),
-        )
-        .map_err(ConversionError::new)
     }
 }
 

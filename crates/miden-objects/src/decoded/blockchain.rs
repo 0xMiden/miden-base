@@ -284,3 +284,59 @@ impl TryFrom<proto::blockchain::OutputNoteBatch> for miden_protocol::block::Outp
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedBlockBody as BlockBody;
+
+/// Checks body invariants, but trusts transaction ordering and unchecked input-note commitments.
+impl crate::BuildUnchecked for BlockBody {
+    type Output = miden_protocol::block::BlockBody;
+    type Error = BlockBodyError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let updates = self
+            .updated_accounts
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<_, _>>()?;
+        let notes = self
+            .output_note_batches
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<_, _>>()?;
+        let nullifiers = self
+            .created_nullifiers
+            .into_iter()
+            .map(miden_protocol::note::Nullifier::from_raw)
+            .collect();
+        let transactions = self
+            .transactions
+            .into_iter()
+            .map(crate::BuildUnchecked::build_unchecked)
+            .collect::<Result<_, _>>()?;
+        Ok(Self::Output::new(
+            updates,
+            notes,
+            nullifiers,
+            miden_protocol::transaction::OrderedTransactionHeaders::new_unchecked(transactions),
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum BlockBodyError {
+    #[error("{0}")]
+    Update(#[from] BlockAccountUpdateError),
+    #[error("{0}")]
+    Note(#[from] IndexedOutputNoteError),
+    #[error("{0}")]
+    Transaction(#[from] super::transaction::TransactionHeaderBuildError),
+    #[error("{0}")]
+    Body(#[from] miden_protocol::errors::BlockBodyError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::BlockBody> for miden_protocol::block::BlockBody {
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::BlockBody) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}
