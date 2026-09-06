@@ -356,3 +356,27 @@ impl TryFrom<proto::transaction::AuthenticatedInputNote>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedInputNote as InputNote;
+
+impl Verify for InputNote {
+    type Verified = miden_protocol::transaction::InputNote;
+    type Error = InputNoteError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use proto::transaction::input_note::DecodedNote;
+        match self.note {
+            DecodedNote::Authenticated(note) => note.verify(),
+            DecodedNote::Unauthenticated(note) => {
+                Ok(Self::Verified::unauthenticated(note.verify()?))
+            },
+        }
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::InputNote> for miden_protocol::transaction::InputNote {
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::InputNote) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

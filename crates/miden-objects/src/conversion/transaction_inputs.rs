@@ -4,7 +4,6 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use miden_protocol::account::{AccountCode, StorageSlotId, StorageSlotName};
-use miden_protocol::note::Note;
 use miden_protocol::transaction::{InputNote, InputNotes, TransactionInputs};
 
 use super::{MessageDecodeExt, required};
@@ -27,24 +26,6 @@ impl From<&InputNote> for proto::transaction::InputNote {
         };
 
         Self { note: Some(note) }
-    }
-}
-
-impl TryFrom<proto::transaction::InputNote> for InputNote {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::transaction::InputNote) -> Result<Self, Self::Error> {
-        use proto::transaction::input_note::Note as ProtoInputNote;
-
-        match value.note {
-            Some(ProtoInputNote::Authenticated(authenticated)) => {
-                authenticated.try_into().context("authenticated")
-            },
-            Some(ProtoInputNote::Unauthenticated(note)) => {
-                Note::try_from(note).map(InputNote::unauthenticated).context("unauthenticated")
-            },
-            None => Err(ConversionError::missing_field::<proto::transaction::InputNote>("note")),
-        }
     }
 }
 
