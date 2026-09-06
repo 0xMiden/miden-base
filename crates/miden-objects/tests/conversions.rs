@@ -728,7 +728,7 @@ fn public_output_note_protobuf_requires_nested_note() {
 
     assert_eq!(
         error.to_string(),
-        "field miden_objects::proto::transaction::PublicOutputNote::note is missing"
+        "note: field miden_objects::proto::transaction::PublicOutputNote::note is missing"
     );
 }
 
@@ -741,9 +741,7 @@ fn public_output_note_protobuf_rejects_private_note() {
     .unwrap_err();
 
     assert_matches!(
-        error
-            .source()
-            .and_then(|source| source.downcast_ref::<OutputNoteError>()),
+        error_source::<OutputNoteError>(&error),
         Some(OutputNoteError::NoteIsPrivate(note_id)) if *note_id == note.id()
     );
 }

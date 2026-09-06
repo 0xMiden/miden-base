@@ -259,3 +259,31 @@ impl TryFrom<proto::transaction::TransactionHeader>
         value.decode_fields()?.build_unchecked().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedPublicOutputNote as PublicOutputNote;
+
+impl Verify for PublicOutputNote {
+    type Verified = miden_protocol::transaction::PublicOutputNote;
+    type Error = PublicOutputNoteError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(self.note.verify()?)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PublicOutputNoteError {
+    #[error("{0}")]
+    Note(#[from] super::note::VerificationError),
+    #[error("{0}")]
+    Output(#[from] miden_protocol::errors::OutputNoteError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::PublicOutputNote>
+    for miden_protocol::transaction::PublicOutputNote
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::PublicOutputNote) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
