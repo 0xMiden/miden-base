@@ -568,3 +568,107 @@ pub enum ProposedBatchError {
 }
 
 // Compatibility bridge for callers using the combined conversion API.
+
+pub use proto::transaction::DecodedProvenBatch as ProvenBatch;
+
+/// Checks local batch invariants, but not proof validity, note aggregation, or transaction
+/// ordering.
+impl crate::BuildUnchecked for ProvenBatch {
+    type Output = miden_protocol::batch::ProvenBatch;
+    type Error = ProvenBatchError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let mut previous = None;
+        let mut updates = alloc::vec::Vec::new();
+        for update in self.account_updates {
+            let update = update.verify()?;
+            if previous.is_some_and(|previous| update.account_id() <= previous) {
+                return Err(ProvenBatchError::AccountOrder);
+            }
+            previous = Some(update.account_id());
+            updates.push(update);
+        }
+        let inputs = self
+            .input_notes
+            .into_iter()
+            .map(BuildUnchecked::build_unchecked)
+            .collect::<Result<_, _>>()?;
+        let outputs =
+            self.output_notes.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
+        let transactions = self
+            .transactions
+            .into_iter()
+            .map(BuildUnchecked::build_unchecked)
+            .collect::<Result<_, _>>()?;
+        Ok(Self::Output::new(
+            self.reference_block_commitment,
+            self.reference_block_num.verify().expect("infallible block number"),
+            updates,
+            miden_protocol::transaction::InputNotes::new_unchecked(inputs),
+            outputs,
+            self.expiration_block_num.verify().expect("infallible block number"),
+            miden_protocol::transaction::OrderedTransactionHeaders::new_unchecked(transactions),
+            self.proof,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProvenBatchError {
+    #[error("{0}")]
+    Update(#[from] BatchAccountUpdateError),
+    #[error("{0}")]
+    Input(#[from] super::note::VerificationError),
+    #[error("{0}")]
+    Output(#[from] OutputNoteError),
+    #[error("{0}")]
+    Transaction(#[from] TransactionHeaderBuildError),
+    #[error("{0}")]
+    Batch(#[from] miden_protocol::errors::ProvenBatchError),
+    #[error("account updates must have unique, ascending account IDs")]
+    AccountOrder,
+    #[error("{0} does not match proposal")]
+    ProposalMismatch(&'static str),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::ProvenBatch> for miden_protocol::batch::ProvenBatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::ProvenBatch) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}
+
+/// Checks all fields duplicated from an already-verified proposal. The batch execution proof
+/// still needs verification by the consuming service; this only establishes proposal agreement.
+impl crate::VerifyWith<&miden_protocol::batch::ProposedBatch> for ProvenBatch {
+    type Verified = miden_protocol::batch::ProvenBatch;
+    type Error = ProvenBatchError;
+    fn verify_with(
+        self,
+        proposed: &miden_protocol::batch::ProposedBatch,
+    ) -> Result<Self::Verified, Self::Error> {
+        let batch = self.build_unchecked()?;
+        let header = proposed.reference_block_header();
+        let mismatch = if batch.reference_block_num() != header.block_num() {
+            Some("reference block number")
+        } else if batch.reference_block_commitment() != header.commitment() {
+            Some("reference block commitment")
+        } else if batch.account_updates() != proposed.account_updates() {
+            Some("account updates")
+        } else if !batch.input_notes().iter().eq(proposed.input_notes().iter()) {
+            Some("input notes")
+        } else if batch.output_notes() != proposed.output_notes() {
+            Some("output notes")
+        } else if batch.batch_expiration_block_num() != proposed.batch_expiration_block_num() {
+            Some("expiration block")
+        } else if batch.transactions().as_slice() != proposed.transaction_headers().as_slice() {
+            Some("transaction headers")
+        } else {
+            None
+        };
+        if let Some(mismatch) = mismatch {
+            return Err(ProvenBatchError::ProposalMismatch(mismatch));
+        }
+        Ok(batch)
+    }
+}
