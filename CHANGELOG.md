@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- Added type signatures where missing throughout the protocol and standards Miden Assembly libraries
+
 ## v0.17.0-pre.1 (2026-09-05)
 
 ### Features

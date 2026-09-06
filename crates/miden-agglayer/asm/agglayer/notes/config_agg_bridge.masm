@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 use agglayer::bridge::bridge_config
 use miden::standards::utils
 use miden::protocol::active_note
@@ -74,7 +75,7 @@ const ERR_CONFIG_AGG_BRIDGE_TARGET_ACCOUNT_MISMATCH = "CONFIG_AGG_BRIDGE note at
 #! - The note does not contain exactly 18 storage items.
 #! - The account does not expose the register_faucet or store_faucet_metadata_hash procedures.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 

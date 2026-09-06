@@ -1,3 +1,5 @@
+type Digest = word
+type BlockNumber = u32
 # MAIN
 # =================================================================================================
 
@@ -32,7 +34,7 @@
 #! - batch_expiration_block_num will be the minimum of every transaction's
 #!   `expiration_block_num`. In this skeleton it is zero.
 #!
-proc main
+proc main(block_commitment: Digest, batch_id: word, padding: [felt; 8]) -> (Digest, Digest, BlockNumber, [felt; 7])
     dropw dropw
 end
 

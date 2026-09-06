@@ -1,3 +1,4 @@
+use {ExpirationArgs} from miden::standards::types
 use miden::protocol::tx
 
 #! Set the transaction's expiration delta.
@@ -10,7 +11,7 @@ use miden::protocol::tx
 #!
 #! Invocation: call
 @transaction_script
-pub proc main
+pub proc main(args: ExpirationArgs)
     exec.tx::update_expiration_block_delta
     # => [pad(16)]
 end

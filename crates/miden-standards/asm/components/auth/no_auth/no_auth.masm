@@ -1,3 +1,4 @@
+use {AuthArgs} from miden::standards::types
 use miden::protocol::active_account
 use miden::protocol::native_account
 use miden::protocol::tx
@@ -31,7 +32,7 @@ const NO_AUTH_POST_FEE_CYCLES = 1024
 #!
 #! Invocation: call
 @auth_script
-pub proc auth_no_auth
+pub proc auth_no_auth(auth_args: AuthArgs, padding: [felt; 12]) -> [felt; 16]
     dropw
     # => [pad(16)]
 

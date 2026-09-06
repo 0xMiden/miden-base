@@ -1,3 +1,4 @@
+type Digest = word
 # MAIN
 # =================================================================================================
 
@@ -21,7 +22,7 @@
 #! - NULLIFIER_COMMITMENT is the commitment to the set of nullifiers created in this block. In
 #!   this skeleton it is the empty word.
 #!
-proc main
+proc main(prev_block_commitment: Digest, batches_commitment: Digest, padding: [felt; 8]) -> (Digest, Digest, [felt; 8])
     dropw dropw
     # => [pad(16)]
 end

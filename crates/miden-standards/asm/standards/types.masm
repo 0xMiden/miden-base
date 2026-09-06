@@ -1,0 +1,117 @@
+# Semantic stack values shared by the standard components and scripts.
+# Struct fields follow operand-stack order, starting at the top.
+
+use {AccountId, AssetAmount, Bool, NoteAttachmentCommitment} from ::miden::protocol::types
+
+pub type RoleSymbol = felt
+# Membership counts are field elements; the role map does not impose a u32 bound.
+pub type RoleMemberCount = felt
+pub type TokenSymbol = felt
+# Schemes 1 (ECDSA) and 2 (Falcon) are currently supported.
+pub type SignatureScheme = u8
+pub type PublicKeyCommitment = word
+pub type SignatureMessage = word
+pub type Commitment = word
+pub type TokenId = struct { suffix: felt, prefix: felt }
+# Standard multisig components support at most 64 approvers.
+pub type SignatureThreshold = u8
+pub type RoleConfig = struct {
+    member_count: RoleMemberCount,
+    admin: RoleSymbol
+}
+pub type OwnershipInfo = struct {
+    owner: AccountId,
+    nominated_owner: AccountId
+}
+pub type TokenConfig = struct {
+    supply: AssetAmount,
+    max_supply: AssetAmount,
+    decimals: u8,
+    symbol: TokenSymbol
+}
+pub type MutabilityConfig = struct {
+    description: Bool,
+    logo_uri: Bool,
+    external_link: Bool,
+    max_supply: Bool
+}
+pub type TokenName = struct { first: word, second: word }
+pub type MultisigConfig = struct {
+    threshold: SignatureThreshold,
+    num_approvers: u8,
+    padding: [felt; 2]
+}
+pub type ThresholdConfig = struct {
+    threshold: SignatureThreshold,
+    num_approvers: u8
+}
+pub type ProcedurePolicy = struct {
+    immediate: SignatureThreshold,
+    delayed: SignatureThreshold,
+    note_restrictions: u8
+}
+pub type NetworkAccountTarget = struct {
+    account: AccountId,
+    execution_hint: felt,
+    padding: felt
+}
+pub type TokenStatus = u8
+pub type Uint128 = struct { limb0: u32, limb1: u32, limb2: u32, limb3: u32 }
+pub type Uint256 = struct {
+    limb0: u32,
+    limb1: u32,
+    limb2: u32,
+    limb3: u32,
+    limb4: u32,
+    limb5: u32,
+    limb6: u32,
+    limb7: u32
+}
+pub type BigEndianUint256 = struct {
+    limb7: u32,
+    limb6: u32,
+    limb5: u32,
+    limb4: u32,
+    limb3: u32,
+    limb2: u32,
+    limb1: u32,
+    limb0: u32
+}
+pub type Uint64 = struct { lo: u32, hi: u32 }
+pub type ExpirationArgs = struct {
+    delta: u16,
+    padding: [felt; 3]
+}
+
+# Authentication arguments and encoded, padded storage records.
+pub type AuthArgs = word
+pub type Approver = struct {
+    public_key: PublicKeyCommitment,
+    scheme: SignatureScheme
+}
+pub type SignatureSchemeWord = struct {
+    scheme: SignatureScheme,
+    padding: [felt; 3]
+}
+pub type TokenStatusValue = struct {
+    status: TokenStatus,
+    padding: [felt; 3]
+}
+
+# Commitments name the advice-map preimages or account state they authenticate.
+pub type CodeCommitment = word
+pub type CodeUpgradeCommitment = word
+pub type StorageUpgradeCommitment = word
+pub type StorageSchemaCommitment = word
+pub type MetadataStringCommitment = word
+pub type SendNotesPayloadCommitment = word
+
+# One send-notes attachment record: a padded scheme followed by its commitment.
+pub type AttachmentRecord = struct {
+    scheme: u32,
+    padding: [felt; 3],
+    commitment: NoteAttachmentCommitment
+}
+
+# An integer encoding transformed without assuming its current limb or byte order.
+pub type EncodedUint256 = struct { limbs: [u32; 8] }

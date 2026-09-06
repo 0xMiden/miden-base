@@ -56,7 +56,7 @@ const ERR_NETWORK_ACCOUNT_SPONSORED_FEES_EXCEED_COLLECTED = "the fees moved into
 #! Outputs: []
 #!
 #! Invocation: exec
-proc assert_tx_has_effect
+proc assert_tx_has_effect()
     exec.tx::get_input_notes_commitment
     # => [INPUT_NOTES_COMMITMENT, pad(16)]
 
