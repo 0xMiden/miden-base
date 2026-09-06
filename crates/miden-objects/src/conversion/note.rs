@@ -296,3 +296,14 @@ fn decode_note_attachments<M: prost::Message>(
     let decoder = MessageDecoder::<M>::default();
     required!(decoder, note_attachments)
 }
+
+impl From<PartialNoteMetadata> for proto::note::PartialNoteMetadata {
+    fn from(metadata: PartialNoteMetadata) -> Self {
+        Self {
+            version: proto::note::NoteVersion::V1 as i32,
+            sender: Some(metadata.sender().into()),
+            note_type: proto::note::NoteType::from(metadata.note_type()) as i32,
+            tag: metadata.tag().as_u32(),
+        }
+    }
+}

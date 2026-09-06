@@ -990,3 +990,19 @@ fn signature_oneof_rejects_missing_unknown_and_noncanonical_payloads() {
             .is_err()
     );
 }
+
+#[test]
+fn partial_note_metadata_roundtrips_without_attachment_fields() {
+    use miden_protocol::note::{NoteType, PartialNoteMetadata};
+    let metadata = PartialNoteMetadata::new(
+        miden_protocol::account::AccountId::dummy(
+            [1; 15],
+            miden_protocol::account::AccountIdVersion::Version1,
+            miden_protocol::account::AccountType::Private,
+            miden_protocol::account::AssetCallbackFlag::Disabled,
+        ),
+        NoteType::Public,
+    );
+    let wire: proto::note::PartialNoteMetadata = metadata.into();
+    assert_eq!(wire.decode_fields().unwrap().verify().unwrap(), metadata);
+}

@@ -262,3 +262,32 @@ impl TryFrom<proto::note::NoteHeader> for miden_protocol::note::NoteHeader {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedPartialNoteMetadata as PartialNoteMetadata;
+
+impl Verify for PartialNoteMetadata {
+    type Verified = miden_protocol::note::PartialNoteMetadata;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use miden_protocol::note::{NoteTag, NoteType};
+        if self.version != proto::note::NoteVersion::V1 {
+            return Err(VerificationError::UnspecifiedVersion);
+        }
+        let note_type = match self.note_type {
+            proto::note::NoteType::Private => NoteType::Private,
+            proto::note::NoteType::Public => NoteType::Public,
+            proto::note::NoteType::Unspecified => {
+                return Err(VerificationError::UnspecifiedNoteType);
+            },
+        };
+        Ok(Self::Verified::new(self.sender, note_type).with_tag(NoteTag::new(self.tag)))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::PartialNoteMetadata> for miden_protocol::note::PartialNoteMetadata {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::PartialNoteMetadata) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
