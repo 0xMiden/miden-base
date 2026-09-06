@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
@@ -142,32 +141,6 @@ impl From<PartialStorageMap> for proto::account::PartialStorageMap {
 
 // PARTIAL STORAGE
 // ================================================================================================
-
-impl TryFrom<proto::account::PartialStorage> for PartialStorage {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::PartialStorage) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let header = required!(decoder, message.header)?;
-        let mut roots = BTreeSet::new();
-        let maps = message
-            .maps
-            .into_iter()
-            .enumerate()
-            .map(|(index, map)| {
-                let map_context = format!("maps[{index}]");
-                let map = PartialStorageMap::try_from(map).context(&map_context)?;
-                if !roots.insert(map.root()) {
-                    return Err(ConversionError::message("duplicate partial storage map root")
-                        .context(map_context));
-                }
-                Ok(map)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        PartialStorage::new(header, maps).map_err(ConversionError::new)
-    }
-}
 
 impl From<&PartialStorage> for proto::account::PartialStorage {
     fn from(storage: &PartialStorage) -> Self {

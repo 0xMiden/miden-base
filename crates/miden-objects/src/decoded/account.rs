@@ -488,3 +488,42 @@ impl TryFrom<proto::account::PartialStorageMap> for miden_protocol::account::Par
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedPartialStorage as PartialStorage;
+
+impl Verify for PartialStorage {
+    type Verified = miden_protocol::account::PartialStorage;
+    type Error = PartialStorageError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let mut roots = alloc::collections::BTreeSet::new();
+        let mut maps = alloc::vec::Vec::new();
+        for map in self.maps {
+            let map = map.verify()?;
+            if !roots.insert(map.root()) {
+                return Err(PartialStorageError::DuplicateRoot(map.root()));
+            }
+            maps.push(map);
+        }
+        Ok(Self::Verified::new(self.header.verify()?, maps)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PartialStorageError {
+    #[error("duplicate partial storage map root {0}")]
+    DuplicateRoot(miden_protocol::Word),
+    #[error("{0}")]
+    Map(#[from] PartialStorageMapError),
+    #[error("{0}")]
+    Header(#[from] StorageHeaderError),
+    #[error("{0}")]
+    Storage(#[from] miden_protocol::errors::AccountError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::PartialStorage> for miden_protocol::account::PartialStorage {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::PartialStorage) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

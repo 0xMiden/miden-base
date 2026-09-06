@@ -158,7 +158,11 @@ fn partial_storage_rejects_duplicate_roots_before_collection() {
 
     let error = PartialStorage::try_from(message).unwrap_err();
 
-    assert_eq!(error.to_string(), "maps[1]: duplicate partial storage map root");
+    assert_matches!(
+        error_source::<miden_objects::decoded::account::PartialStorageError>(&error),
+        Some(miden_objects::decoded::account::PartialStorageError::DuplicateRoot(root))
+            if *root == Word::from([9_u32, 0, 0, 0])
+    );
 }
 
 #[test]
