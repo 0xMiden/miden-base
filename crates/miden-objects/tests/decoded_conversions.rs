@@ -734,3 +734,13 @@ fn asset_id_decodes_named_enums_before_verifying_composition() {
     assert_eq!(decoded.composition, proto::asset::AssetComposition::Custom);
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn asset_reports_nested_enum_paths_before_verifying() {
+    let wire = proto::asset::Asset {
+        asset_id: Some(proto::asset::AssetId { version: 99, ..Default::default() }),
+        value: Some(Word::empty().into()),
+    };
+    let error = wire.decode_fields().unwrap_err();
+    assert!(error.to_string().starts_with("asset_id.version: "), "{error}");
+}

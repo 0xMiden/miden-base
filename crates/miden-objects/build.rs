@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".asset.Asset",
             ".asset.AssetId",
             ".account.StorageMapPatch",
             ".account.AccountStorageHeader",

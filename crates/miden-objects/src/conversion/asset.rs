@@ -1,7 +1,6 @@
 use miden_protocol::asset::{Asset, AssetClass, AssetComposition, AssetId};
 
-use super::{MessageDecodeExt, required};
-use crate::{ConversionError, proto};
+use crate::proto;
 
 impl From<&AssetClass> for proto::asset::AssetClass {
     fn from(asset_class: &AssetClass) -> Self {
@@ -54,17 +53,5 @@ impl From<&Asset> for proto::asset::Asset {
 impl From<Asset> for proto::asset::Asset {
     fn from(asset: Asset) -> Self {
         Self::from(&asset)
-    }
-}
-
-impl TryFrom<proto::asset::Asset> for Asset {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::asset::Asset) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let asset_id = required!(decoder, message.asset_id)?;
-        let value = required!(decoder, message.value)?;
-
-        Self::new(asset_id, value).map_err(ConversionError::new)
     }
 }

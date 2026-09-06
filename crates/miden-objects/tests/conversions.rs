@@ -276,7 +276,10 @@ fn structured_asset_conversion_rejects_invalid_fungible_values() {
     })
     .unwrap_err();
     assert_matches!(
-        error.source().and_then(|source| source.downcast_ref::<AssetError>()),
+        error
+            .source()
+            .and_then(Error::source)
+            .and_then(|source| source.downcast_ref::<AssetError>()),
         Some(AssetError::FungibleAssetValueMostSignificantElementsMustBeZero(_))
     );
 }
