@@ -17,8 +17,10 @@ RPC crate.
 
 The experimental `ProtoDecodeFields` derive generates schema-shaped records, required/optional/
 repeated message conversion, and nested field/index error paths. Atomic messages can implement
-`DecodeMessage` using their existing representation decoder. Enums, oneofs, maps, and boxed
-messages are not yet supported by the derive.
+`DecodeMessage` using their existing representation decoder. Enum fields use Prost's named enum
+types, preserving optional/repeated cardinality and rejecting unknown discriminants with generated
+paths. Known variants such as `Unspecified` remain available for domain verification. Oneofs, maps,
+and boxed messages are not yet supported by the derive.
 
 Domain construction is opt-in and handwritten: `Verify::verify()` needs no external context,
 `VerifyWith<C>::verify_with(context)` accepts borrowed or owned context, and

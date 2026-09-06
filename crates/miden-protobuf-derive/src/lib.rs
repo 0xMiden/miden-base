@@ -22,7 +22,8 @@ use syn::{
 mod fields;
 /// Generates a decoded record without domain construction.
 /// Message cardinality and error paths come from Prost metadata and descriptor-injected presence.
-/// Enums, oneofs, maps, and boxed messages are not supported by this experimental derive.
+/// Enum fields use Prost's named enums and reject unknown discriminants during decoding.
+/// Oneofs, maps, and boxed messages are not supported by this experimental derive.
 #[proc_macro_derive(ProtoDecodeFields, attributes(proto_decode))]
 pub fn derive_proto_decode_fields(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);

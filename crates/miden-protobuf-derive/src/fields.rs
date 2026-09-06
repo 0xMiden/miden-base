@@ -31,10 +31,10 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
         let ident = field.ident.as_ref().expect("named field");
         let name = ident_name(ident);
         let prost = ProstField::parse(field)?;
-        if prost.oneof.is_some() || prost.enumeration.is_some() || prost.map || prost.boxed {
+        if prost.oneof.is_some() || prost.map || prost.boxed {
             return Err(syn::Error::new(
                 field.span(),
-                "ProtoDecodeFields does not yet support enums, oneofs, maps, or boxed messages",
+                "ProtoDecodeFields does not yet support oneofs, maps, or boxed messages",
             ));
         }
         let presence = FieldKindOverride::parse(&field.attrs)?;
@@ -45,7 +45,26 @@ pub(super) fn expand(input: DeriveInput, runtime: TokenStream) -> Result<TokenSt
             ));
         }
 
-        let (ty, value) = if !prost.message {
+        let (ty, value) = if let Some(enumeration) = &prost.enumeration {
+            if prost.repeated {
+                container_type(field, "Vec")?;
+                (
+                    quote!(#runtime::Vec<#enumeration>),
+                    quote!(#runtime::decode(#runtime::RepeatedField::new(#name, message.#ident))?),
+                )
+            } else if prost.optional {
+                container_type(field, "Option")?;
+                (
+                    quote!(::core::option::Option<#enumeration>),
+                    quote!(#runtime::decode(#runtime::OptionalField::new(#name, message.#ident))?),
+                )
+            } else {
+                (
+                    quote!(#enumeration),
+                    quote!(#runtime::decode(#runtime::ValueField::new(#name, message.#ident))?),
+                )
+            }
+        } else if !prost.message {
             let ty = &field.ty;
             (quote!(#ty), quote!(message.#ident))
         } else if prost.repeated {
@@ -134,8 +153,6 @@ mod tests {
     fn unsupported_fields_fail_explicitly() {
         for field in [
             quote!(#[prost(oneof = "Choice", tags = "1, 2")] value: Option<Choice>),
-            quote!(#[prost(enumeration = "Kind", tag = "1")] value: i32),
-            quote!(#[prost(enumeration = "Kind", repeated, tag = "1")] value: Vec<i32>),
             quote!(#[prost(map = "string, uint32", tag = "1")] value: HashMap<String, u32>),
             quote!(#[prost(btree_map = "string, uint32", tag = "1")] value: BTreeMap<String, u32>),
             quote!(#[prost(message, optional, boxed, tag = "1")] value: Option<Box<Nested>>),

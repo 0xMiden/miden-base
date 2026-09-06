@@ -83,3 +83,92 @@ fn construction_capabilities_are_independent_and_opt_in() {
         u32::MAX
     );
 }
+
+mod kinds {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, prost::Enumeration)]
+    #[repr(i32)]
+    pub enum Kind {
+        Unspecified = 0,
+        Active = 1,
+        Negative = -1,
+    }
+}
+
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct EnumFields {
+    #[prost(enumeration = "kinds::Kind", tag = "1")]
+    r#type: i32,
+    #[prost(enumeration = "kinds::Kind", optional, tag = "2")]
+    optional: Option<i32>,
+    #[prost(enumeration = "kinds::Kind", repeated, tag = "3")]
+    repeated: Vec<i32>,
+}
+
+#[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
+struct EnumContainer {
+    #[prost(message, repeated, tag = "1")]
+    children: Vec<EnumFields>,
+}
+
+#[test]
+fn enum_fields_use_named_prost_types_and_preserve_presence() {
+    use kinds::Kind;
+    use prost::Message;
+
+    let wire = EnumFields {
+        r#type: Kind::Active as i32,
+        optional: Some(Kind::Unspecified as i32),
+        repeated: vec![Kind::Negative as i32, Kind::Active as i32],
+    };
+    let decoded = EnumFields::decode(wire.encode_to_vec().as_slice())
+        .unwrap()
+        .decode_fields()
+        .unwrap();
+    let _: Kind = decoded.r#type;
+    let _: Option<Kind> = decoded.optional;
+    let _: Vec<Kind> = decoded.repeated;
+    assert_eq!(decoded.r#type, Kind::Active);
+    assert_eq!(decoded.optional, Some(Kind::Unspecified));
+    assert_eq!(decoded.repeated, [Kind::Negative, Kind::Active]);
+
+    let decoded = EnumFields::default().decode_fields().unwrap();
+    assert_eq!(decoded.r#type, Kind::Unspecified);
+    assert_eq!(decoded.optional, None);
+    assert!(decoded.repeated.is_empty());
+}
+
+#[test]
+fn unknown_enums_report_full_paths_and_preserve_prost_errors() {
+    use core::error::Error;
+
+    for unknown in [i32::MIN, 2, i32::MAX] {
+        for (wire, path) in [
+            (EnumFields { r#type: unknown, ..Default::default() }, "type"),
+            (
+                EnumFields {
+                    optional: Some(unknown),
+                    ..Default::default()
+                },
+                "optional",
+            ),
+            (
+                EnumFields {
+                    repeated: vec![0, unknown],
+                    ..Default::default()
+                },
+                "repeated[1]",
+            ),
+        ] {
+            let error = EnumContainer {
+                children: vec![EnumFields::default(), wire],
+            }
+            .decode_fields()
+            .unwrap_err();
+            assert!(error.to_string().starts_with(&format!("children[1].{path}: ")), "{error}");
+            assert_eq!(
+                error.source().unwrap().downcast_ref::<prost::UnknownEnumValue>().unwrap().0,
+                unknown,
+            );
+        }
+    }
+}
