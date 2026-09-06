@@ -523,3 +523,48 @@ impl TryFrom<proto::transaction::ProvenTransaction>
         crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedProposedBatch as ProposedBatch;
+
+impl crate::VerifyWith<u32> for ProposedBatch {
+    type Verified = miden_protocol::batch::ProposedBatch;
+    type Error = ProposedBatchError;
+    fn verify_with(self, proof_security_level: u32) -> Result<Self::Verified, Self::Error> {
+        let transactions = self
+            .transactions
+            .into_iter()
+            .map(|tx| tx.build_unchecked().map(alloc::sync::Arc::new))
+            .collect::<Result<_, _>>()?;
+        let header = self.reference_block_header.build_unchecked()?;
+        let chain = self.partial_blockchain.build_unchecked()?;
+        let mut proofs = alloc::collections::BTreeMap::new();
+        let mut previous = None;
+        for proof in self.unauthenticated_note_proofs {
+            let (id, proof) = proof.verify()?;
+            if previous.is_some_and(|previous| id <= previous) {
+                return Err(ProposedBatchError::ProofOrder);
+            }
+            previous = Some(id);
+            proofs.insert(id, proof);
+        }
+        Ok(Self::Verified::new(transactions, header, chain, proofs, proof_security_level)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ProposedBatchError {
+    #[error("{0}")]
+    Transaction(#[from] ProvenTransactionError),
+    #[error("{0}")]
+    Header(#[from] super::blockchain::BlockHeaderError),
+    #[error("{0}")]
+    Chain(#[from] super::blockchain::PartialBlockchainError),
+    #[error("{0}")]
+    Note(#[from] super::note::VerificationError),
+    #[error("unauthenticated note proofs must have unique, ascending note IDs")]
+    ProofOrder,
+    #[error("{0}")]
+    Batch(#[from] miden_protocol::errors::ProposedBatchError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.

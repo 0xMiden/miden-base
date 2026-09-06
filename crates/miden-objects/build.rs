@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".transaction.ProposedBatch",
             ".transaction.ProvenTransaction",
             ".blockchain.SignedBlock",
             ".blockchain.BlockBody",

@@ -1,19 +1,16 @@
 use alloc::collections::BTreeMap;
 use alloc::format;
-use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::account::AccountId;
 use miden_protocol::batch::{BatchAccountUpdate, ProposedBatch, ProvenBatch};
 use miden_protocol::block::BlockNumber;
-use miden_protocol::note::{NoteId, NoteInclusionProof};
 use miden_protocol::transaction::{
     InputNoteCommitment,
     InputNotes,
     OrderedTransactionHeaders,
     OutputNote,
-    ProvenTransaction,
     TransactionHeader,
 };
 use miden_protocol::vm::ExecutionProof;
@@ -54,47 +51,16 @@ impl From<ProposedBatch> for proto::transaction::ProposedBatch {
 /// Decodes and structurally validates a proposed batch, including transaction proof verification.
 ///
 /// Callers handling untrusted requests should invoke this in a blocking task.
+
 pub fn decode_proposed_batch(
     value: proto::transaction::ProposedBatch,
     proof_security_level: u32,
 ) -> Result<ProposedBatch, ConversionError> {
-    let decoder = value.decoder();
-    let transactions = value
-        .transactions
-        .into_iter()
-        .enumerate()
-        .map(|(index, tx)| {
-            ProvenTransaction::try_from(tx)
-                .map(Arc::new)
-                .context(format!("transactions[{index}]"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-    let reference_block_header = required!(decoder, value.reference_block_header)?;
-    let partial_blockchain = required!(decoder, value.partial_blockchain)?;
-
-    let mut note_proofs = BTreeMap::new();
-    let mut previous_note_id = None;
-    for (index, proof) in value.unauthenticated_note_proofs.into_iter().enumerate() {
-        let (note_id, proof) = <(NoteId, NoteInclusionProof)>::try_from(&proof)
-            .context(format!("unauthenticated_note_proofs[{index}]"))?;
-        if previous_note_id.is_some_and(|previous| note_id <= previous) {
-            return Err(ConversionError::message(
-                "unauthenticated note proofs must have unique, ascending note IDs",
-            )
-            .context(format!("unauthenticated_note_proofs[{index}].note_id")));
-        }
-        previous_note_id = Some(note_id);
-        note_proofs.insert(note_id, proof);
-    }
-
-    ProposedBatch::new(
-        transactions,
-        reference_block_header,
-        partial_blockchain,
-        note_proofs,
-        proof_security_level,
-    )
-    .map_err(ConversionError::new)
+    use crate::{DecodeMessage, VerifyWith};
+    value
+        .decode_fields()?
+        .verify_with(proof_security_level)
+        .map_err(ConversionError::new)
 }
 
 impl From<&ProvenBatch> for proto::transaction::ProvenBatch {
