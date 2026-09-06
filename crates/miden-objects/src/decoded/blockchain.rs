@@ -238,3 +238,31 @@ impl TryFrom<proto::blockchain::BlockAccountUpdate> for miden_protocol::block::B
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedIndexedOutputNote as IndexedOutputNote;
+
+impl Verify for IndexedOutputNote {
+    type Verified = (usize, miden_protocol::transaction::OutputNote);
+    type Error = IndexedOutputNoteError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok((self.note_index_in_batch.try_into()?, self.note.verify()?))
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum IndexedOutputNoteError {
+    #[error("{0}")]
+    Index(#[from] core::num::TryFromIntError),
+    #[error("{0}")]
+    Note(#[from] super::transaction::OutputNoteError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::IndexedOutputNote>
+    for (usize, miden_protocol::transaction::OutputNote)
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::IndexedOutputNote) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
