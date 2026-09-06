@@ -291,3 +291,27 @@ impl TryFrom<proto::note::PartialNoteMetadata> for miden_protocol::note::Partial
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::note::DecodedNote as Note;
+
+impl Verify for Note {
+    type Verified = miden_protocol::note::Note;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let (assets, recipient) = self.note_details.verify()?.into_parts();
+        Ok(Self::Verified::with_attachments(
+            assets,
+            self.metadata.verify()?,
+            recipient,
+            self.note_attachments.verify()?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::Note> for miden_protocol::note::Note {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::Note) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

@@ -592,7 +592,7 @@ fn note_protobuf_requires_note_attachments() {
 
     assert_eq!(
         error.to_string(),
-        "field miden_objects::proto::note::Note::note_attachments is missing"
+        "note_attachments: field miden_objects::proto::note::Note::note_attachments is missing"
     );
 }
 
@@ -605,7 +605,7 @@ fn note_protobuf_requires_note_details() {
 
     assert_eq!(
         error.to_string(),
-        "field miden_objects::proto::note::Note::note_details is missing"
+        "note_details: field miden_objects::proto::note::Note::note_details is missing"
     );
 }
 
@@ -638,18 +638,12 @@ fn note_metadata_protobuf_preserves_unknown_version_error_sources() {
 }
 
 #[test]
-fn note_protobuf_rejects_unspecified_metadata_version_before_payload_fields() {
-    let error = Note::try_from(proto::note::Note {
-        metadata: Some(proto::note::PartialNoteMetadata {
-            version: proto::note::NoteVersion::Unspecified as i32,
-            ..Default::default()
-        }),
-        ..Default::default()
-    })
-    .unwrap_err();
-    assert_eq!(error.to_string(), "metadata.version: note metadata version is unspecified");
+fn note_protobuf_rejects_unspecified_metadata_version_after_decoding() {
+    let mut message = proto::note::Note::from(Note::mock_noop(Word::empty()));
+    message.metadata.as_mut().unwrap().version = proto::note::NoteVersion::Unspecified as i32;
+    let error = Note::try_from(message).unwrap_err();
+    assert_eq!(error.to_string(), "note metadata version is unspecified");
 }
-
 #[test]
 fn note_protobuf_reconstructs_attachment_metadata_from_structured_attachments() {
     use miden_protocol::note::{NoteAttachment, NoteAttachmentScheme, NoteAttachments};

@@ -1,5 +1,3 @@
-use alloc::format;
-
 use miden_protocol::Word;
 use miden_protocol::note::{
     Note,
@@ -13,13 +11,11 @@ use miden_protocol::note::{
     NoteRecipient,
     NoteScript,
     NoteStorage,
-    NoteTag,
     NoteType,
     PartialNoteMetadata,
 };
 
-use super::{MessageDecodeExt, MessageDecoder, required};
-use crate::{ConversionError, ConversionResultExt, proto};
+use crate::{ConversionError, proto};
 
 // NOTE TYPE
 // ================================================================================================
@@ -67,29 +63,6 @@ impl From<NoteMetadata> for proto::note::NoteMetadata {
     }
 }
 
-impl From<PartialNoteMetadata> for proto::note::PartialNoteMetadata {
-    fn from(metadata: PartialNoteMetadata) -> Self {
-        Self {
-            version: proto::note::NoteVersion::V1 as i32,
-            sender: Some(metadata.sender().into()),
-            note_type: proto::note::NoteType::from(metadata.note_type()) as i32,
-            tag: metadata.tag().as_u32(),
-        }
-    }
-}
-
-impl TryFrom<proto::note::PartialNoteMetadata> for PartialNoteMetadata {
-    type Error = ConversionError;
-
-    fn try_from(metadata: proto::note::PartialNoteMetadata) -> Result<Self, Self::Error> {
-        decode_note_version(metadata.version).context("version")?;
-        decode_partial_note_metadata::<proto::note::PartialNoteMetadata>(
-            metadata.sender,
-            metadata.note_type,
-            metadata.tag,
-        )
-    }
-}
 // NOTE ATTACHMENTS
 // ================================================================================================
 
@@ -178,23 +151,6 @@ impl From<Note> for proto::note::Note {
     }
 }
 
-impl TryFrom<proto::note::Note> for Note {
-    type Error = ConversionError;
-
-    fn try_from(proto_note: proto::note::Note) -> Result<Self, Self::Error> {
-        let decoder = proto_note.decoder();
-        let proto::note::Note { metadata, note_details, note_attachments } = proto_note;
-
-        let partial_metadata = required!(decoder, metadata)?;
-
-        let note_details: NoteDetails = required!(decoder, note_details)?;
-        let (assets, recipient) = note_details.into_parts();
-        let attachments = decode_note_attachments::<proto::note::Note>(note_attachments)?;
-
-        Ok(Note::with_attachments(assets, partial_metadata, recipient, attachments))
-    }
-}
-
 // NOTE ID
 // ================================================================================================
 
@@ -256,45 +212,6 @@ impl From<&NoteScript> for proto::note::NoteScript {
             mast: Some(script.mast().as_ref().into()),
         }
     }
-}
-
-// HELPERS
-// ================================================================================================
-
-fn decode_note_version(version: i32) -> Result<(), ConversionError> {
-    match proto::note::NoteVersion::try_from(version) {
-        Ok(proto::note::NoteVersion::V1) => Ok(()),
-        Ok(proto::note::NoteVersion::Unspecified) => {
-            Err(ConversionError::message("note metadata version is unspecified"))
-        },
-        Err(error) => Err(ConversionError::with_source(
-            format!("unknown note metadata version {version}"),
-            error,
-        )),
-    }
-}
-
-fn decode_partial_note_metadata<M: prost::Message>(
-    sender: Option<proto::account::AccountId>,
-    note_type: i32,
-    tag: u32,
-) -> Result<PartialNoteMetadata, ConversionError> {
-    let decoder = MessageDecoder::<M>::default();
-    let sender = required!(decoder, sender)?;
-    let note_type = proto::note::NoteType::try_from(note_type)
-        .map_err(|_| ConversionError::message("enum variant discriminant out of range"))?
-        .try_into()
-        .context("note_type")?;
-    let tag = NoteTag::new(tag);
-    Ok(PartialNoteMetadata::new(sender, note_type).with_tag(tag))
-}
-
-/// Requires and decodes the structured attachments carried by a note message.
-fn decode_note_attachments<M: prost::Message>(
-    note_attachments: Option<proto::note::NoteAttachments>,
-) -> Result<NoteAttachments, ConversionError> {
-    let decoder = MessageDecoder::<M>::default();
-    required!(decoder, note_attachments)
 }
 
 impl From<PartialNoteMetadata> for proto::note::PartialNoteMetadata {

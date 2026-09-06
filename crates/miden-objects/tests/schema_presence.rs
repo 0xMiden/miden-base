@@ -54,3 +54,17 @@ fn storage_value_patch_operations_have_distinct_payloads() {
     }
     assert!(message(&descriptors, "google.protobuf", "Empty").field.is_empty());
 }
+
+#[test]
+fn full_notes_only_carry_partial_metadata() {
+    let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
+    let note = message(&descriptors, "note", "Note");
+    assert_eq!(
+        note.field.iter().find(|field| field.name() == "metadata").unwrap().type_name(),
+        ".note.PartialNoteMetadata"
+    );
+    let partial = message(&descriptors, "note", "PartialNoteMetadata");
+    assert_eq!(partial.field.len(), 4);
+    assert!(partial.field.iter().all(|field| !field.name().starts_with("attachment")));
+    assert_eq!(message(&descriptors, "note", "NoteMetadata").field.len(), 6);
+}
