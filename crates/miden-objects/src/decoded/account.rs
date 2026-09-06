@@ -196,3 +196,41 @@ impl TryFrom<proto::account::AccountHeader> for miden_protocol::account::Account
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::account_storage_header::DecodedStorageSlot as AccountStorageHeaderStorageSlot;
+
+impl Verify for AccountStorageHeaderStorageSlot {
+    type Verified = miden_protocol::account::StorageSlotHeader;
+    type Error = StorageHeaderError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let name = miden_protocol::account::StorageSlotName::new(self.slot_name)?;
+        let slot_type = match self.slot_type {
+            proto::account::StorageSlotType::Value => {
+                miden_protocol::account::StorageSlotType::Value
+            },
+            proto::account::StorageSlotType::Map => miden_protocol::account::StorageSlotType::Map,
+            proto::account::StorageSlotType::Unspecified => {
+                return Err(StorageHeaderError::UnspecifiedSlotType);
+            },
+        };
+        Ok(Self::Verified::new(name, slot_type, self.commitment))
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum StorageHeaderError {
+    #[error("invalid storage slot name: {0}")]
+    Name(#[from] miden_protocol::errors::StorageSlotNameError),
+    #[error("storage slot type is unspecified")]
+    UnspecifiedSlotType,
+}
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::account_storage_header::StorageSlot>
+    for miden_protocol::account::StorageSlotHeader
+{
+    type Error = ConversionError;
+    fn try_from(
+        value: proto::account::account_storage_header::StorageSlot,
+    ) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
