@@ -61,3 +61,35 @@ impl TryFrom<proto::blockchain::NextProtocolConfig>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::blockchain::DecodedValidatorConfig as ValidatorConfig;
+
+impl Verify for ValidatorConfig {
+    type Verified = miden_protocol::block::ValidatorConfig;
+    type Error = ValidatorConfigError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let keys = self
+            .keys
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<_, _>>()
+            .expect("canonical public keys");
+        Ok(Self::Verified::new(keys, self.quorum.try_into()?)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum ValidatorConfigError {
+    #[error("quorum is out of range: {0}")]
+    Quorum(#[from] core::num::TryFromIntError),
+    #[error("{0}")]
+    Config(#[from] miden_protocol::errors::ValidatorConfigError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::blockchain::ValidatorConfig> for miden_protocol::block::ValidatorConfig {
+    type Error = ConversionError;
+    fn try_from(value: proto::blockchain::ValidatorConfig) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}

@@ -1091,7 +1091,13 @@ fn block_header_protobuf_rejects_invalid_validator_quorum() {
     message.validator_config.as_mut().unwrap().quorum = 0;
 
     let error = BlockHeader::try_from(message).unwrap_err();
-    let source = error.source().unwrap().downcast_ref::<ValidatorConfigError>().unwrap();
+    let source = error
+        .source()
+        .unwrap()
+        .source()
+        .unwrap()
+        .downcast_ref::<ValidatorConfigError>()
+        .unwrap();
 
     assert!(error.to_string().starts_with("validator_config: "));
     assert_matches!(
