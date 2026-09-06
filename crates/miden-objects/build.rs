@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".transaction.TransactionInputsV1",
             ".transaction.ProvenBatch",
             ".transaction.ProposedBatch",
             ".transaction.ProvenTransaction",

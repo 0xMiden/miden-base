@@ -672,3 +672,72 @@ impl crate::VerifyWith<&miden_protocol::batch::ProposedBatch> for ProvenBatch {
         Ok(batch)
     }
 }
+
+pub use proto::transaction::DecodedTransactionInputsV1 as TransactionInputsV1;
+
+/// Checks input consistency and note inclusion against supplied headers, without authenticating the
+/// chain.
+impl crate::BuildUnchecked for TransactionInputsV1 {
+    type Output = miden_protocol::transaction::TransactionInputs;
+    type Error = TransactionInputsError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let account = self.account.verify()?;
+        let header = self.block_header.build_unchecked()?;
+        let config = self.protocol_config.verify()?;
+        let chain = self.partial_blockchain.build_unchecked()?;
+        let notes = self.input_notes.verify()?;
+        let args = self.tx_args.verify()?;
+        let advice = self.advice_inputs.verify()?;
+        let code = self
+            .foreign_account_code
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<_, _>>()?;
+        let mut names = alloc::collections::BTreeMap::new();
+        for name in self.foreign_account_slot_names {
+            let (id, name) = name.verify()?;
+            if names.insert(id, name).is_some() {
+                return Err(TransactionInputsError::DuplicateSlot(id));
+            }
+        }
+        Ok(Self::Output::try_from_parts(
+            account, header, config, chain, notes, args, advice, code, names,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum TransactionInputsError {
+    #[error("{0}")]
+    Account(#[from] super::account::PartialAccountError),
+    #[error("{0}")]
+    Header(#[from] super::blockchain::BlockHeaderError),
+    #[error("{0}")]
+    Config(#[from] super::protocol_config::VerificationError),
+    #[error("{0}")]
+    Chain(#[from] super::blockchain::PartialBlockchainError),
+    #[error("{0}")]
+    Notes(#[from] InputNotesError),
+    #[error("{0}")]
+    Args(#[from] TransactionArgsError),
+    #[error("{0}")]
+    Advice(#[from] super::primitives::AdviceError),
+    #[error("{0}")]
+    Code(#[from] miden_protocol::errors::AccountError),
+    #[error("{0}")]
+    Slot(#[from] ForeignAccountSlotNameError),
+    #[error("duplicate foreign account storage slot ID {0}")]
+    DuplicateSlot(miden_protocol::account::StorageSlotId),
+    #[error("{0}")]
+    Inputs(#[from] miden_protocol::errors::TransactionInputError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::TransactionInputsV1>
+    for miden_protocol::transaction::TransactionInputs
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::TransactionInputsV1) -> Result<Self, Self::Error> {
+        crate::BuildUnchecked::build_unchecked(value.decode_fields()?).map_err(ConversionError::new)
+    }
+}

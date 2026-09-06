@@ -49,7 +49,7 @@ fn transaction_inputs_v1_requires_every_singular_message() {
         let error = TransactionInputs::try_from(message).unwrap_err();
 
         assert!(
-            error.to_string().starts_with("v1: field "),
+            error.to_string().starts_with(&format!("v1.{field}: field ")),
             "unexpected error for {field}: {error}"
         );
         assert!(error.to_string().ends_with(&format!("::{field} is missing")));
@@ -103,7 +103,7 @@ fn authenticated_input_note_rejects_a_proof_for_a_different_note() {
     let error = TransactionInputs::try_from(message).unwrap_err();
 
     assert!(
-        error.to_string().starts_with("v1.input_notes: note ID mismatch:"),
+        error.to_string().starts_with("v1: note ID mismatch:"),
         "unexpected error: {error}"
     );
 }
@@ -118,9 +118,7 @@ fn input_notes_reject_duplicate_nullifiers_and_preserve_the_domain_source() {
     let error = TransactionInputs::try_from(message).unwrap_err();
 
     assert!(
-        error
-            .to_string()
-            .starts_with("v1.input_notes: transaction input note with nullifier"),
+        error.to_string().starts_with("v1: transaction input note with nullifier"),
         "unexpected error: {error}"
     );
     assert_matches!(transaction_input_error(&error), TransactionInputError::DuplicateInputNote(_));
@@ -134,9 +132,8 @@ fn foreign_slot_names_reject_invalid_names_and_preserve_the_domain_source() {
 
     let error = TransactionInputs::try_from(message).unwrap_err();
 
-    assert!(error.to_string().starts_with("v1.foreign_account_slot_names[0].slot_name: "));
     assert_matches!(
-        error.source().and_then(|source| source.downcast_ref::<StorageSlotNameError>()),
+        error_source::<StorageSlotNameError>(&error),
         Some(StorageSlotNameError::TooShort)
     );
 }
@@ -149,9 +146,9 @@ fn foreign_slot_names_reject_id_name_mismatches() {
 
     let error = TransactionInputs::try_from(message).unwrap_err();
 
-    assert_eq!(
-        error.to_string(),
-        "v1.foreign_account_slot_names[0].slot_id: storage slot ID does not match slot name"
+    assert_matches!(
+        error_source::<miden_objects::decoded::transaction::ForeignAccountSlotNameError>(&error),
+        Some(miden_objects::decoded::transaction::ForeignAccountSlotNameError::IdMismatch { .. })
     );
 }
 
@@ -165,9 +162,9 @@ fn foreign_slot_names_reject_duplicate_ids() {
 
     let error = TransactionInputs::try_from(message).unwrap_err();
 
-    assert_eq!(
-        error.to_string(),
-        "v1.foreign_account_slot_names[2].slot_id: duplicate foreign account storage slot ID"
+    assert_matches!(
+        error_source::<miden_objects::decoded::transaction::TransactionInputsError>(&error),
+        Some(miden_objects::decoded::transaction::TransactionInputsError::DuplicateSlot(_))
     );
 }
 
@@ -239,4 +236,15 @@ fn transaction_inputs_reject_an_invalid_authenticated_note_path() {
         transaction_input_error(&error),
         TransactionInputError::InputNoteNotInBlock(note_id, _) if *note_id == replacement.id()
     );
+}
+
+fn error_source<'a, T: Error + 'static>(error: &'a (dyn Error + 'static)) -> Option<&'a T> {
+    let mut source = Some(error);
+    while let Some(error) = source {
+        if let Some(found) = error.downcast_ref::<T>() {
+            return Some(found);
+        }
+        source = error.source();
+    }
+    None
 }
