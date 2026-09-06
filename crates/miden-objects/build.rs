@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".transaction.InputNoteCommitment",
             ".note.NoteHeader",
             ".note.NoteDetails",
             ".note.NoteMetadata",

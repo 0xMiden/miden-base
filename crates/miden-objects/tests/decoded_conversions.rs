@@ -796,3 +796,27 @@ fn note_header_defers_metadata_verification() {
     let error = wire.decode_fields().unwrap_err();
     assert!(error.to_string().starts_with("metadata.note_type: "), "{error}");
 }
+
+#[test]
+fn input_note_commitment_builds_unchecked_after_decoding() {
+    use miden_objects::BuildUnchecked;
+    let header = *miden_protocol::note::Note::mock_noop(Word::empty()).header();
+    for header in [None, Some(header)] {
+        let wire = proto::transaction::InputNoteCommitment {
+            nullifier: Some(Word::empty().into()),
+            header: header.map(Into::into),
+        };
+        let built = wire.decode_fields().unwrap().build_unchecked().unwrap();
+        assert_eq!(built.nullifier().as_word(), Word::empty());
+        assert_eq!(built.header().copied(), header);
+    }
+    let mut wire = proto::transaction::InputNoteCommitment {
+        nullifier: Some(Word::empty().into()),
+        header: Some(header.into()),
+    };
+    wire.header.as_mut().unwrap().metadata.as_mut().unwrap().note_type = 0;
+    assert!(wire.clone().decode_fields().unwrap().build_unchecked().is_err());
+    wire.header.as_mut().unwrap().metadata.as_mut().unwrap().note_type = 99;
+    let error = wire.decode_fields().unwrap_err();
+    assert!(error.to_string().starts_with("header.metadata.note_type: "), "{error}");
+}

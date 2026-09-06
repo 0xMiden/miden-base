@@ -1,7 +1,7 @@
 //! Domain construction for decoded transaction messages.
 pub use proto::transaction::DecodedTransactionId as TransactionId;
 
-use crate::{ConversionError, DecodeMessage, Verify, proto};
+use crate::{BuildUnchecked, ConversionError, DecodeMessage, Verify, proto};
 
 impl Verify for TransactionId {
     type Verified = miden_protocol::transaction::TransactionId;
@@ -146,5 +146,31 @@ impl TryFrom<proto::transaction::ForeignAccountSlotName>
     type Error = ConversionError;
     fn try_from(value: proto::transaction::ForeignAccountSlotName) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::transaction::DecodedInputNoteCommitment as InputNoteCommitment;
+
+/// Builds the decoded commitment without checking that its nullifier belongs to its note header.
+/// A present header is verified, but the caller must establish nullifier/header consistency and
+/// authenticate the note's inclusion separately. An absent header is not evidence of inclusion.
+impl BuildUnchecked for InputNoteCommitment {
+    type Output = miden_protocol::transaction::InputNoteCommitment;
+    type Error = super::note::VerificationError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        Ok(Self::Output::from_parts_unchecked(
+            miden_protocol::note::Nullifier::from_raw(self.nullifier),
+            self.header.map(Verify::verify).transpose()?,
+        ))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::InputNoteCommitment>
+    for miden_protocol::transaction::InputNoteCommitment
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::InputNoteCommitment) -> Result<Self, Self::Error> {
+        value.decode_fields()?.build_unchecked().map_err(ConversionError::new)
     }
 }

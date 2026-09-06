@@ -2,7 +2,7 @@ use alloc::format;
 use alloc::vec::Vec;
 
 use miden_protocol::account::{AccountId, AccountUpdateDetails};
-use miden_protocol::note::{NoteHeader, Nullifier};
+use miden_protocol::note::NoteHeader;
 use miden_protocol::transaction::{
     InputNoteCommitment,
     InputNotes,
@@ -191,19 +191,6 @@ impl From<&InputNoteCommitment> for proto::transaction::InputNoteCommitment {
             nullifier: Some(value.nullifier().as_word().into()),
             header: value.header().copied().map(Into::into),
         }
-    }
-}
-
-impl TryFrom<proto::transaction::InputNoteCommitment> for InputNoteCommitment {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::transaction::InputNoteCommitment) -> Result<Self, Self::Error> {
-        let decoder = value.decoder();
-        let nullifier = Nullifier::from_raw(required!(decoder, value.nullifier)?);
-
-        let header = value.header.map(TryInto::try_into).transpose().context("header")?;
-
-        Ok(InputNoteCommitment::from_parts_unchecked(nullifier, header))
     }
 }
 
