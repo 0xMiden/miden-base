@@ -200,3 +200,62 @@ impl TryFrom<proto::transaction::PrivateOutputNote>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedTransactionHeader as TransactionHeader;
+
+/// Builds a header using unchecked input-note commitments. Input/output note uniqueness,
+/// note-header invariants, and the transmitted transaction ID are still checked. The caller must
+/// establish each input's nullifier/header consistency and authentication, the original note order,
+/// and the account ID's relationship to the transaction data.
+impl BuildUnchecked for TransactionHeader {
+    type Output = miden_protocol::transaction::TransactionHeader;
+    type Error = TransactionHeaderBuildError;
+    fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        let transmitted = self.transaction_id.verify().expect("infallible transaction ID");
+        let input_notes = self
+            .input_notes
+            .into_iter()
+            .map(BuildUnchecked::build_unchecked)
+            .collect::<Result<_, _>>()?;
+        let input_notes = miden_protocol::transaction::InputNotes::new(input_notes)?;
+        let output_notes =
+            self.output_notes.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
+        let header = Self::Output::new(
+            self.account_id,
+            self.initial_state_commitment,
+            self.final_state_commitment,
+            input_notes,
+            output_notes,
+        )?;
+        if header.id() != transmitted {
+            return Err(TransactionHeaderBuildError::IdMismatch {
+                transmitted,
+                recomputed: header.id(),
+            });
+        }
+        Ok(header)
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum TransactionHeaderBuildError {
+    #[error("invalid note header: {0}")]
+    Note(#[from] super::note::VerificationError),
+    #[error("invalid input notes: {0}")]
+    Input(#[from] miden_protocol::errors::TransactionInputError),
+    #[error("invalid transaction header: {0}")]
+    Header(#[from] miden_protocol::errors::TransactionHeaderError),
+    #[error("transaction ID mismatch: transmitted {transmitted}, recomputed {recomputed}")]
+    IdMismatch {
+        transmitted: miden_protocol::transaction::TransactionId,
+        recomputed: miden_protocol::transaction::TransactionId,
+    },
+}
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::TransactionHeader>
+    for miden_protocol::transaction::TransactionHeader
+{
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::TransactionHeader) -> Result<Self, Self::Error> {
+        value.decode_fields()?.build_unchecked().map_err(ConversionError::new)
+    }
+}

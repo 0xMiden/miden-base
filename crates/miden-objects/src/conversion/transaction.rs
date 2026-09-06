@@ -2,10 +2,8 @@ use alloc::format;
 use alloc::vec::Vec;
 
 use miden_protocol::account::{AccountId, AccountUpdateDetails};
-use miden_protocol::note::NoteHeader;
 use miden_protocol::transaction::{
     InputNoteCommitment,
-    InputNotes,
     OutputNote,
     PrivateOutputNote,
     ProvenTransaction,
@@ -213,55 +211,6 @@ impl From<&TransactionHeader> for proto::transaction::TransactionHeader {
 impl From<TransactionHeader> for proto::transaction::TransactionHeader {
     fn from(header: TransactionHeader) -> Self {
         Self::from(&header)
-    }
-}
-
-impl TryFrom<proto::transaction::TransactionHeader> for TransactionHeader {
-    type Error = ConversionError;
-
-    fn try_from(header: proto::transaction::TransactionHeader) -> Result<Self, Self::Error> {
-        let decoder = header.decoder();
-        let transmitted_id = required!(decoder, header.transaction_id)?;
-        let account_id = required!(decoder, header.account_id)?;
-        let initial_state_commitment = required!(decoder, header.initial_state_commitment)?;
-        let final_state_commitment = required!(decoder, header.final_state_commitment)?;
-        let input_notes = header
-            .input_notes
-            .into_iter()
-            .enumerate()
-            .map(|(index, note)| {
-                InputNoteCommitment::try_from(note).context(format!("input_notes[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-        let input_notes = InputNotes::new(input_notes)
-            .map_err(ConversionError::new)
-            .context("input_notes")?;
-        let output_notes = header
-            .output_notes
-            .into_iter()
-            .enumerate()
-            .map(|(index, note)| {
-                NoteHeader::try_from(note).context(format!("output_notes[{index}]"))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let header = TransactionHeader::new(
-            account_id,
-            initial_state_commitment,
-            final_state_commitment,
-            input_notes,
-            output_notes,
-        )
-        .map_err(ConversionError::new)?;
-        if header.id() != transmitted_id {
-            return Err(ConversionError::message(format!(
-                "transaction ID mismatch: transmitted {transmitted_id}, recomputed {}",
-                header.id()
-            ))
-            .context("transaction_id"));
-        }
-
-        Ok(header)
     }
 }
 

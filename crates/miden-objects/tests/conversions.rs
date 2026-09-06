@@ -1089,7 +1089,12 @@ fn transaction_header_conversion_preserves_validation_error_source() {
     message.output_notes.push(message.output_notes[0].clone());
 
     let error = TransactionHeader::try_from(message).unwrap_err();
-    let source = error.source().unwrap().downcast_ref::<TransactionHeaderError>().unwrap();
+    let source = error
+        .source()
+        .and_then(Error::source)
+        .unwrap()
+        .downcast_ref::<TransactionHeaderError>()
+        .unwrap();
 
     assert_matches!(
         source,

@@ -835,3 +835,51 @@ fn private_output_note_defers_cross_field_verification() {
         proto::note::NoteType::Public as i32;
     assert!(wire.decode_fields().unwrap().verify().is_err());
 }
+
+#[test]
+fn transaction_header_unchecked_build_still_checks_id_and_duplicates() {
+    use miden_objects::BuildUnchecked;
+    use miden_protocol::account::{AccountId, AccountIdVersion, AccountType, AssetCallbackFlag};
+    let id = AccountId::dummy(
+        [7; 15],
+        AccountIdVersion::Version1,
+        AccountType::Private,
+        AssetCallbackFlag::Disabled,
+    );
+    let header = miden_protocol::transaction::TransactionHeader::new(
+        id,
+        Word::empty(),
+        Word::empty(),
+        Default::default(),
+        vec![],
+    )
+    .unwrap();
+    let wire = proto::transaction::TransactionHeader::from(&header);
+    assert_eq!(wire.clone().decode_fields().unwrap().build_unchecked().unwrap(), header);
+    let invalid = proto::transaction::TransactionHeader {
+        transaction_id: Some(proto::transaction::TransactionId {
+            id: Some(Word::from([1_u32, 0, 0, 0]).into()),
+        }),
+        ..wire.clone()
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(matches!(
+        invalid.build_unchecked(),
+        Err(miden_objects::decoded::transaction::TransactionHeaderBuildError::IdMismatch { .. })
+    ));
+    let input = proto::transaction::InputNoteCommitment {
+        nullifier: Some(Word::empty().into()),
+        header: None,
+    };
+    let duplicate = proto::transaction::TransactionHeader {
+        input_notes: vec![input.clone(), input],
+        ..wire
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(matches!(
+        duplicate.build_unchecked(),
+        Err(miden_objects::decoded::transaction::TransactionHeaderBuildError::Input(_))
+    ));
+}
