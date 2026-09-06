@@ -356,7 +356,7 @@ pub enum StoragePatchError {
     #[error("invalid storage map patch: {0}")]
     Map(#[from] StorageMapPatchError),
     #[error("invalid storage patch: {0}")]
-    Storage(#[from] miden_protocol::errors::AccountError),
+    Storage(#[from] miden_protocol::errors::AccountPatchError),
 }
 
 // Compatibility bridge for callers using the combined conversion API.
@@ -368,6 +368,29 @@ impl TryFrom<proto::account::StorageSlotPatch>
 {
     type Error = ConversionError;
     fn try_from(value: proto::account::StorageSlotPatch) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::account::DecodedAccountStoragePatch as AccountStoragePatch;
+
+impl Verify for AccountStoragePatch {
+    type Verified = miden_protocol::account::AccountStoragePatch;
+    type Error = StoragePatchError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let slots = self
+            .slots
+            .into_iter()
+            .map(Verify::verify)
+            .collect::<Result<alloc::vec::Vec<_>, _>>()?;
+        Ok(Self::Verified::from_entries(slots)?)
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountStoragePatch> for miden_protocol::account::AccountStoragePatch {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountStoragePatch) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
