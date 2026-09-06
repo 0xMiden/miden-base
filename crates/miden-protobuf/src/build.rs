@@ -4,6 +4,7 @@ use std::string::String;
 use std::vec::Vec;
 use std::{format, io};
 
+use proc_macro_crate::{FoundCrate, crate_name};
 use prost_types::field_descriptor_proto::Type;
 use prost_types::{DescriptorProto, FileDescriptorSet};
 
@@ -16,11 +17,18 @@ const OPTIONAL_ATTRIBUTE: &str = "#[proto_decode(optional)]";
 /// must also derive `ProtoDecodeFields` or implement `DecodeMessage` as an atomic adapter.
 /// Real oneofs also derive decoded enums; their exact wire variant names are injected from the
 /// descriptors. Synthetic oneofs used for explicit optional fields are not configured as enums.
+/// The derive path is resolved from the consumer's Cargo dependencies, including renamed and
+/// workspace-inherited dependencies. The runtime dependency must enable its `derive` feature.
 pub fn configure_proto_decode_fields<'a>(
     prost: &mut prost_build::Config,
     descriptors: &FileDescriptorSet,
     messages: impl IntoIterator<Item = &'a str>,
 ) -> Result<(), io::Error> {
+    let runtime = match crate_name("miden-protobuf").map_err(io::Error::other)? {
+        FoundCrate::Itself => "crate".to_owned(),
+        FoundCrate::Name(name) => format!("::{name}"),
+    };
+    let derive = format!("#[derive({runtime}::ProtoDecodeFields)]");
     let mut configured = BTreeSet::new();
     for message in messages {
         let canonical_name = message.strip_prefix('.').unwrap_or(message);
@@ -43,7 +51,7 @@ pub fn configure_proto_decode_fields<'a>(
                 continue;
             }
             let path = format!("{canonical_name}.{}", oneof.name());
-            prost.enum_attribute(&path, "#[derive(::miden_protobuf::ProtoDecodeFields)]");
+            prost.enum_attribute(&path, &derive);
             for variant in variants {
                 prost.field_attribute(
                     format!(".{path}.{}", variant.name()),
@@ -52,7 +60,7 @@ pub fn configure_proto_decode_fields<'a>(
             }
         }
         // A leading dot would also apply the derive to nested message declarations.
-        prost.message_attribute(canonical_name, "#[derive(::miden_protobuf::ProtoDecodeFields)]");
+        prost.message_attribute(canonical_name, &derive);
         for field in optional_fields {
             prost.field_attribute(field, OPTIONAL_ATTRIBUTE);
         }
@@ -224,7 +232,7 @@ mod tests {
         let marker = generated.find(OPTIONAL_ATTRIBUTE).unwrap();
         assert!(selected < marker && marker < unselected);
         assert_eq!(generated.matches(OPTIONAL_ATTRIBUTE).count(), 1);
-        assert_eq!(generated.matches("::miden_protobuf::ProtoDecodeFields").count(), 2);
+        assert_eq!(generated.matches("crate::ProtoDecodeFields").count(), 2);
         assert_eq!(generated.matches("#[proto_decode(name = \"choice\")]").count(), 1);
         assert!(!generated.contains("constructor"));
 

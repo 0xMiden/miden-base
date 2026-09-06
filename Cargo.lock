@@ -2704,6 +2704,7 @@ name = "miden-protobuf"
 version = "0.17.0"
 dependencies = [
  "miden-protobuf-derive",
+ "proc-macro-crate",
  "prost",
  "prost-build",
  "prost-types",

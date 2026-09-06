@@ -1,0 +1,20 @@
+[package]
+name = "protobuf-renamed-consumer"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+resolver = "3"
+
+[workspace.dependencies]
+wire-codec = { package = "miden-protobuf", path = "../../..", default-features = false }
+
+[dependencies]
+wire-codec = { workspace = true, features = ["derive"] }
+prost = { version = "0.14", default-features = false, features = ["derive"] }
+
+[build-dependencies]
+wire-codec = { workspace = true, features = ["build"] }
+prost-build = { version = "0.14", default-features = false }
+prost-types = { version = "0.14", default-features = false }
