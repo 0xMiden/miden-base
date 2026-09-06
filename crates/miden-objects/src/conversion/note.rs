@@ -1,11 +1,8 @@
 use alloc::format;
-use alloc::vec::Vec;
 
 use miden_protocol::Word;
-use miden_protocol::asset::Asset;
 use miden_protocol::note::{
     Note,
-    NoteAssets,
     NoteAttachment,
     NoteAttachments,
     NoteDetails,
@@ -165,24 +162,6 @@ impl From<&NoteDetails> for proto::note::NoteDetails {
             assets: details.assets().iter().copied().map(Into::into).collect(),
             recipient: Some(details.recipient().into()),
         }
-    }
-}
-
-impl TryFrom<proto::note::NoteDetails> for NoteDetails {
-    type Error = ConversionError;
-
-    fn try_from(details: proto::note::NoteDetails) -> Result<Self, Self::Error> {
-        let decoder = details.decoder();
-        let assets = details
-            .assets
-            .into_iter()
-            .map(Asset::try_from)
-            .collect::<Result<Vec<_>, _>>()
-            .context("assets")?;
-        let assets = NoteAssets::new(assets).map_err(ConversionError::new).context("assets")?;
-        let recipient = required!(decoder, details.recipient)?;
-
-        Ok(NoteDetails::new(assets, recipient))
     }
 }
 

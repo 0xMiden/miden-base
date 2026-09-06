@@ -57,6 +57,8 @@ impl Verify for NoteAttachment {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
+    #[error("invalid note asset: {0}")]
+    Asset(#[from] super::asset::VerificationError),
     #[error("note metadata version is unspecified")]
     UnspecifiedVersion,
     #[error("note type is unspecified")]
@@ -216,6 +218,26 @@ impl Verify for NoteMetadata {
 impl TryFrom<proto::note::NoteMetadata> for miden_protocol::note::NoteMetadata {
     type Error = ConversionError;
     fn try_from(value: proto::note::NoteMetadata) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
+
+pub use proto::note::DecodedNoteDetails as NoteDetails;
+
+impl Verify for NoteDetails {
+    type Verified = miden_protocol::note::NoteDetails;
+    type Error = VerificationError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let assets = self.assets.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
+        let assets = miden_protocol::note::NoteAssets::new(assets)?;
+        Ok(Self::Verified::new(assets, self.recipient.verify()?))
+    }
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::note::NoteDetails> for miden_protocol::note::NoteDetails {
+    type Error = ConversionError;
+    fn try_from(value: proto::note::NoteDetails) -> Result<Self, Self::Error> {
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }

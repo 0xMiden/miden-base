@@ -765,3 +765,22 @@ fn note_metadata_decodes_named_enums_and_defers_attachment_checks() {
     assert_eq!(decoded.note_type, proto::note::NoteType::Unspecified);
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn note_details_reports_repeated_asset_enum_paths() {
+    let note = miden_protocol::note::Note::mock_noop(Word::empty());
+    let (assets, _, recipient, _) = note.into_parts();
+    let details = miden_protocol::note::NoteDetails::new(assets, recipient);
+    let mut wire = proto::note::NoteDetails::from(&details);
+    assert_eq!(wire.clone().decode_fields().unwrap().verify().unwrap(), details);
+    let index = wire.assets.len();
+    wire.assets.push(proto::asset::Asset {
+        asset_id: Some(proto::asset::AssetId { version: 99, ..Default::default() }),
+        value: Some(Word::empty().into()),
+    });
+    let error = wire.decode_fields().unwrap_err();
+    assert!(
+        error.to_string().starts_with(&format!("assets[{index}].asset_id.version: ")),
+        "{error}"
+    );
+}

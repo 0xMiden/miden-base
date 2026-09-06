@@ -36,6 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &mut prost,
         &descriptors,
         [
+            ".note.NoteDetails",
             ".note.NoteMetadata",
             ".asset.Asset",
             ".asset.AssetId",
