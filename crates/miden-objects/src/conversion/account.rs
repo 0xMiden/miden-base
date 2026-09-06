@@ -1,6 +1,4 @@
-use alloc::format;
 use alloc::string::ToString;
-use alloc::vec::Vec;
 
 use miden_protocol::Word;
 use miden_protocol::account::{
@@ -14,7 +12,7 @@ use miden_protocol::account::{
     StorageSlotId,
     StorageSlotType,
 };
-use miden_protocol::asset::{AssetId, PartialVault};
+use miden_protocol::asset::PartialVault;
 use miden_protocol::block::account_tree::AccountWitness;
 
 use super::{MessageDecodeExt, required};
@@ -159,28 +157,6 @@ impl From<PartialStorage> for proto::account::PartialStorage {
 
 // PARTIAL VAULT
 // ================================================================================================
-
-impl TryFrom<proto::account::PartialVault> for PartialVault {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::PartialVault) -> Result<Self, Self::Error> {
-        let decoder = message.decoder();
-        let smt = required!(decoder, message.smt)?;
-        let asset_ids = message
-            .asset_ids
-            .into_iter()
-            .enumerate()
-            .map(|(index, id)| {
-                let asset_id_context = format!("asset_ids[{index}]");
-                Word::try_from(id)
-                    .context(&asset_id_context)
-                    .and_then(|id| AssetId::try_from(id).context(asset_id_context))
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        PartialVault::try_from_parts(smt, asset_ids).map_err(ConversionError::new)
-    }
-}
 
 impl From<&PartialVault> for proto::account::PartialVault {
     fn from(vault: &PartialVault) -> Self {

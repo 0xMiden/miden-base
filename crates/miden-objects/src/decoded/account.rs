@@ -527,3 +527,36 @@ impl TryFrom<proto::account::PartialStorage> for miden_protocol::account::Partia
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedPartialVault as PartialVault;
+
+impl Verify for PartialVault {
+    type Verified = miden_protocol::asset::PartialVault;
+    type Error = PartialVaultError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        let ids = self
+            .asset_ids
+            .into_iter()
+            .map(miden_protocol::asset::AssetId::try_from)
+            .collect::<Result<alloc::vec::Vec<_>, _>>()?;
+        Ok(Self::Verified::try_from_parts(self.smt.verify()?, ids)?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PartialVaultError {
+    #[error("{0}")]
+    Smt(#[from] super::primitives::PartialSmtError),
+    #[error("{0}")]
+    Asset(#[from] miden_protocol::errors::AssetError),
+    #[error("{0}")]
+    Vault(#[from] miden_protocol::errors::PartialAssetVaultError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::PartialVault> for miden_protocol::asset::PartialVault {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::PartialVault) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
