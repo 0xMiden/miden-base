@@ -601,3 +601,37 @@ fn private_account_update_verifies_empty_payload() {
         miden_protocol::account::AccountUpdateDetails::Private
     );
 }
+
+#[test]
+fn account_header_decodes_named_version_before_verifying() {
+    use miden_protocol::account::{AccountId, AccountIdVersion, AccountType, AssetCallbackFlag};
+    let id = AccountId::dummy(
+        [7; 15],
+        AccountIdVersion::Version1,
+        AccountType::Private,
+        AssetCallbackFlag::Disabled,
+    );
+    let header = miden_protocol::account::AccountHeader::new(
+        id,
+        miden_protocol::Felt::ZERO,
+        Word::empty(),
+        Word::empty(),
+        Word::empty(),
+    );
+    let wire = proto::account::AccountHeader::from(&header);
+    let decoded = wire.clone().decode_fields().unwrap();
+    assert_eq!(decoded.version, proto::account::AccountVersion::V1);
+    assert_eq!(decoded.verify().unwrap(), header);
+    let decoded = proto::account::AccountHeader { version: 0, ..wire.clone() }
+        .decode_fields()
+        .unwrap();
+    assert_eq!(decoded.version, proto::account::AccountVersion::Unspecified);
+    assert!(decoded.verify().is_err());
+    let decoded = proto::account::AccountHeader {
+        nonce: miden_protocol::Felt::ORDER,
+        ..wire
+    }
+    .decode_fields()
+    .unwrap();
+    assert!(decoded.verify().is_err());
+}

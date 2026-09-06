@@ -462,14 +462,14 @@ fn account_header_roundtrips_through_explicit_versioned_protobuf_bytes() {
 }
 
 #[test]
-fn account_header_protobuf_rejects_unspecified_version_before_payload_fields() {
+fn account_header_protobuf_rejects_unspecified_version_after_decoding() {
     let error = AccountHeader::try_from(proto::account::AccountHeader {
         version: proto::account::AccountVersion::Unspecified as i32,
-        ..Default::default()
+        ..proto::account::AccountHeader::from(&account_header())
     })
     .unwrap_err();
 
-    assert_eq!(error.to_string(), "version: account header version is unspecified");
+    assert_eq!(error.to_string(), "account header version is unspecified");
 }
 
 #[test]
@@ -481,11 +481,10 @@ fn account_header_protobuf_preserves_unknown_version_error_sources() {
         })
         .unwrap_err();
 
-        assert_eq!(error.to_string(), format!("version: unknown account header version {version}"));
+        assert_eq!(error.to_string(), format!("version: {}", prost::UnknownEnumValue(version)));
         assert_matches!(
             error
                 .source()
-                .and_then(Error::source)
                 .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
             Some(prost::UnknownEnumValue(value)) if *value == version
         );
@@ -504,10 +503,11 @@ fn account_header_protobuf_preserves_invalid_nonce_source() {
     })
     .unwrap_err();
 
-    assert!(error.to_string().starts_with("nonce: "));
+    assert!(error.to_string().starts_with("invalid account nonce: "));
     assert_matches!(
         error
             .source()
+            .and_then(Error::source)
             .and_then(|source| source.downcast_ref::<<Felt as TryFrom<u64>>::Error>()),
         Some(source) if source.as_u64() == Felt::ORDER
     );

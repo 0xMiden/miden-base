@@ -3,6 +3,7 @@ use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::account::{
     AccountHeader,
     AccountId,
@@ -19,7 +20,6 @@ use miden_protocol::account::{
 };
 use miden_protocol::asset::{AssetId, PartialVault};
 use miden_protocol::block::account_tree::AccountWitness;
-use miden_protocol::{Felt, Word};
 
 use super::{MessageDecodeExt, required};
 use crate::{ConversionError, ConversionResultExt, proto};
@@ -153,19 +153,6 @@ impl From<&AccountStorageHeader> for proto::account::AccountStorageHeader {
 impl From<AccountStorageHeader> for proto::account::AccountStorageHeader {
     fn from(account_storage_header: AccountStorageHeader) -> Self {
         (&account_storage_header).into()
-    }
-}
-
-fn decode_account_version(version: i32) -> Result<(), ConversionError> {
-    match proto::account::AccountVersion::try_from(version) {
-        Ok(proto::account::AccountVersion::V1) => Ok(()),
-        Ok(proto::account::AccountVersion::Unspecified) => {
-            Err(ConversionError::message("account header version is unspecified"))
-        },
-        Err(error) => Err(ConversionError::with_source(
-            format!("unknown account header version {version}"),
-            error,
-        )),
     }
 }
 
@@ -328,28 +315,6 @@ impl From<&PartialAccount> for proto::account::PartialAccount {
 impl From<PartialAccount> for proto::account::PartialAccount {
     fn from(account: PartialAccount) -> Self {
         (&account).into()
-    }
-}
-
-impl TryFrom<proto::account::AccountHeader> for AccountHeader {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::AccountHeader) -> Result<Self, Self::Error> {
-        decode_account_version(message.version).context("version")?;
-
-        let decoder = message.decoder();
-        let account_id = required!(decoder, message.account_id)?;
-        let vault_root = required!(decoder, message.vault_root)?;
-        let storage_commitment = required!(decoder, message.storage_commitment)?;
-        let code_commitment = required!(decoder, message.code_commitment)?;
-        let nonce = Felt::try_from(message.nonce).map_err(ConversionError::new).context("nonce")?;
-        Ok(AccountHeader::new(
-            account_id,
-            nonce,
-            vault_root,
-            storage_commitment,
-            code_commitment,
-        ))
     }
 }
 

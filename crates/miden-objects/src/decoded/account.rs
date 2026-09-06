@@ -160,3 +160,39 @@ impl TryFrom<proto::account::PrivateAccountUpdate>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::account::DecodedAccountHeader as AccountHeader;
+
+impl Verify for AccountHeader {
+    type Verified = miden_protocol::account::AccountHeader;
+    type Error = AccountHeaderError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        match self.version {
+            proto::account::AccountVersion::V1 => {},
+            proto::account::AccountVersion::Unspecified => {
+                return Err(AccountHeaderError::UnspecifiedVersion);
+            },
+        }
+        Ok(Self::Verified::new(
+            self.account_id,
+            self.nonce.try_into().map_err(AccountHeaderError::Nonce)?,
+            self.vault_root,
+            self.storage_commitment,
+            self.code_commitment,
+        ))
+    }
+}
+#[derive(Debug, thiserror::Error)]
+pub enum AccountHeaderError {
+    #[error("account header version is unspecified")]
+    UnspecifiedVersion,
+    #[error("invalid account nonce: {0}")]
+    Nonce(#[source] <miden_protocol::Felt as TryFrom<u64>>::Error),
+}
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::account::AccountHeader> for miden_protocol::account::AccountHeader {
+    type Error = ConversionError;
+    fn try_from(value: proto::account::AccountHeader) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
