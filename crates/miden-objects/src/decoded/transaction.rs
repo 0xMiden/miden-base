@@ -409,3 +409,35 @@ impl TryFrom<proto::transaction::InputNotes>
         value.decode_fields()?.verify().map_err(ConversionError::new)
     }
 }
+
+pub use proto::transaction::DecodedTxAccountUpdate as TxAccountUpdate;
+
+impl Verify for TxAccountUpdate {
+    type Verified = miden_protocol::transaction::TxAccountUpdate;
+    type Error = TxAccountUpdateError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        Ok(Self::Verified::new(
+            self.account_id,
+            self.initial_state_commitment,
+            self.final_state_commitment,
+            self.account_patch_commitment,
+            self.details.verify()?,
+        )?)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum TxAccountUpdateError {
+    #[error("{0}")]
+    Details(#[from] super::account::AccountPatchError),
+    #[error("{0}")]
+    Update(#[from] miden_protocol::errors::ProvenTransactionError),
+}
+
+// Compatibility bridge for callers using the combined conversion API.
+impl TryFrom<proto::transaction::TxAccountUpdate> for miden_protocol::transaction::TxAccountUpdate {
+    type Error = ConversionError;
+    fn try_from(value: proto::transaction::TxAccountUpdate) -> Result<Self, Self::Error> {
+        value.decode_fields()?.verify().map_err(ConversionError::new)
+    }
+}
