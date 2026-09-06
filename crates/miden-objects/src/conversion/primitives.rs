@@ -139,24 +139,6 @@ impl From<MastForest> for proto::primitives::MastForest {
     }
 }
 
-impl TryFrom<proto::primitives::MastForest> for MastForest {
-    type Error = ConversionError;
-
-    fn try_from(value: proto::primitives::MastForest) -> Result<Self, Self::Error> {
-        Self::try_from(&value)
-    }
-}
-
-impl TryFrom<&proto::primitives::MastForest> for MastForest {
-    type Error = ConversionError;
-
-    fn try_from(value: &proto::primitives::MastForest) -> Result<Self, Self::Error> {
-        Self::read_from_bytes(&value.encoded)
-            .map_err(|error| ConversionError::deserialization("MastForest", error))
-            .map_err(|error| error.context("encoded"))
-    }
-}
-
 // ADVICE INPUTS
 // ================================================================================================
 
@@ -261,11 +243,6 @@ impl crate::DecodeMessage for proto::primitives::Word {
 // Canonical representation adapter; domain interpretation is left to the containing record.
 impl crate::DecodeMessage for proto::primitives::Felt {
     type Decoded = miden_protocol::Felt;
-}
-
-// Canonical representation adapter; domain interpretation is left to the containing record.
-impl crate::DecodeMessage for proto::primitives::MastForest {
-    type Decoded = miden_protocol::MastForest;
 }
 
 // Canonical representation adapter; domain interpretation is left to the containing record.
@@ -382,6 +359,6 @@ mod tests {
     fn mast_forest_roundtrips() {
         let mast = MastForest::new();
         let encoded = proto::primitives::MastForest::from(&mast);
-        assert_eq!(MastForest::try_from(encoded).unwrap(), mast);
+        assert_eq!(encoded.decode_fields().unwrap().verify().unwrap(), mast);
     }
 }

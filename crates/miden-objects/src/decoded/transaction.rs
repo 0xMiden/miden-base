@@ -17,13 +17,16 @@ impl Verify for TransactionScript {
     type Verified = miden_protocol::transaction::TransactionScript;
     type Error = ScriptError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &self.mast)?;
-        Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), entrypoint)
+        let mast = self.mast.verify()?;
+        let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &mast)?;
+        Self::Verified::from_parts(alloc::sync::Arc::new(mast), entrypoint)
             .map_err(|error| ScriptError::Script(alloc::boxed::Box::new(error)))
     }
 }
 #[derive(Debug, thiserror::Error)]
 pub enum ScriptError {
+    #[error("{0}")]
+    Mast(#[from] miden_protocol::assembly::mast::MastForestError),
     #[error("invalid script entrypoint: {0}")]
     Entrypoint(#[from] miden_protocol::utils::serde::DeserializationError),
     #[error("invalid transaction script: {0}")]
@@ -575,7 +578,7 @@ pub enum TransactionInputsError {
     #[error("{0}")]
     Advice(#[from] super::primitives::AdviceError),
     #[error("{0}")]
-    Code(#[from] miden_protocol::errors::AccountError),
+    Code(#[from] super::account::AccountCodeError),
     #[error("{0}")]
     Slot(#[from] ForeignAccountSlotNameError),
     #[error("duplicate foreign account storage slot ID {0}")]

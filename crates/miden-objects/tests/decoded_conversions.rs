@@ -19,9 +19,16 @@ fn felt_atomic_decode() {
 }
 
 #[test]
-fn mast_forest_atomic_decode() {
+fn mast_forest_decode_and_verify() {
     let mast = miden_protocol::MastForest::new();
-    assert_eq!(proto::primitives::MastForest::from(&mast).decode_fields().unwrap(), mast);
+    assert_eq!(
+        proto::primitives::MastForest::from(&mast)
+            .decode_fields()
+            .unwrap()
+            .verify()
+            .unwrap(),
+        mast
+    );
 }
 
 #[test]

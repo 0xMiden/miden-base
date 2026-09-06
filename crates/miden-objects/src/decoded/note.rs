@@ -35,6 +35,8 @@ impl Verify for NoteAttachment {
 #[derive(Debug, thiserror::Error)]
 pub enum VerificationError {
     #[error("{0}")]
+    Mast(#[from] miden_protocol::assembly::mast::MastForestError),
+    #[error("{0}")]
     AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("invalid note asset: {0}")]
     Asset(#[from] super::asset::VerificationError),
@@ -72,8 +74,9 @@ impl Verify for NoteScript {
     type Verified = miden_protocol::note::NoteScript;
     type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &self.mast)?;
-        Ok(Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), entrypoint)?)
+        let mast = self.mast.verify()?;
+        let entrypoint = miden_protocol::MastNodeId::from_u32_safe(self.entrypoint, &mast)?;
+        Ok(Self::Verified::from_parts(alloc::sync::Arc::new(mast), entrypoint)?)
     }
 }
 

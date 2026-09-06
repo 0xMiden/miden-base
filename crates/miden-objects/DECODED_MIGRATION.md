@@ -13,20 +13,19 @@ The imported `google.protobuf.Empty` is not counted as a Miden message.
 
 | Primary construction capability | Messages |
 | --- | ---: |
-| Generated records with manual `Verify` | 82 |
+| Generated records with manual `Verify` | 83 |
 | Generated records with manual `BuildUnchecked` | 10 |
 | Generated record with contextual verification only | 1 |
-| Canonical atomic representation adapters | 4 |
+| Canonical atomic representation adapters | 3 |
 | Unmigrated messages | 0 |
 | Total | 97 |
 
-Two unchecked records also implement `VerifyWith`. The four atoms are
-`primitives.Word`, `primitives.Felt`, `primitives.MastForest`,
-and `primitives.ExecutionProof`. Their existing canonical
+Two unchecked records also implement `VerifyWith`. The three atoms are
+`primitives.Word`, `primitives.Felt`, and `primitives.ExecutionProof`. Their existing canonical
 representation parsing and leaf diagnostics remain handwritten. This is not 97 fully
 generated domain conversions.
 
-Generated-record selection and the two byte adapter attributes live in [build.rs](build.rs).
+Generated-record selection and byte adapter attributes live in [build.rs](build.rs).
 Handwritten construction lives in [src/decoded](src/decoded). Combined protobuf-to-domain
 `TryFrom`/`From` conversions, including borrowed wrappers and batch decoding helpers, have been
 removed. Callers must use `decode_fields()` and explicitly choose `verify()`, `verify_with(context)`,
@@ -48,6 +47,9 @@ The old required-field helper and handwritten proven-batch parts struct have als
   for bytes, including optional/repeated fields and oneof payloads. Paths remain generated.
 - Keys and signatures use the reusable `Canonical<T>` adapter. It deserializes and requires
   reserialization to match, rejecting trailing or noncanonical bytes. It does not authenticate.
+- MAST bytes decode into an `UntrustedMastForest` payload. `Verify` validates its structure and
+  recomputes node hashes before producing a trusted forest. Account code and both script types
+  explicitly verify their nested forest before constructing the domain object.
 - Maps and boxed messages remain unsupported, but neither blocks these schemas.
 
 No domain target, constructor, ordered-field, or variant-mapping DSL was added.

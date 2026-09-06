@@ -51,15 +51,23 @@ pub use proto::account::DecodedAccountCode as AccountCode;
 
 impl Verify for AccountCode {
     type Verified = miden_protocol::account::AccountCode;
-    type Error = miden_protocol::errors::AccountError;
+    type Error = AccountCodeError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let roots = self
             .procedure_roots
             .into_iter()
             .map(miden_protocol::account::AccountProcedureRoot::from_raw)
             .collect();
-        Self::Verified::from_parts(alloc::sync::Arc::new(self.mast), roots)
+        Ok(Self::Verified::from_parts(alloc::sync::Arc::new(self.mast.verify()?), roots)?)
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum AccountCodeError {
+    #[error("{0}")]
+    Mast(#[from] miden_protocol::assembly::mast::MastForestError),
+    #[error("{0}")]
+    Code(#[from] miden_protocol::errors::AccountError),
 }
 
 pub use proto::account::DecodedAccountWitness as AccountWitness;
@@ -331,7 +339,7 @@ pub enum AccountPatchError {
     #[error("{0}")]
     Vault(#[from] VaultPatchError),
     #[error("{0}")]
-    Code(#[from] miden_protocol::errors::AccountError),
+    Code(#[from] AccountCodeError),
     #[error("{0}")]
     Patch(#[from] miden_protocol::errors::AccountPatchError),
 }
@@ -446,6 +454,8 @@ impl Verify for PartialAccount {
 
 #[derive(Debug, thiserror::Error)]
 pub enum PartialAccountError {
+    #[error("{0}")]
+    Code(#[from] AccountCodeError),
     #[error("{0}")]
     AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("{0}")]

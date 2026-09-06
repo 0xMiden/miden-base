@@ -44,6 +44,21 @@
 //! use miden_protocol::block::BlockNumber;
 //! let _: BlockNumber = proto::blockchain::BlockNumber::default().into();
 //! ```
+//!
+//! A parsed MAST forest is not trusted until its structure and node hashes are verified:
+//!
+//! ```compile_fail,E0277
+//! use miden_objects::proto;
+//! use miden_protocol::MastForest;
+//! let _: MastForest = proto::primitives::MastForest::default().try_into().unwrap();
+//! ```
+//!
+//! ```compile_fail,E0277
+//! use miden_objects::proto;
+//! use miden_protocol::MastForest;
+//! let message = proto::primitives::MastForest::default();
+//! let _: MastForest = (&message).try_into().unwrap();
+//! ```
 
 pub mod protocol_config;
 

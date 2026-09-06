@@ -333,17 +333,9 @@ fn transaction_script_rejects_missing_mast_and_invalid_entrypoint() {
         mast: Some(proto::primitives::MastForest { encoded: vec![0] }),
     };
     let error = malformed_mast.decode_fields().unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .starts_with("mast.encoded: failed to deserialize MastForest: "),
-        "{error}"
-    );
+    assert!(error.to_string().starts_with("mast.encoded: "), "{error}");
     assert_matches!(
-        error
-            .source()
-            .and_then(Error::source)
-            .and_then(|source| source.downcast_ref::<DeserializationError>()),
-        Some(DeserializationError::UnexpectedEOF)
+        error.source().and_then(|source| source.downcast_ref::<DeserializationError>()),
+        Some(DeserializationError::InvalidValue(message)) if message.contains("budget exhausted")
     );
 }

@@ -38,7 +38,7 @@ are intentionally unavailable for generated records. Callers must decode the fie
 explicitly select a construction capability; only atomic representation adapters retain their
 `TryFrom` implementations.
 
-All 97 Miden messages are integrated: 93 generated records and four canonical atomic adapters.
+All 97 Miden messages are integrated: 94 generated records and three canonical atomic adapters.
 Construction capabilities, trust boundaries, and unreleased wire changes are detailed in
 [Decoded Conversion Migration](DECODED_MIGRATION.md).
 
