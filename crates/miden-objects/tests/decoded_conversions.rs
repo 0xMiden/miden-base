@@ -658,3 +658,25 @@ fn storage_slot_decodes_named_type_and_defers_semantics() {
             .unwrap();
     assert!(decoded.verify().is_err());
 }
+
+#[test]
+fn storage_header_reports_nested_enum_paths_and_defers_duplicates() {
+    let slot = proto::account::account_storage_header::StorageSlot {
+        slot_name: miden_protocol::account::StorageSlotName::mock(1).as_str().into(),
+        slot_type: proto::account::StorageSlotType::Value as i32,
+        commitment: Some(Word::empty().into()),
+    };
+    let decoded = proto::account::AccountStorageHeader { slots: vec![slot.clone(), slot.clone()] }
+        .decode_fields()
+        .unwrap();
+    assert!(decoded.verify().is_err());
+    let error = proto::account::AccountStorageHeader {
+        slots: vec![
+            slot.clone(),
+            proto::account::account_storage_header::StorageSlot { slot_type: 99, ..slot },
+        ],
+    }
+    .decode_fields()
+    .unwrap_err();
+    assert!(error.to_string().starts_with("slots[1].slot_type: "), "{error}");
+}

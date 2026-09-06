@@ -13,9 +13,7 @@ use miden_protocol::account::{
     PartialStorage,
     PartialStorageMap,
     StorageMapKey,
-    StorageSlotHeader,
     StorageSlotId,
-    StorageSlotName,
     StorageSlotType,
 };
 use miden_protocol::asset::{AssetId, PartialVault};
@@ -96,37 +94,6 @@ impl From<&StorageSlotId> for proto::account::StorageSlotId {
     }
 }
 
-impl TryFrom<proto::account::AccountStorageHeader> for AccountStorageHeader {
-    type Error = ConversionError;
-
-    fn try_from(message: proto::account::AccountStorageHeader) -> Result<Self, Self::Error> {
-        let slots = message
-            .slots
-            .into_iter()
-            .map(|slot| {
-                use proto::account::account_storage_header::storage_slot::Content;
-
-                let name = StorageSlotName::new(slot.slot_name).map_err(ConversionError::new)?;
-                let (slot_type, commitment) = match slot.content {
-                    Some(Content::Value(value)) => {
-                        (StorageSlotType::Value, value.try_into().context("content.value")?)
-                    },
-                    Some(Content::MapRoot(root)) => {
-                        (StorageSlotType::Map, root.try_into().context("content.map_root")?)
-                    },
-                    None => {
-                        return Err(ConversionError::missing_field::<
-                            proto::account::account_storage_header::StorageSlot,
-                        >("content"));
-                    },
-                };
-                Ok(StorageSlotHeader::new(name, slot_type, commitment))
-            })
-            .collect::<Result<Vec<_>, ConversionError>>()
-            .context("slots")?;
-        AccountStorageHeader::new(slots).map_err(ConversionError::new)
-    }
-}
 
 impl From<&AccountStorageHeader> for proto::account::AccountStorageHeader {
     fn from(account_storage_header: &AccountStorageHeader) -> Self {
