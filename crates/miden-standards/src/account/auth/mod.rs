@@ -14,7 +14,7 @@ mod singlesig;
 pub use singlesig::AuthSingleSig;
 
 mod multisig;
-pub use multisig::{AuthMultisig, AuthMultisigConfig};
+pub use multisig::{AuthMultisig, AuthMultisigConfig, MultisigAuthArgs};
 
 pub mod multisig_smart;
 pub use multisig_smart::{AuthMultisigSmart, AuthMultisigSmartConfig};
