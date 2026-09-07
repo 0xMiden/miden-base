@@ -20,12 +20,6 @@ use miden_protocol::errors::NoteError;
 /// ```
 ///
 /// This way, hints such as [NoteExecutionHint::Always], are represented by `Felt::ONE`.
-///
-/// Decoding a [`Felt`] into a hint is infallible: a felt that does not encode a recognized hint
-/// becomes [`NoteExecutionHint::Unknown`], which preserves it verbatim so that re-encoding is
-/// lossless. This matters because the hint occupies one felt of a note attachment that is bound
-/// into the note commitment, and because it is advisory - the on-chain paths that route and
-/// consume a note never read it.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NoteExecutionHint {
     /// Unspecified note execution hint. Implies it is not known under which conditions the note
@@ -54,10 +48,6 @@ pub enum NoteExecutionHint {
         slot_offset: u8,
     },
     /// An encoding that this version does not recognize, preserved verbatim.
-    ///
-    /// Like [`NoteExecutionHint::None`] this says nothing about when the note is consumable, but
-    /// for a different reason: the creator did specify conditions, in terms this version cannot
-    /// read.
     Unknown(Felt),
 }
 
@@ -257,8 +247,7 @@ mod tests {
         assert_eq!(Felt::from(NoteExecutionHint::always()).as_canonical_u64(), 1);
     }
 
-    /// A felt that does not encode a recognized hint decodes as `Unknown` and survives the round
-    /// trip unchanged, so it can be re-encoded into a commitment-bound attachment word.
+    /// A felt that does not encode a recognized hint decodes as `Unknown`.
     #[test]
     fn unknown_hint_round_trip() {
         // A tag above the highest known one, a non-zero payload on a tag that requires an empty
