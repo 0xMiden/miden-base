@@ -155,13 +155,11 @@ impl NoteConsumptionInfo {
 // NOTE BUNDLE
 // ================================================================================================
 
-/// A group of input notes that has to be tested for consumability as a unit.
+/// A group of input notes that has to be tested for consumability as a unit, such as a feature note
+/// and the notes which sponsor it.
 ///
-/// Most notes stand alone, but some are consumable only in each other's company: a FEE_SPONSORSHIP
-/// note is rejected unless the feature note it pays for is an input of the same transaction, and a
-/// feature note whose fee is not covered is rejected unless its sponsorships are. Probing such
-/// notes individually always fails, so the search for an executable set treats a bundle as its
-/// smallest unit.
+/// Neither half of such a group executes on its own, so probing its notes individually always
+/// fails and the search for an executable set has to treat the bundle as its smallest unit.
 #[derive(Debug)]
 struct NoteBundle {
     notes: Vec<Note>,
@@ -170,17 +168,12 @@ struct NoteBundle {
 impl NoteBundle {
     /// Groups `notes` into bundles that must be consumed together.
     ///
-    /// A FEE_SPONSORSHIP note joins the bundle of the feature note it names, wherever that note
-    /// sits in `notes`; several sponsorships may join the same bundle, matching the top-up
-    /// behaviour of `collect_sponsored_fees`. A sponsorship whose feature note is absent from
-    /// `notes`, or whose storage does not decode, forms a bundle of its own so that it fails alone
-    /// instead of dropping the notes it would otherwise have been grouped with. Every other note
-    /// forms a bundle of its own.
+    /// A FEE_SPONSORSHIP note joins the bundle of the feature note it names; one whose feature note
+    /// is absent forms a bundle of its own, so that it fails alone rather than dropping the notes
+    /// it would otherwise have been grouped with. Every other note forms a bundle of its own.
     ///
-    /// The note heading a bundle, the one every other note in it is bound to, is always first.
-    /// Bundles are ordered by that note's position in `notes`, and the notes bound to it keep their
-    /// relative order, so the caller's ordering still determines the order in which candidates are
-    /// probed.
+    /// The note heading a bundle, the one the rest of it is bound to, is always first, and bundles
+    /// keep the ordering of `notes`.
     fn group(notes: Vec<Note>) -> Vec<Self> {
         let note_indices: BTreeMap<NoteId, usize> =
             notes.iter().enumerate().map(|(idx, note)| (note.id(), idx)).collect();
@@ -192,8 +185,9 @@ impl NoteBundle {
         for (idx, note) in notes.into_iter().enumerate() {
             // A sponsorship is only bundled when the note it names is actually an input; otherwise
             // it can only be reclaimed, which is something it has to attempt on its own.
-            match FeeSponsorshipNote::sponsored_feature_note_id(&note)
-                .and_then(|feature_note_id| note_indices.get(&feature_note_id).copied())
+            match FeeSponsorshipNote::try_from(&note)
+                .ok()
+                .and_then(|sponsorship| note_indices.get(&sponsorship.feature_note_id()).copied())
             {
                 Some(head_idx) => bundles.entry(head_idx).or_default().push(note),
                 // This note heads its own bundle, so it goes first whichever side of the notes
@@ -257,7 +251,7 @@ where
     /// otherwise-successful notes are retried in various combinations in an attempt to find a
     /// combination that passes the epilogue phase successfully. Notes that are only consumable
     /// together, such as a feature note and the FEE_SPONSORSHIP notes bound to it, are grouped and
-    /// retried as a unit, since neither part of such a group executes on its own.
+    /// retried as a unit.
     ///
     /// Returns a list of successfully consumed notes and a list of failed notes.
     pub async fn check_notes_consumability(
@@ -428,11 +422,6 @@ where
     /// The notes are first grouped into [`NoteBundle`]s, and the search grows a known-good set one
     /// bundle at a time: each round appends every remaining bundle to the accepted set in turn and
     /// keeps the first bundle that lets the whole set pass, until a round adds nothing.
-    ///
-    /// Bundles rather than individual notes are the unit of the search because some notes are only
-    /// consumable together. Growing the set one note at a time can never reach such a set: it only
-    /// reaches sets that contain a consumable subset with one note fewer, and a bound
-    /// (feature note, FEE_SPONSORSHIP) pair has none - neither half executes on its own.
     async fn find_largest_executable_combination(
         &self,
         remaining_notes: Vec<Note>,

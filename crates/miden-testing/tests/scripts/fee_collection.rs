@@ -1338,12 +1338,6 @@ async fn check_consumability(
 /// An uncovered feature note does not drag the intact (feature note, FEE_SPONSORSHIP) pairs
 /// sharing its batch down with it.
 ///
-/// The uncovered note aborts fee collection in the auth procedure, which runs after note
-/// processing and so is reported as an epilogue failure. That routes the batch into a search for
-/// the largest executable set, which grows its candidate set one bundle at a time: a bound pair is
-/// a single bundle, so it is tested - and kept - as a unit even though neither of its halves is
-/// consumable alone.
-///
 /// Writing `F` for a feature note, `S` for the sponsorship bound to it and `S'` for an underfunded
 /// one, the cases below are:
 ///
@@ -1399,8 +1393,7 @@ async fn note_checker_keeps_intact_pairs_alongside_an_uncovered_note(
 }
 
 /// A FEE_SPONSORSHIP note whose feature note is absent is not bundled with anything: it fails on
-/// its own - it can neither be collected, since fee collection rejects a sponsorship without its
-/// feature note, nor reclaimed by the network account - and leaves an intact pair untouched.
+/// its own and leaves an intact pair untouched.
 #[tokio::test]
 async fn note_checker_fails_an_orphan_sponsorship_alone() -> anyhow::Result<()> {
     let Test {
