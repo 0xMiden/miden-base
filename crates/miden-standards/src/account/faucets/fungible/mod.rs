@@ -572,8 +572,7 @@ impl TryFrom<&Account> for FungibleFaucet {
 /// # Errors
 ///
 /// Returns an error if `account_type` is [`AccountType::Private`] while `token_policy_manager`
-/// registers a transfer policy, since such a policy enables asset callbacks. See
-/// [`AccountBuilder`] for why the combination is rejected.
+/// registers a transfer policy, since such a policy enables asset callbacks.
 pub fn create_singlesig_user_fungible_faucet(
     init_seed: [u8; 32],
     faucet: FungibleFaucet,
@@ -599,8 +598,7 @@ pub fn create_singlesig_user_fungible_faucet(
 /// # Errors
 ///
 /// Returns an error if `account_type` is [`AccountType::Private`] while `token_policy_manager`
-/// registers a transfer policy, since such a policy enables asset callbacks. See
-/// [`AccountBuilder`] for why the combination is rejected.
+/// registers a transfer policy, since such a policy enables asset callbacks.
 pub fn create_multisig_user_fungible_faucet(
     init_seed: [u8; 32],
     faucet: FungibleFaucet,
@@ -626,8 +624,7 @@ pub fn create_multisig_user_fungible_faucet(
 /// # Errors
 ///
 /// Returns an error if `account_type` is [`AccountType::Private`] while `token_policy_manager`
-/// registers a transfer policy, since such a policy enables asset callbacks. See
-/// [`AccountBuilder`] for why the combination is rejected.
+/// registers a transfer policy, since such a policy enables asset callbacks.
 pub fn create_guarded_user_fungible_faucet(
     init_seed: [u8; 32],
     faucet: FungibleFaucet,

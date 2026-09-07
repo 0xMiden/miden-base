@@ -90,9 +90,7 @@ fn non_fungible_faucet_factories_encode_transfer_policy_callback_flag(
     assert_eq!(network.id().asset_callback_flag(), expected_flag);
 }
 
-/// The user faucet factory must reject a private faucet with a transfer policy, rather than create
-/// a faucet whose assets no holder can move. See
-/// [`AccountBuilder`][miden_protocol::account::AccountBuilder] for why.
+/// The user faucet factory must reject a private faucet with a transfer policy.
 #[test]
 fn private_non_fungible_faucet_with_transfer_policy_is_rejected() {
     let approver = Approver::new(

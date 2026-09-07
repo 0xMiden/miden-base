@@ -48,13 +48,7 @@ use crate::{Felt, Word};
 /// installing a callback slot, so that the account retains the ability to add a callback slot via
 /// an account upgrade later. This is particularly useful if new types of callbacks are introduced.
 ///
-/// An account with an enabled flag must be of type [`AccountType::Public`]. Dispatching a callback
-/// starts a foreign context against the issuing account, so the account's state is a required
-/// input of every transaction that moves one of its assets, and only a public account's state is
-/// published on chain. The foreign state is loaded before the callback slot is looked up, so the
-/// load happens even when the account registers no callback procedure root at all. Since both the
-/// account type and the flag are immutable parts of the [`AccountId`], the combination could never
-/// be corrected afterwards, which is why [`AccountBuilder::build`] rejects it up front.
+/// An account with an enabled flag must be of type [`AccountType::Public`].
 ///
 /// [`AccountBuilder::with_component`] (or [`AccountBuilder::with_components`]) must be called at
 /// least once, and exactly one of the added components must be an authentication component (i.e. a
@@ -206,8 +200,6 @@ impl AccountBuilder {
     }
 
     /// Derives the account's [`AssetCallbackFlag`] and rejects enabling it on a private account.
-    ///
-    /// See the [type-level docs](AccountBuilder#asset-callbacks) for details.
     fn validated_asset_callbacks(
         &self,
         storage: &AccountStorage,
@@ -648,10 +640,7 @@ mod tests {
         }
     }
 
-    /// An enabled [`AssetCallbackFlag`] on a private account is rejected at build time, whether it
-    /// comes from an installed callback slot or from [`Self::enable_asset_callbacks`].
-    ///
-    /// See the [type-level docs](AccountBuilder#asset-callbacks) for details.
+    /// An enabled [`AssetCallbackFlag`] on a private account is rejected at build time.
     #[test]
     fn account_builder_rejects_asset_callbacks_on_private_account() {
         let callback_component = AccountComponent::new(
@@ -671,7 +660,6 @@ mod tests {
             .expect_err("private account with a callback slot should be rejected");
         assert_matches!(error, AccountError::AssetCallbacksOnPrivateAccount);
 
-        // The same applies when the flag is enabled without installing a callback slot.
         let error = Account::builder([7; 32])
             .account_type(AccountType::Private)
             .with_component(NoopAuthComponent)

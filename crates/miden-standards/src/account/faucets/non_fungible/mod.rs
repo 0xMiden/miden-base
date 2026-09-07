@@ -516,8 +516,7 @@ impl TryFrom<&Account> for NonFungibleFaucet {
 /// # Errors
 ///
 /// Returns an error if `account_type` is [`AccountType::Private`] while `token_policy_manager`
-/// registers a transfer policy, since such a policy enables asset callbacks. See
-/// [`AccountBuilder`] for why the combination is rejected.
+/// registers a transfer policy, since such a policy enables asset callbacks.
 pub fn create_user_non_fungible_faucet(
     init_seed: [u8; 32],
     faucet: NonFungibleFaucet,
