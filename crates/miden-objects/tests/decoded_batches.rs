@@ -124,26 +124,3 @@ fn proven_batch_rejects_changed_proposal_fields() {
         );
     }
 }
-
-#[test]
-fn aggregate_decoding_retains_full_paths_before_verification() {
-    let proposal = proposal();
-    let mut wire: proto::transaction::ProposedBatch = (&proposal).into();
-    wire.transactions[0]
-        .account_update
-        .as_mut()
-        .unwrap()
-        .details
-        .as_mut()
-        .unwrap()
-        .update = None;
-    let error = wire.decode_fields().unwrap_err();
-    assert!(
-        error.to_string().starts_with("transactions[0].account_update.details.update:"),
-        "{error}"
-    );
-    let mut wire: proto::transaction::ProvenBatch = proven(&proposal).into();
-    wire.transactions[0].transaction_id.as_mut().unwrap().id = None;
-    let error = wire.decode_fields().unwrap_err();
-    assert!(error.to_string().starts_with("transactions[0].transaction_id.id:"), "{error}");
-}

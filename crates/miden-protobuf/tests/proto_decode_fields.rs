@@ -1,7 +1,8 @@
+#![cfg(feature = "derive")]
+
 use core::convert::Infallible;
 
-use miden_objects::{BuildUnchecked, DecodeMessage, VerifyWith};
-use miden_protobuf::ProtoDecodeFields;
+use miden_protobuf::{BuildUnchecked, DecodeMessage, ProtoDecodeFields, VerifyWith};
 
 #[derive(Clone, PartialEq, prost::Message, ProtoDecodeFields)]
 struct Leaf {
@@ -52,9 +53,15 @@ fn generated_records_report_complete_paths() {
     let error = Container::default().decode_fields().unwrap_err();
     assert!(error.to_string().starts_with("required:"), "{error}");
 }
-#[derive(Debug, thiserror::Error)]
-#[error("value exceeds permitted limit")]
+#[derive(Debug)]
 struct LimitExceeded;
+
+impl core::fmt::Display for LimitExceeded {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("value exceeds permitted limit")
+    }
+}
+impl core::error::Error for LimitExceeded {}
 
 impl VerifyWith<&u32> for DecodedLeaf {
     type Verified = u32;

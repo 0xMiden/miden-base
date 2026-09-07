@@ -183,15 +183,7 @@ fn note_argument_decoding_normalizes_arbitrary_entry_order() {
 }
 
 #[test]
-fn advice_inputs_require_nested_messages_and_reject_duplicate_map_keys() {
-    let missing_stack = proto::primitives::AdviceInputs {
-        advice_stack: None,
-        advice_map: Some(proto::primitives::AdviceMap { entries: vec![] }),
-        merkle_store: Some(proto::primitives::MerkleStore { nodes: vec![] }),
-    };
-    let error = missing_stack.decode_fields().unwrap_err();
-    assert!(error.to_string().ends_with("::advice_stack is missing"));
-
+fn advice_map_rejects_duplicate_keys() {
     let duplicate = proto::primitives::AdviceMap {
         entries: vec![
             proto::primitives::AdviceMapEntry {
@@ -214,23 +206,7 @@ fn advice_inputs_require_nested_messages_and_reject_duplicate_map_keys() {
 }
 
 #[test]
-fn advice_stack_rejects_invalid_felts() {
-    let error = proto::primitives::AdviceStack {
-        values: vec![proto::primitives::Felt { value: Felt::ORDER }],
-    }
-    .decode_fields()
-    .unwrap_err();
-
-    assert_matches!(
-        error
-            .source()
-            .and_then(|source| source.downcast_ref::<<Felt as TryFrom<u64>>::Error>()),
-        Some(source) if source.as_u64() == Felt::ORDER
-    );
-}
-
-#[test]
-fn merkle_store_rejects_duplicate_parents_and_preserves_invalid_word_source() {
+fn merkle_store_rejects_duplicate_parents() {
     let node = proto::primitives::MerkleStoreNode {
         value: Some(dummy_word(1).into()),
         left: Some(dummy_word(2).into()),
@@ -244,35 +220,10 @@ fn merkle_store_rejects_duplicate_parents_and_preserves_invalid_word_source() {
         .map_err(ConversionError::new)
         .unwrap_err();
     assert_eq!(error.to_string(), format!("duplicate Merkle store parent {}", dummy_word(1)));
-
-    let invalid = proto::primitives::MerkleStore {
-        nodes: vec![proto::primitives::MerkleStoreNode {
-            value: Some(proto::primitives::Word { encoded: vec![0; 31] }),
-            left: Some(dummy_word(2).into()),
-            right: Some(dummy_word(3).into()),
-        }],
-    };
-    let error = invalid.decode_fields().unwrap_err();
-    assert!(error.to_string().starts_with("nodes[0].value.encoded: "), "{error}");
-    assert!(error.source().is_some());
 }
 
 #[test]
-fn transaction_args_require_nested_messages_and_reject_duplicate_note_ids() {
-    let missing = proto::transaction::TransactionArgs {
-        tx_script: None,
-        tx_script_args: None,
-        note_args: vec![],
-        advice_inputs: Some(proto::primitives::AdviceInputs {
-            advice_stack: Some(proto::primitives::AdviceStack { values: vec![] }),
-            advice_map: Some(proto::primitives::AdviceMap { entries: vec![] }),
-            merkle_store: Some(proto::primitives::MerkleStore { nodes: vec![] }),
-        }),
-        auth_args: Some(dummy_word(1).into()),
-    };
-    let error = missing.decode_fields().unwrap_err();
-    assert!(error.to_string().ends_with("::tx_script_args is missing"));
-
+fn transaction_args_reject_duplicate_note_ids() {
     let note = note_id(1);
     let duplicate = proto::transaction::TransactionArgs {
         tx_script: None,
@@ -304,11 +255,7 @@ fn transaction_args_require_nested_messages_and_reject_duplicate_note_ids() {
 }
 
 #[test]
-fn transaction_script_rejects_missing_mast_and_invalid_entrypoint() {
-    let missing_mast = proto::transaction::TransactionScript { entrypoint: 0, mast: None };
-    let error = missing_mast.decode_fields().unwrap_err();
-    assert!(error.to_string().ends_with("::mast is missing"));
-
+fn transaction_script_rejects_invalid_entrypoint_and_malformed_mast() {
     let invalid_entrypoint = proto::transaction::TransactionScript {
         entrypoint: 1,
         mast: Some(miden_protocol::MastForest::new().into()),

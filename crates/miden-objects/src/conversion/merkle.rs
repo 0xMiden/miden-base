@@ -260,16 +260,6 @@ mod tests {
     }
 
     #[test]
-    fn partial_smt_rejects_missing_root() {
-        let mut encoded = empty_partial_smt_message();
-        encoded.root = None;
-        assert_partial_smt_decode_error(
-            encoded,
-            "root: field miden_objects::proto::primitives::PartialSmt::root is missing",
-        );
-    }
-
-    #[test]
     fn partial_smt_rejects_duplicate_depth() {
         let mut encoded = empty_partial_smt_message();
         encoded.node_levels = vec![
@@ -290,40 +280,6 @@ mod tests {
             }],
         }];
         assert_partial_smt_decode_error(encoded, "node index position 2 is not valid for depth 1");
-    }
-
-    #[test]
-    fn partial_smt_rejects_missing_node_digest() {
-        let mut encoded = empty_partial_smt_message();
-        encoded.node_levels = vec![proto::primitives::PartialSmtNodeLevel {
-            depth: 1,
-            nodes: vec![proto::primitives::PartialSmtNode { index: 0, digest: None }],
-        }];
-        assert_partial_smt_decode_error(
-            encoded,
-            "node_levels[0].nodes[0].digest: field miden_objects::proto::primitives::PartialSmtNode::digest is missing",
-        );
-    }
-
-    #[test]
-    fn partial_smt_rejects_missing_leaf() {
-        let mut encoded = empty_partial_smt_message();
-        encoded.leaves = vec![proto::primitives::IndexedSmtLeaf { index: 0, leaf: None }];
-        assert_partial_smt_decode_error(
-            encoded,
-            "leaves[0].leaf: field miden_objects::proto::primitives::IndexedSmtLeaf::leaf is missing",
-        );
-    }
-
-    #[test]
-    fn partial_smt_rejects_missing_value_only_leaf() {
-        let mut encoded = empty_partial_smt_message();
-        encoded.value_only_leaves =
-            vec![proto::primitives::IndexedDigest { index: 0, value: None }];
-        assert_partial_smt_decode_error(
-            encoded,
-            "value_only_leaves[0].value: field miden_objects::proto::primitives::IndexedDigest::value is missing",
-        );
     }
 
     #[test]

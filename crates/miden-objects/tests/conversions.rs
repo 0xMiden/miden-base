@@ -45,13 +45,11 @@ use miden_protocol::errors::{
 };
 use miden_protocol::note::{Note, NoteType, PartialNoteMetadata};
 use miden_protocol::protocol_config::NextProtocolConfig;
-use miden_protocol::testing::dummy_execution_proof;
 use miden_protocol::transaction::{
     InputNotes,
     OrderedTransactionHeaders,
     PublicOutputNote,
     TransactionHeader,
-    TxAccountUpdate,
 };
 use miden_protocol::{Felt, Word};
 use prost::Message;
@@ -96,72 +94,7 @@ fn non_fungible_asset_roundtrips_through_structured_protobuf() {
 }
 
 #[test]
-fn structured_asset_conversion_requires_message_fields() {
-    let suffix_error = proto::asset::AssetClass {
-        suffix: None,
-        prefix: Some(Felt::ZERO.into()),
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert_eq!(
-        suffix_error.to_string(),
-        "suffix: field miden_objects::proto::asset::AssetClass::suffix is missing"
-    );
-
-    let prefix_error = proto::asset::AssetClass {
-        suffix: Some(Felt::ZERO.into()),
-        prefix: None,
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert_eq!(
-        prefix_error.to_string(),
-        "prefix: field miden_objects::proto::asset::AssetClass::prefix is missing"
-    );
-
-    let asset_id_error = proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        ..Default::default()
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert!(asset_id_error.to_string().ends_with("::asset_class is missing"));
-
-    let faucet_id_error = proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(proto::asset::AssetClass {
-            suffix: Some(Felt::ZERO.into()),
-            prefix: Some(Felt::ZERO.into()),
-        }),
-        composition: proto::asset::AssetComposition::Fungible as i32,
-        faucet_id: None,
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert!(faucet_id_error.to_string().ends_with("::faucet_id is missing"));
-
-    let asset_error = proto::asset::Asset::default().decode_fields().unwrap_err();
-    assert!(asset_error.to_string().ends_with("::asset_id is missing"));
-
-    let value_error = proto::asset::Asset {
-        asset_id: Some(proto::asset::AssetId {
-            version: proto::asset::AssetVersion::V1 as i32,
-            asset_class: Some(proto::asset::AssetClass {
-                suffix: Some(Felt::ZERO.into()),
-                prefix: Some(Felt::ZERO.into()),
-            }),
-            composition: proto::asset::AssetComposition::Fungible as i32,
-            faucet_id: Some(FungibleAsset::mock_issuer().into()),
-        }),
-        value: None,
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert!(value_error.to_string().ends_with("::value is missing"));
-}
-
-#[test]
-fn structured_asset_conversion_rejects_unspecified_unknown_and_custom_compositions() {
+fn structured_asset_conversion_rejects_unspecified_and_custom_compositions() {
     let asset_class = proto::asset::AssetClass {
         suffix: Some(Felt::ZERO.into()),
         prefix: Some(Felt::ZERO.into()),
@@ -180,16 +113,6 @@ fn structured_asset_conversion_rejects_unspecified_unknown_and_custom_compositio
     .map_err(ConversionError::new)
     .unwrap_err();
     assert_eq!(unspecified.to_string(), "asset composition is unspecified");
-
-    let unknown = proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(asset_class),
-        composition: 4,
-        faucet_id,
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert_eq!(unknown.to_string(), format!("composition: {}", prost::UnknownEnumValue(4)));
 
     let custom = proto::asset::AssetId {
         version: proto::asset::AssetVersion::V1 as i32,
@@ -286,45 +209,6 @@ fn asset_id_protobuf_rejects_unspecified_version_after_decoding() {
     assert_eq!(error.to_string(), "asset id version is unspecified");
 }
 
-#[test]
-fn asset_id_protobuf_preserves_unknown_version_error_sources() {
-    for version in [i32::MAX, i32::MIN] {
-        let error = proto::asset::AssetId { version, ..Default::default() }
-            .decode_fields()
-            .unwrap_err();
-
-        assert_eq!(error.to_string(), format!("version: {}", prost::UnknownEnumValue(version)));
-        assert_matches!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-            Some(prost::UnknownEnumValue(value)) if *value == version
-        );
-    }
-}
-
-#[test]
-fn conversion_error_preserves_deserialization_error_source() {
-    use miden_protocol::utils::serde::DeserializationError;
-
-    let error = ConversionError::deserialization(
-        "AccountId",
-        DeserializationError::InvalidValue("invalid account id".into()),
-    );
-
-    assert_eq!(
-        error.to_string(),
-        "failed to deserialize AccountId: invalid value: invalid account id"
-    );
-    assert_matches!(
-        error
-            .source()
-            .and_then(Error::source)
-            .and_then(|source| source.downcast_ref::<DeserializationError>()),
-        Some(DeserializationError::InvalidValue(message)) if message == "invalid account id"
-    );
-}
-
 fn private_account_id() -> AccountId {
     AccountId::dummy(
         [7; 15],
@@ -368,22 +252,6 @@ fn account_witness_protobuf_round_trip() {
     let decoded = message.decode_fields().unwrap().verify().unwrap();
 
     assert_eq!(decoded, witness);
-}
-
-#[test]
-fn account_witness_protobuf_requires_witness_id() {
-    let error = proto::account::AccountWitness {
-        commitment: Some(Word::empty().into()),
-        path: Some(proto::primitives::SparseMerklePath {
-            empty_nodes_mask: u64::MAX,
-            siblings: vec![],
-        }),
-        ..Default::default()
-    }
-    .decode_fields()
-    .unwrap_err();
-
-    assert!(error.to_string().ends_with("::witness_id is missing"));
 }
 
 #[test]
@@ -470,23 +338,6 @@ fn account_header_protobuf_rejects_unspecified_version_after_decoding() {
 }
 
 #[test]
-fn account_header_protobuf_preserves_unknown_version_error_sources() {
-    for version in [i32::MAX, i32::MIN] {
-        let error = proto::account::AccountHeader { version, ..Default::default() }
-            .decode_fields()
-            .unwrap_err();
-
-        assert_eq!(error.to_string(), format!("version: {}", prost::UnknownEnumValue(version)));
-        assert_matches!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-            Some(prost::UnknownEnumValue(value)) if *value == version
-        );
-    }
-}
-
-#[test]
 fn account_header_protobuf_preserves_invalid_nonce_source() {
     let error = proto::account::AccountHeader {
         version: proto::account::AccountVersion::V1 as i32,
@@ -539,23 +390,6 @@ fn account_patch_protobuf_rejects_unspecified_version_after_decoding() {
 }
 
 #[test]
-fn account_patch_protobuf_preserves_unknown_version_error_sources() {
-    for version in [i32::MAX, i32::MIN] {
-        let error = proto::account::AccountPatch { version, ..Default::default() }
-            .decode_fields()
-            .unwrap_err();
-
-        assert_eq!(error.to_string(), format!("version: unknown enumeration value {version}"));
-        assert_matches!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-            Some(prost::UnknownEnumValue(value)) if *value == version
-        );
-    }
-}
-
-#[test]
 fn note_metadata_roundtrips_through_flat_v1_protobuf_bytes() {
     let metadata = *Note::mock_noop(Word::empty()).metadata();
 
@@ -577,32 +411,6 @@ fn note_protobuf_roundtrips_through_versioned_note_metadata() {
 }
 
 #[test]
-fn note_protobuf_requires_note_attachments() {
-    let mut message = proto::note::Note::from(Note::mock_noop(Word::empty()));
-    message.note_attachments = None;
-
-    let error = message.decode_fields().unwrap_err();
-
-    assert_eq!(
-        error.to_string(),
-        "note_attachments: field miden_objects::proto::note::Note::note_attachments is missing"
-    );
-}
-
-#[test]
-fn note_protobuf_requires_note_details() {
-    let mut message = proto::note::Note::from(Note::mock_noop(Word::empty()));
-    message.note_details = None;
-
-    let error = message.decode_fields().unwrap_err();
-
-    assert_eq!(
-        error.to_string(),
-        "note_details: field miden_objects::proto::note::Note::note_details is missing"
-    );
-}
-
-#[test]
 fn note_metadata_protobuf_rejects_unspecified_version_after_decoding() {
     let error = proto::note::NoteMetadata {
         version: proto::note::NoteVersion::Unspecified as i32,
@@ -615,23 +423,6 @@ fn note_metadata_protobuf_rejects_unspecified_version_after_decoding() {
     .unwrap_err();
 
     assert_eq!(error.to_string(), "note metadata version is unspecified");
-}
-
-#[test]
-fn note_metadata_protobuf_preserves_unknown_version_error_sources() {
-    for version in [i32::MAX, i32::MIN] {
-        let error = proto::note::NoteMetadata { version, ..Default::default() }
-            .decode_fields()
-            .unwrap_err();
-
-        assert_eq!(error.to_string(), format!("version: {}", prost::UnknownEnumValue(version)));
-        assert_matches!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-            Some(prost::UnknownEnumValue(value)) if *value == version
-        );
-    }
 }
 
 #[test]
@@ -654,53 +445,6 @@ fn note_protobuf_reconstructs_attachment_metadata_from_structured_attachments() 
     assert_eq!(message.decode_fields().unwrap().verify().unwrap(), note);
 }
 
-#[test]
-fn note_metadata_protobuf_reports_invalid_sender() {
-    let metadata = *Note::mock_noop(Word::empty()).metadata();
-    let mut message = proto::note::NoteMetadata::from(metadata);
-    let proto::account::account_id::Version::V1(v1) =
-        message.sender.as_mut().unwrap().version.as_mut().unwrap();
-    v1.prefix.as_mut().unwrap().value = Felt::ORDER;
-
-    let error = message.decode_fields().unwrap_err();
-
-    assert!(error.to_string().starts_with("sender.version.v1.prefix.value: "));
-    assert!(
-        error
-            .source()
-            .unwrap()
-            .downcast_ref::<<Felt as TryFrom<u64>>::Error>()
-            .is_some()
-    );
-}
-
-fn assert_missing_block_number(error: ConversionError, field: &str) {
-    let error = error.to_string();
-    assert!(error.starts_with(&format!("{field}: field ")));
-    assert!(error.ends_with(&format!("::{field} is missing")));
-}
-
-fn proven_transaction_data() -> proto::transaction::ProvenTransaction {
-    let account_update = TxAccountUpdate::new(
-        private_account_id(),
-        Word::empty(),
-        Word::from([1_u32, 0, 0, 0]),
-        Word::empty(),
-        AccountUpdateDetails::Private,
-    )
-    .unwrap();
-
-    proto::transaction::ProvenTransaction {
-        account_update: Some((&account_update).into()),
-        input_notes: vec![],
-        output_notes: vec![],
-        reference_block_num: Some(proto::blockchain::BlockNumber { block_num: 1 }),
-        reference_block_commitment: Some(Word::empty().into()),
-        expiration_block_num: Some(proto::blockchain::BlockNumber { block_num: 2 }),
-        proof: Some(dummy_execution_proof().into()),
-    }
-}
-
 fn public_note() -> Note {
     let (assets, metadata, recipient, attachments) = Note::mock_noop(Word::empty()).into_parts();
     let metadata =
@@ -720,16 +464,6 @@ fn public_output_note_roundtrips_through_protobuf() {
 }
 
 #[test]
-fn public_output_note_protobuf_requires_nested_note() {
-    let error = proto::transaction::PublicOutputNote::default().decode_fields().unwrap_err();
-
-    assert_eq!(
-        error.to_string(),
-        "note: field miden_objects::proto::transaction::PublicOutputNote::note is missing"
-    );
-}
-
-#[test]
 fn public_output_note_protobuf_rejects_private_note() {
     let note = Note::mock_noop(Word::empty());
     let error = proto::transaction::PublicOutputNote { note: Some(note.clone().into()) }
@@ -743,19 +477,6 @@ fn public_output_note_protobuf_rejects_private_note() {
         error_source::<OutputNoteError>(&error),
         Some(OutputNoteError::NoteIsPrivate(note_id)) if *note_id == note.id()
     );
-}
-
-fn proven_batch_data() -> proto::transaction::ProvenBatch {
-    proto::transaction::ProvenBatch {
-        reference_block_commitment: Some(Word::empty().into()),
-        reference_block_num: Some(proto::blockchain::BlockNumber { block_num: 1 }),
-        account_updates: vec![],
-        input_notes: vec![],
-        output_notes: vec![],
-        expiration_block_num: Some(proto::blockchain::BlockNumber { block_num: 2 }),
-        transactions: vec![],
-        proof: Some(dummy_execution_proof().into()),
-    }
 }
 
 #[test]
@@ -804,45 +525,16 @@ fn block_body_and_transaction_header_roundtrip() {
 }
 
 #[test]
-fn account_storage_header_rejects_invalid_slot_types() {
-    for (slot_type, expected_message) in [
-        (Default::default(), "storage slot type is unspecified"),
-        (i32::MAX, "slots[0].slot_type: unknown enumeration value 2147483647"),
-    ] {
-        let message = proto::account::AccountStorageHeader {
-            slots: vec![proto::account::account_storage_header::StorageSlot {
-                slot_name: "miden::test::storage".into(),
-                slot_type,
-                commitment: Some(Word::empty().into()),
-            }],
-        };
-
-        let error = message
-            .decode_fields()
-            .and_then(|decoded| decoded.verify().map_err(ConversionError::new))
-            .unwrap_err();
-        assert_eq!(error.to_string(), expected_message);
-    }
-}
-
-#[test]
-fn account_storage_header_preserves_unknown_enum_value_source() {
-    let error = proto::account::AccountStorageHeader {
+fn account_storage_header_rejects_unspecified_slot_types() {
+    let message = proto::account::AccountStorageHeader {
         slots: vec![proto::account::account_storage_header::StorageSlot {
             slot_name: "miden::test::storage".into(),
-            slot_type: i32::MAX,
+            slot_type: proto::account::StorageSlotType::Unspecified as i32,
             commitment: Some(Word::empty().into()),
         }],
-    }
-    .decode_fields()
-    .unwrap_err();
-
-    assert_matches!(
-        error
-            .source()
-            .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-        Some(prost::UnknownEnumValue(value)) if *value == i32::MAX
-    );
+    };
+    let error = message.decode_fields().unwrap().verify().unwrap_err();
+    assert_eq!(error.to_string(), "storage slot type is unspecified");
 }
 
 #[test]
@@ -923,44 +615,6 @@ fn storage_value_patch_oneof_roundtrips_all_operations() {
 }
 
 #[test]
-fn storage_value_patch_requires_an_operation() {
-    let message = proto::account::StorageValuePatch::decode(&[][..]).unwrap();
-    let error = message.decode_fields().unwrap_err();
-
-    assert_eq!(
-        error.to_string(),
-        "operation: field miden_objects::proto::account::StorageValuePatch::operation is missing"
-    );
-}
-
-#[test]
-fn storage_value_patch_reports_the_malformed_variant_and_error_source() {
-    use miden_protocol::utils::serde::DeserializationError;
-    use proto::account::storage_value_patch::Operation;
-
-    for (operation, name) in [
-        (
-            Operation::Create(proto::primitives::Word { encoded: vec![u8::MAX; 32] }),
-            "create",
-        ),
-        (
-            Operation::Update(proto::primitives::Word { encoded: vec![u8::MAX; 32] }),
-            "update",
-        ),
-    ] {
-        let error = proto::account::StorageValuePatch { operation: Some(operation) }
-            .decode_fields()
-            .unwrap_err();
-
-        assert!(error.to_string().starts_with(&format!("operation.{name}.encoded: ")), "{error}");
-        assert_matches!(
-            error.source().and_then(|source| source.downcast_ref::<DeserializationError>()),
-            Some(DeserializationError::InvalidValue(_))
-        );
-    }
-}
-
-#[test]
 fn storage_value_patch_nested_in_account_storage_patch_roundtrips() {
     let patch = AccountStoragePatch::from_entries([
         (
@@ -1000,19 +654,6 @@ fn empty_protobuf_block_body_decodes_to_an_empty_domain_body() {
 }
 
 #[test]
-fn block_header_rejects_missing_block_number() {
-    let header = BlockHeader::mock(1, None, None, &[]);
-    let mut message = proto::blockchain::BlockHeader::from(header);
-    message.block_num = Default::default();
-
-    let error = message.decode_fields().unwrap_err();
-    assert_eq!(
-        error.to_string(),
-        "block_num: field miden_objects::proto::blockchain::BlockHeader::block_num is missing"
-    );
-}
-
-#[test]
 fn block_header_protobuf_rejects_unspecified_version_after_decoding() {
     let error = proto::blockchain::BlockHeader {
         version: proto::blockchain::BlockVersion::Unspecified as i32,
@@ -1025,23 +666,6 @@ fn block_header_protobuf_rejects_unspecified_version_after_decoding() {
     .unwrap_err();
 
     assert_eq!(error.to_string(), "block header version is unspecified");
-}
-
-#[test]
-fn block_header_protobuf_preserves_unknown_version_error_sources() {
-    for version in [i32::MAX, i32::MIN] {
-        let error = proto::blockchain::BlockHeader { version, ..Default::default() }
-            .decode_fields()
-            .unwrap_err();
-
-        assert_eq!(error.to_string(), format!("version: unknown enumeration value {version}"));
-        assert_matches!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-            Some(prost::UnknownEnumValue(value)) if *value == version
-        );
-    }
 }
 
 fn block_header_with_scheduled_upgrade() -> BlockHeader {
@@ -1123,6 +747,12 @@ fn block_header_protobuf_reports_invalid_validator_key_index() {
             .to_string()
             .starts_with("validator_config.keys[1].key.ecdsa_k256_keccak: ")
     );
+    assert!(
+        error
+            .source()
+            .unwrap()
+            .is::<miden_protocol::utils::serde::DeserializationError>()
+    );
 }
 
 #[test]
@@ -1141,48 +771,6 @@ fn block_header_protobuf_rejects_upgrade_effective_at_genesis() {
     let source = error_source::<ProtocolConfigError>(&error).unwrap();
 
     assert_matches!(source, ProtocolConfigError::NextConfigEffectiveAtGenesis);
-}
-
-#[test]
-fn note_inclusion_proof_rejects_missing_block_number() {
-    let message = proto::note::NoteInclusionProof {
-        note_id: Some(Word::empty().into()),
-        block_num: None,
-        note_index_in_block: 0,
-        inclusion_path: Some(proto::primitives::SparseMerklePath {
-            empty_nodes_mask: 0,
-            siblings: vec![],
-        }),
-    };
-
-    let error = message.clone().decode_fields().unwrap_err();
-    assert_missing_block_number(error, "block_num");
-}
-
-#[test]
-fn proven_transaction_rejects_missing_block_numbers() {
-    let mut message = proven_transaction_data();
-    message.reference_block_num = None;
-    let error = message.decode_fields().unwrap_err();
-    assert_missing_block_number(error, "reference_block_num");
-
-    let mut message = proven_transaction_data();
-    message.expiration_block_num = None;
-    let error = message.decode_fields().unwrap_err();
-    assert_missing_block_number(error, "expiration_block_num");
-}
-
-#[test]
-fn proven_batch_rejects_missing_block_numbers() {
-    let mut message = proven_batch_data();
-    message.reference_block_num = None;
-    let error = message.decode_fields().unwrap_err();
-    assert_missing_block_number(error, "reference_block_num");
-
-    let mut message = proven_batch_data();
-    message.expiration_block_num = None;
-    let error = message.decode_fields().unwrap_err();
-    assert_missing_block_number(error, "expiration_block_num");
 }
 
 #[test]

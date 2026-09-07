@@ -120,7 +120,8 @@ unreleased; regenerate consumers together. Existing domain encoders remain handw
 
 ## Validation
 
-Tests cover generated presence and nested paths, named enum sources, all oneof payload shapes
-used here, optional oneofs, byte adapters, canonical key/signature bytes, schema descriptors,
-domain roundtrips, malformed inputs, duplicates, trusted-parent authentication, deferred proof
-verification, and proposal agreement. Clippy and no-default-features checks cover all three crates.
+Framework tests in `miden-protobuf` cover generated presence and nested paths, named enum sources,
+oneof payload shapes, optional oneofs, byte adapters, and error wrapping. Object tests retain
+schema contracts, a representative nested validator-key path, canonical payload validation,
+domain roundtrips, duplicates, trusted-parent authentication, deferred proof verification, and
+proposal agreement. Clippy and no-default-features checks cover all three crates.

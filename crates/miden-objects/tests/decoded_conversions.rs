@@ -121,72 +121,6 @@ fn account_id_v1_verification_is_deferred() {
 }
 
 #[test]
-fn account_id_v1_decode_reports_field_paths() {
-    for field in ["suffix", "prefix"] {
-        for invalid in [None, Some(proto::primitives::Felt { value: miden_protocol::Felt::ORDER })]
-        {
-            let path = if invalid.is_some() {
-                format!("{field}.value:")
-            } else {
-                format!("{field}:")
-            };
-            let mut id = proto::account::AccountIdV1 {
-                suffix: Some(proto::primitives::Felt { value: 0 }),
-                prefix: Some(proto::primitives::Felt { value: 1 }),
-            };
-            match field {
-                "suffix" => id.suffix = invalid,
-                "prefix" => id.prefix = invalid,
-                _ => unreachable!(),
-            }
-            let error = id.decode_fields().unwrap_err();
-            assert!(error.to_string().starts_with(&path), "{error}");
-            let error = proto::account::AccountId {
-                version: Some(proto::account::account_id::Version::V1(id)),
-            }
-            .decode_fields()
-            .unwrap_err();
-            assert!(error.to_string().starts_with(&format!("version.v1.{path}")), "{error}");
-        }
-    }
-}
-
-#[test]
-fn account_id_decode_reports_repeated_asset_paths() {
-    let note = miden_protocol::note::Note::mock_noop(Word::empty());
-    let (assets, _, recipient, _) = note.into_parts();
-    let details = miden_protocol::note::NoteDetails::new(assets, recipient);
-    let mut wire = proto::note::NoteDetails::from(&details);
-    let index = wire.assets.len();
-    wire.assets.push(proto::asset::Asset {
-        asset_id: Some(proto::asset::AssetId {
-            version: proto::asset::AssetVersion::V1 as i32,
-            asset_class: Some(proto::asset::AssetClass {
-                suffix: Some(proto::primitives::Felt { value: 0 }),
-                prefix: Some(proto::primitives::Felt { value: 0 }),
-            }),
-            composition: proto::asset::AssetComposition::Fungible as i32,
-            faucet_id: Some(proto::account::AccountId {
-                version: Some(proto::account::account_id::Version::V1(
-                    proto::account::AccountIdV1 {
-                        suffix: Some(proto::primitives::Felt { value: 0 }),
-                        prefix: None,
-                    },
-                )),
-            }),
-        }),
-        value: Some(Word::empty().into()),
-    });
-    let error = wire.decode_fields().unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .starts_with(&format!("assets[{index}].asset_id.faucet_id.version.v1.prefix: ")),
-        "{error}"
-    );
-}
-
-#[test]
 fn kernel_verification_is_deferred() {
     let decoded = proto::protocol_config::KernelConfig {
         main_proc: Some(Word::empty().into()),
@@ -542,16 +476,6 @@ fn advice_inputs_decode_nested_records_before_verification() {
     let decoded = proto::primitives::AdviceInputs::from(&input).decode_fields().unwrap();
     assert!(decoded.advice_map.entries.is_empty());
     assert_eq!(decoded.verify().unwrap(), input);
-    let error = proto::primitives::AdviceInputs {
-        advice_stack: Some(proto::primitives::AdviceStack { values: vec![] }),
-        advice_map: Some(proto::primitives::AdviceMap {
-            entries: vec![proto::primitives::AdviceMapEntry { key: None, values: vec![] }],
-        }),
-        merkle_store: Some(proto::primitives::MerkleStore { nodes: vec![] }),
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert!(error.to_string().starts_with("advice_map.entries[0].key: "), "{error}");
 }
 
 #[test]
@@ -670,10 +594,6 @@ fn note_argument_verifies_into_tuple() {
     .decode_fields()
     .unwrap();
     assert_eq!(decoded.verify().unwrap(), (id, Word::from([1_u32, 2, 3, 4])));
-    let error = proto::transaction::NoteArgument { note_id: None, args: None }
-        .decode_fields()
-        .unwrap_err();
-    assert!(error.to_string().starts_with("note_id: "), "{error}");
 }
 
 #[test]
@@ -735,13 +655,9 @@ fn note_inclusion_proof_defers_index_and_path_checks() {
             siblings: vec![],
         }),
     };
-    let decoded = wire.clone().decode_fields().unwrap();
+    let decoded = wire.decode_fields().unwrap();
     assert_eq!(decoded.note_index_in_block, u32::MAX);
     assert!(decoded.verify().is_err());
-    let error = proto::note::NoteInclusionProof { inclusion_path: None, ..wire }
-        .decode_fields()
-        .unwrap_err();
-    assert!(error.to_string().starts_with("inclusion_path: "), "{error}");
 }
 
 #[test]
@@ -811,25 +727,16 @@ fn storage_slot_decodes_named_type_and_defers_semantics() {
 }
 
 #[test]
-fn storage_header_reports_nested_enum_paths_and_defers_duplicates() {
+fn storage_header_defers_duplicate_validation() {
     let slot = proto::account::account_storage_header::StorageSlot {
         slot_name: miden_protocol::account::StorageSlotName::mock(1).as_str().into(),
         slot_type: proto::account::StorageSlotType::Value as i32,
         commitment: Some(Word::empty().into()),
     };
-    let decoded = proto::account::AccountStorageHeader { slots: vec![slot.clone(), slot.clone()] }
+    let decoded = proto::account::AccountStorageHeader { slots: vec![slot.clone(), slot] }
         .decode_fields()
         .unwrap();
     assert!(decoded.verify().is_err());
-    let error = proto::account::AccountStorageHeader {
-        slots: vec![
-            slot.clone(),
-            proto::account::account_storage_header::StorageSlot { slot_type: 99, ..slot },
-        ],
-    }
-    .decode_fields()
-    .unwrap_err();
-    assert!(error.to_string().starts_with("slots[1].slot_type: "), "{error}");
 }
 
 #[test]
@@ -887,16 +794,6 @@ fn asset_id_decodes_named_enums_before_verifying_composition() {
 }
 
 #[test]
-fn asset_reports_nested_enum_paths_before_verifying() {
-    let wire = proto::asset::Asset {
-        asset_id: Some(proto::asset::AssetId { version: 99, ..Default::default() }),
-        value: Some(Word::empty().into()),
-    };
-    let error = wire.decode_fields().unwrap_err();
-    assert!(error.to_string().starts_with("asset_id.version: "), "{error}");
-}
-
-#[test]
 fn note_metadata_decodes_named_enums_and_defers_attachment_checks() {
     let metadata = *miden_protocol::note::Note::mock_noop(Word::empty()).metadata();
     let wire = proto::note::NoteMetadata::from(metadata);
@@ -918,22 +815,12 @@ fn note_metadata_decodes_named_enums_and_defers_attachment_checks() {
 }
 
 #[test]
-fn note_details_reports_repeated_asset_enum_paths() {
+fn note_details_roundtrip() {
     let note = miden_protocol::note::Note::mock_noop(Word::empty());
     let (assets, _, recipient, _) = note.into_parts();
     let details = miden_protocol::note::NoteDetails::new(assets, recipient);
-    let mut wire = proto::note::NoteDetails::from(&details);
-    assert_eq!(wire.clone().decode_fields().unwrap().verify().unwrap(), details);
-    let index = wire.assets.len();
-    wire.assets.push(proto::asset::Asset {
-        asset_id: Some(proto::asset::AssetId { version: 99, ..Default::default() }),
-        value: Some(Word::empty().into()),
-    });
-    let error = wire.decode_fields().unwrap_err();
-    assert!(
-        error.to_string().starts_with(&format!("assets[{index}].asset_id.version: ")),
-        "{error}"
-    );
+    let wire = proto::note::NoteDetails::from(&details);
+    assert_eq!(wire.decode_fields().unwrap().verify().unwrap(), details);
 }
 
 #[test]
@@ -942,10 +829,7 @@ fn note_header_defers_metadata_verification() {
     let mut wire = proto::note::NoteHeader::from(header);
     assert_eq!(wire.clone().decode_fields().unwrap().verify().unwrap(), header);
     wire.metadata.as_mut().unwrap().note_type = 0;
-    assert!(wire.clone().decode_fields().unwrap().verify().is_err());
-    wire.metadata.as_mut().unwrap().note_type = 99;
-    let error = wire.decode_fields().unwrap_err();
-    assert!(error.to_string().starts_with("metadata.note_type: "), "{error}");
+    assert!(wire.decode_fields().unwrap().verify().is_err());
 }
 
 #[test]
@@ -966,10 +850,7 @@ fn input_note_commitment_builds_unchecked_after_decoding() {
         header: Some(header.into()),
     };
     wire.header.as_mut().unwrap().metadata.as_mut().unwrap().note_type = 0;
-    assert!(wire.clone().decode_fields().unwrap().build_unchecked().is_err());
-    wire.header.as_mut().unwrap().metadata.as_mut().unwrap().note_type = 99;
-    let error = wire.decode_fields().unwrap_err();
-    assert!(error.to_string().starts_with("header.metadata.note_type: "), "{error}");
+    assert!(wire.decode_fields().unwrap().build_unchecked().is_err());
 }
 
 #[test]
@@ -1043,7 +924,6 @@ fn decoded_storage_value_patch_is_a_typed_oneof() {
         .decode_fields()
         .unwrap();
     assert_eq!(decoded.verify().unwrap(), miden_protocol::account::StorageValuePatch::Remove);
-    assert!(StorageValuePatch::default().decode_fields().is_err());
 }
 
 #[test]
@@ -1060,16 +940,7 @@ fn storage_slot_patch_defers_slot_name_validation() {
 }
 
 #[test]
-fn smt_leaf_oneof_reports_nested_entry_errors() {
-    let wire = proto::primitives::SmtLeaf {
-        leaf: Some(proto::primitives::smt_leaf::Leaf::Multiple(
-            proto::primitives::SmtLeafEntryList {
-                entries: vec![proto::primitives::SmtLeafEntry { key: None, value: None }],
-            },
-        )),
-    };
-    let error = wire.decode_fields().unwrap_err();
-    assert!(error.to_string().starts_with("leaf.multiple.entries[0].key:"), "{error}");
+fn smt_leaf_defers_multiple_entry_count_validation() {
     let wire = proto::primitives::SmtLeaf {
         leaf: Some(proto::primitives::smt_leaf::Leaf::Multiple(
             proto::primitives::SmtLeafEntryList { entries: vec![] },

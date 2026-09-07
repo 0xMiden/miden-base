@@ -13,14 +13,6 @@ fn invalid_word_lengths_and_contents_use_the_same_generated_path() {
         assert_eq!(borrowed_error.to_string(), error.to_string());
         assert!(error.to_string().starts_with("encoded: "), "{error}");
         assert!(error.source().unwrap().is::<DeserializationError>());
-
-        let error = proto::primitives::MerklePath {
-            siblings: vec![Word::empty().into(), word],
-        }
-        .decode_fields()
-        .unwrap_err();
-        assert!(error.to_string().starts_with("siblings[1].encoded: "), "{error}");
-        assert!(error.source().unwrap().is::<DeserializationError>());
     }
 }
 
@@ -31,12 +23,6 @@ fn felt_paths_include_only_schema_fields() {
     let error = felt.decode_fields().unwrap_err();
     assert_eq!(borrowed_error.to_string(), error.to_string());
     assert!(error.to_string().starts_with("value: "), "{error}");
-    assert!(error.source().unwrap().is::<<Felt as TryFrom<u64>>::Error>());
-
-    let error = proto::primitives::AdviceStack { values: vec![Felt::ZERO.into(), felt] }
-        .decode_fields()
-        .unwrap_err();
-    assert!(error.to_string().starts_with("values[1].value: "), "{error}");
     assert!(error.source().unwrap().is::<<Felt as TryFrom<u64>>::Error>());
 }
 

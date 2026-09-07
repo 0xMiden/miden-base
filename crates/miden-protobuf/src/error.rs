@@ -124,8 +124,18 @@ where
 #[cfg(test)]
 mod tests {
     use alloc::string::ToString;
+    use core::error::Error;
+    use core::num::TryFromIntError;
 
     use super::ConversionError;
+
+    #[test]
+    fn deserialization_errors_preserve_the_source() {
+        let source = u8::try_from(256_u16).unwrap_err();
+        let error = ConversionError::deserialization("Payload", source);
+        assert_eq!(error.to_string(), alloc::format!("failed to deserialize Payload: {source}"));
+        assert!(error.source().unwrap().source().unwrap().is::<TryFromIntError>());
+    }
 
     #[test]
     fn wrapping_a_conversion_error_preserves_its_path() {

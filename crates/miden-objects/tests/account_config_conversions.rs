@@ -112,16 +112,6 @@ fn partial_account_roundtrips_through_protobuf_bytes() {
 }
 
 #[test]
-fn partial_account_requires_nested_messages() {
-    let mut message = proto::account::PartialAccount::from(partial_account());
-    message.account_id = None;
-
-    let error = message.decode_fields().unwrap_err();
-
-    assert!(error.to_string().ends_with("::account_id is missing"));
-}
-
-#[test]
 fn partial_account_preserves_seed_validation_source() {
     let mut message = proto::account::PartialAccount::from(partial_account());
     message.seed = Some(Word::empty().into());
@@ -373,16 +363,6 @@ fn protocol_config_roundtrips_through_protobuf_bytes_and_preserves_kernel_order(
         vec![Word::from([2_u32, 0, 0, 0]).into()]
     );
     assert_eq!(message.decode_fields().unwrap().verify().unwrap(), config);
-}
-
-#[test]
-fn protocol_config_requires_all_nested_messages() {
-    let mut message = proto::protocol_config::ProtocolConfig::from(dummy_protocol_config());
-    message.proof_verification = None;
-
-    let error = message.decode_fields().unwrap_err();
-
-    assert!(error.to_string().ends_with("::proof_verification is missing"));
 }
 
 #[test]
