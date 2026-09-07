@@ -1,9 +1,9 @@
 use alloc::vec::Vec;
 
+use miden_protocol::Word;
 use miden_protocol::account::AccountId;
 use miden_protocol::errors::AccountIdError;
 use miden_protocol::note::{NoteAttachment, NoteAttachmentScheme, NoteAttachments, NoteType};
-use miden_protocol::{Felt, Word};
 
 use crate::note::{NoteExecutionHint, StandardNoteAttachment};
 
@@ -22,11 +22,12 @@ use crate::note::{NoteExecutionHint, StandardNoteAttachment};
 /// ```
 ///
 /// Decoding validates only the target ID, matching the on-chain targeting path, which discards
-/// the execution hint felt.
+/// the execution hint felt. An execution hint this version does not recognize decodes as
+/// [`NoteExecutionHint::Unknown`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NetworkAccountTarget {
     target_id: AccountId,
-    exec_hint: Felt,
+    exec_hint: NoteExecutionHint,
 }
 
 impl NetworkAccountTarget {
@@ -50,22 +51,6 @@ impl NetworkAccountTarget {
     pub fn new(
         target_id: AccountId,
         exec_hint: NoteExecutionHint,
-    ) -> Result<Self, NetworkAccountTargetError> {
-        Self::from_raw_parts(target_id, exec_hint.into())
-    }
-
-    /// Creates a new [`NetworkAccountTarget`] from a target ID and the raw execution hint felt.
-    ///
-    /// Only the target ID is validated, matching what the on-chain targeting path checks.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the provided `target_id` does not have
-    ///   [`AccountType::Public`](miden_protocol::account::AccountType::Public).
-    fn from_raw_parts(
-        target_id: AccountId,
-        exec_hint: Felt,
     ) -> Result<Self, NetworkAccountTargetError> {
         if !target_id.is_public() {
             return Err(NetworkAccountTargetError::TargetNotPublic(target_id));
@@ -164,10 +149,9 @@ impl NetworkAccountTarget {
         self.target_id
     }
 
-    /// Returns the [`NoteExecutionHint`] of the note, or `None` if the attachment carries an
-    /// encoding this version does not recognize.
-    pub fn execution_hint(&self) -> Option<NoteExecutionHint> {
-        NoteExecutionHint::try_from(self.exec_hint.as_canonical_u64()).ok()
+    /// Returns the [`NoteExecutionHint`] of the note.
+    pub fn execution_hint(&self) -> NoteExecutionHint {
+        self.exec_hint
     }
 }
 
@@ -176,7 +160,7 @@ impl From<NetworkAccountTarget> for NoteAttachment {
         let mut word = Word::empty();
         word[0] = network_attachment.target_id.suffix();
         word[1] = network_attachment.target_id.prefix().as_felt();
-        word[2] = network_attachment.exec_hint;
+        word[2] = network_attachment.exec_hint.into();
 
         NoteAttachment::with_word(NetworkAccountTarget::ATTACHMENT_SCHEME, word)
     }
@@ -220,7 +204,7 @@ impl TryFrom<&NoteAttachment> for NetworkAccountTarget {
         let target_id = AccountId::try_from_elements(id_suffix, id_prefix)
             .map_err(NetworkAccountTargetError::DecodeTargetId)?;
 
-        NetworkAccountTarget::from_raw_parts(target_id, exec_hint)
+        NetworkAccountTarget::new(target_id, NoteExecutionHint::from(exec_hint))
     }
 }
 
@@ -256,6 +240,7 @@ mod tests {
     use alloc::vec;
 
     use assert_matches::assert_matches;
+    use miden_protocol::Felt;
     use miden_protocol::account::AccountType;
     use miden_protocol::testing::account_id::AccountIdBuilder;
 
@@ -288,16 +273,17 @@ mod tests {
         // Tag 7 is above the highest known tag, and a non-zero payload on the `Always` tag is
         // rejected by `NoteExecutionHint::from_parts`.
         for raw_hint in [7u64, (1 << 8) | 1] {
+            let raw_hint = Felt::new(raw_hint)?;
             let mut word = Word::empty();
             word[0] = target_id.suffix();
             word[1] = target_id.prefix().as_felt();
-            word[2] = Felt::new(raw_hint)?;
+            word[2] = raw_hint;
             let attachment =
                 NoteAttachment::with_word(NetworkAccountTarget::ATTACHMENT_SCHEME, word);
 
             let target = NetworkAccountTarget::try_from(&attachment)?;
             assert_eq!(target.target_id(), target_id);
-            assert_eq!(target.execution_hint(), None);
+            assert_eq!(target.execution_hint(), NoteExecutionHint::Unknown(raw_hint));
             // Re-encoding is lossless, so the note commitment is unaffected.
             assert_eq!(NoteAttachment::from(target), attachment);
         }
