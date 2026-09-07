@@ -22,11 +22,22 @@ use crate::tx_script::transaction_script;
 const PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT_PATH: &str =
     "::miden::standards::tx_scripts::pass_through::single_p2id::main";
 
-const MASM_MAX_ASSET_IDS: usize = 16;
+/// The `@locals` frame of the script's `forward_assets`, which the payload is piped into, and the
+/// loop-state locals that follow the payload in it.
+const MASM_NUM_LOCALS: usize = 75;
+const MASM_NUM_LOOP_STATE_LOCALS: usize = 3;
 
+/// The number of field elements in a word.
+const WORD_NUM_ELEMENTS: usize = 4;
+
+// The script bounds the payload by `MAX_ASSETS_PER_NOTE`, but its frame is a literal, so raising
+// the protocol constant would let an accepted payload be piped past the frame.
 const _: () = assert!(
-    PassThroughSingleP2idTransactionScript::MAX_ASSET_IDS == MASM_MAX_ASSET_IDS,
-    "MAX_ASSET_IDS must match MAX_ASSET_IDS in \
+    PassThroughSingleP2idTransactionScript::PAYLOAD_HEADER_NUM_ELEMENTS
+        + PassThroughSingleP2idTransactionScript::MAX_ASSET_IDS * WORD_NUM_ELEMENTS
+        + MASM_NUM_LOOP_STATE_LOCALS
+        <= MASM_NUM_LOCALS,
+    "the payload the script accepts must fit the @locals frame in \
      asm/standards/tx_scripts/pass_through/single_p2id.masm"
 );
 
@@ -47,10 +58,12 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 ///
 /// Listing assets rather than notes is what makes the script's cost depend on how many assets it
 /// lists, not on how many notes the transaction consumes. The account must not hold any of the
-/// listed assets of its own: it would then move more assets out of the vault than were deposited,
-/// so the final account commitment would differ from the initial one and the transaction would
-/// fail, rather than the account being silently changed. Leaving an asset the payload failed to
-/// list behind fails the same way.
+/// listed assets of its own, or it moves more out of the vault than was deposited; and the payload
+/// must list every asset the input notes deposit, or what is left behind stays in the vault. Both
+/// change the account's commitment, which is caught by an auth procedure that rejects a changed
+/// account. This type cannot check which auth procedure the account installs, so on one that
+/// accepts a changed account - [`NoAuth`], say, which just bumps the nonce - both mistakes are
+/// silent.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThrough`]), after which this script's own
@@ -67,6 +80,7 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 ///     .with_tx_script_and_args(script.tx_script().clone(), script.tx_script_args());
 /// ```
 ///
+/// [`NoAuth`]: crate::account::auth::NoAuth
 /// [`PassThrough`]: crate::account::pass_through::PassThrough
 /// [`BasicWallet`]: crate::account::wallets::BasicWallet
 #[derive(Debug, Clone)]
@@ -83,13 +97,13 @@ impl PassThroughSingleP2idTransactionScript {
     // --------------------------------------------------------------------------------------------
 
     /// Number of elements in the payload header: `[target_id_suffix, target_id_prefix, tag,
-    /// note_type]` followed by `SERIAL_NUM`. One asset ID word follows per named asset.
+    /// note_type]` followed by `SERIAL_NUM`. One asset ID word follows per listed asset.
     pub const PAYLOAD_HEADER_NUM_ELEMENTS: usize = 8;
 
     /// Element offset of the output note's serial number within the payload header.
     const SERIAL_NUM_OFFSET: usize = 4;
 
-    /// Maximum number of asset IDs the payload may name: naming more assets than fit into a
+    /// Maximum number of asset IDs the payload may list: listing more assets than fit into a
     /// single note could never be forwarded into one.
     pub const MAX_ASSET_IDS: usize = NoteAssets::MAX_NUM_ASSETS;
 
@@ -101,7 +115,7 @@ impl PassThroughSingleP2idTransactionScript {
     /// `target`, carrying `serial_number`.
     ///
     /// `asset_ids` must list every asset the transaction's input notes deposit; an unlisted asset
-    /// stays in the vault and fails the transaction.
+    /// stays in the vault and changes the account.
     ///
     /// `serial_number` must be unique per transaction, as for any note: two notes sharing a target,
     /// an asset set and a serial number have the same ID and nullifier. Note that the pass-through
@@ -213,8 +227,8 @@ pub enum PassThroughTransactionScriptError {
     #[error("pass-through payload lists {actual} assets but at most {max} fit into one note")]
     TooManyAssetIds { actual: usize, max: usize },
     #[error(
-        "account does not expose the pass-through sweep and basic wallet procedures which are \
-         needed to support the pass-through script generation"
+        "account does not expose the `sweep_asset_to_note`, `create_note` and `receive_asset` \
+         procedures which are needed to support the pass-through script generation"
     )]
     UnsupportedAccountInterface,
 }
@@ -225,9 +239,9 @@ pub enum PassThroughTransactionScriptError {
 /// Encodes the script's parameters into the payload it loads from the advice map.
 ///
 /// ```text
-/// word 0:  [target_id_suffix, target_id_prefix, tag, note_type]
-/// word 1:  SERIAL_NUM
-/// word 2+: one ASSET_ID per asset to forward
+/// HEADER_WORD_0: [target_id_suffix, target_id_prefix, tag, note_type]
+/// HEADER_WORD_1: SERIAL_NUM
+/// WORD_2+:       one ASSET_ID per asset to forward
 /// ```
 fn encode_payload(
     target: AccountId,

@@ -6,6 +6,7 @@ use miden_protocol::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, A
 use miden_protocol::transaction::RawOutputNote;
 use miden_protocol::{Felt, Hasher, Word};
 use miden_standards::account::auth::NoAuth;
+use miden_standards::account::pass_through::PassThrough;
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::errors::standards::{
     ERR_PASS_THROUGH_PAYLOAD_LENGTH_INVALID,
@@ -320,6 +321,103 @@ async fn tolerates_a_listed_asset_the_vault_does_not_hold() -> anyhow::Result<()
         &NoteAssets::new(vec![deposited_asset])?,
     );
     assert_eq!(executed.final_account().to_commitment(), account.to_commitment());
+
+    Ok(())
+}
+
+/// An asset the payload does not list stays in the vault, so the account changes. Nothing in this
+/// PR rejects that; the pass-through auth component turns it into a failed transaction.
+#[tokio::test]
+async fn an_unlisted_asset_changes_the_account() -> anyhow::Result<()> {
+    let listed: Asset = FungibleAsset::mock(10);
+    let unlisted: Asset =
+        FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 20)?.into();
+
+    let mut builder = MockChain::builder();
+    let account = pass_through_account()?;
+    builder.add_account(account.clone())?;
+    let target = builder.add_existing_wallet(Auth::BasicAuth {
+        auth_scheme: AuthScheme::Falcon512Poseidon2,
+    })?;
+
+    let fee_note = builder.add_tx_fee_note(ACCOUNT_ID_SENDER.try_into()?, &[listed, unlisted])?;
+    let mock_chain = builder.build()?;
+
+    let script = PassThroughSingleP2idTransactionScript::new(
+        &account.code_interface(),
+        target.id(),
+        NoteType::Public,
+        SERIAL_NUMBER,
+        [listed.id()],
+    )?;
+
+    let executed = mock_chain
+        .build_transaction(account.id())
+        .authenticated_input_note(fee_note.id())
+        .pass_through_single_p2id_script(&script)
+        .build()?
+        .execute()
+        .await?;
+
+    assert_eq!(
+        executed.output_notes().get_note(0).assets(),
+        &NoteAssets::new(vec![listed])?,
+        "only the listed asset is forwarded",
+    );
+    assert_ne!(
+        executed.final_account().to_commitment(),
+        account.to_commitment(),
+        "the unlisted asset is left in the vault, so the account changes",
+    );
+
+    Ok(())
+}
+
+/// A balance the account already held is swept out along with the deposits, so the account
+/// changes. As above, the pass-through auth component is what rejects this.
+#[tokio::test]
+async fn a_pre_held_balance_is_swept_out_with_the_deposits() -> anyhow::Result<()> {
+    let asset = FungibleAsset::mock(10);
+
+    let mut builder = MockChain::builder();
+    let account = AccountBuilder::new([47; 32])
+        .with_component(NoAuth)
+        .with_component(BasicWallet)
+        .with_component(PassThrough)
+        .with_assets([asset])
+        .account_type(AccountType::Public)
+        .build_existing()?;
+    builder.add_account(account.clone())?;
+    let target = builder.add_existing_wallet(Auth::BasicAuth {
+        auth_scheme: AuthScheme::Falcon512Poseidon2,
+    })?;
+
+    let fee_note = builder.add_tx_fee_note(ACCOUNT_ID_SENDER.try_into()?, &[asset])?;
+    let mock_chain = builder.build()?;
+
+    let script = PassThroughSingleP2idTransactionScript::new(
+        &account.code_interface(),
+        target.id(),
+        NoteType::Public,
+        SERIAL_NUMBER,
+        [asset.id()],
+    )?;
+
+    let executed = mock_chain
+        .build_transaction(account.id())
+        .authenticated_input_note(fee_note.id())
+        .pass_through_single_p2id_script(&script)
+        .build()?
+        .execute()
+        .await?;
+
+    let mock_faucet_id = FungibleAsset::mock(1).faucet_id();
+    assert_eq!(
+        executed.output_notes().get_note(0).assets(),
+        &NoteAssets::new(vec![FungibleAsset::new(mock_faucet_id, 20)?.into()])?,
+        "the pre-held balance leaves along with what the note deposited",
+    );
+    assert_ne!(executed.final_account().to_commitment(), account.to_commitment());
 
     Ok(())
 }

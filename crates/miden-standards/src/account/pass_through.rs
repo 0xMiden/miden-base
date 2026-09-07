@@ -31,13 +31,12 @@ procedure_root!(
 /// # Security
 ///
 /// `sweep_asset_to_note` reads the balance itself, unlike
-/// [`BasicWallet`](crate::account::wallets::BasicWallet)'s `move_asset_to_note`, which makes the
-/// caller name the amount, so it needs no prior knowledge of what the vault holds. It asserts the
-/// account did not hold the asset when the transaction started, which bounds it to what the
-/// transaction deposited, but nothing bounds who moves that: any note script the account consumes
-/// can call it and redirect what earlier notes deposited, and on an account whose auth procedure
-/// authenticates nobody - which is what keeps a pass-through account's commitment unchanged - any
-/// third party can execute a transaction as the account and name themselves as the destination.
+/// [`BasicWallet`](crate::account::wallets::BasicWallet)'s `move_asset_to_note`, which takes the
+/// amount to move, so it needs no prior knowledge of what the vault holds. Nothing bounds what it
+/// moves or who moves it: it drains the account's whole balance of the asset, any note script the
+/// account consumes can call it, and on an account whose auth procedure authenticates nobody -
+/// which is what keeps a pass-through account's commitment unchanged - any third party can execute
+/// a transaction as the account and choose the destination.
 ///
 /// Assets passing through are therefore only safe if the input note's own script constrains where
 /// they go, or if they were already unrestricted before they arrived.
@@ -46,7 +45,7 @@ procedure_root!(
 /// such as [`P2idNote`](crate::note::P2idNote) through one instead destroys that restriction,
 /// since the assets become claimable by whoever executes the next transaction as the account.
 ///
-/// Both are account procedures, so the component must be combined with an authentication
+/// It is an account procedure, so the component must be combined with an authentication
 /// component - for a pass-through account, one that leaves the commitment unchanged - and with one
 /// exposing `receive_asset` (e.g.
 /// [`BasicWallet`](crate::account::wallets::BasicWallet)) so that input notes can deposit into the
