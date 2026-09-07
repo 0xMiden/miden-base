@@ -40,6 +40,26 @@ pub enum StandardAccountComponent {
 }
 
 impl StandardAccountComponent {
+    /// All standard components, in the order in which they are matched against an account.
+    ///
+    /// `NoteCreator` must follow `BasicWallet`: its only procedure (`create_note`) is also
+    /// exported by the basic wallet, so the full wallet must claim it first to avoid misdetection.
+    const ALL: [Self; 13] = [
+        Self::BasicWallet,
+        Self::NoteCreator,
+        Self::FungibleFaucet,
+        Self::CodeInspection,
+        Self::Authority,
+        Self::RoleBasedAccessControl,
+        Self::Ownable2Step,
+        Self::AuthSingleSig,
+        Self::AuthGuardedMultisig,
+        Self::AuthMultisig,
+        Self::AuthMultisigSmart,
+        Self::AuthNoAuth,
+        Self::AuthNetworkAccount,
+    ];
+
     /// Returns the iterator over the [`AccountProcedureRoot`]s of all procedures exported from
     /// the component.
     pub fn procedure_roots(&self) -> impl Iterator<Item = AccountProcedureRoot> {
@@ -62,19 +82,33 @@ impl StandardAccountComponent {
         code.procedure_roots()
     }
 
-    /// Checks whether procedures from the current component are present in the procedures map
-    /// and if so it removes these procedures from this map and pushes the corresponding component
+    /// Checks whether procedures from the current component are present in `all_procedures` and if
+    /// so it claims these procedures from `unclaimed_set` and pushes the corresponding component
     /// interface to the component interface vector.
+    ///
+    /// Presence is checked against `all_procedures` rather than against `unclaimed_set`, so a
+    /// procedure root exported by two standard components (e.g. `has_procedure`, re-exported by
+    /// both the fungible faucet and the code inspection component) satisfies both instead of being
+    /// consumed by whichever component happens to be matched first. A component whose procedures
+    /// were all claimed already is skipped, which keeps a narrower component from being reported
+    /// alongside the broader one that contains it.
+    ///
+    /// TODO: replace with per-component detection once the `AccountComponentInterface` trait
+    /// (issue #2621) lands.
     fn extract_component(
         &self,
-        procedures_set: &mut BTreeSet<AccountProcedureRoot>,
+        all_procedures: &BTreeSet<AccountProcedureRoot>,
+        unclaimed_set: &mut BTreeSet<AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         // Determine if this component should be extracted based on procedure matching
-        if self.procedure_roots().all(|proc_root| procedures_set.contains(&proc_root)) {
-            // Remove the procedure root of any matching procedure.
+        let is_exported = self.procedure_roots().all(|root| all_procedures.contains(&root));
+        let is_unclaimed = self.procedure_roots().any(|root| unclaimed_set.contains(&root));
+
+        if is_exported && is_unclaimed {
+            // Claim the procedure root of any matching procedure.
             self.procedure_roots().for_each(|component_procedure| {
-                procedures_set.remove(&component_procedure);
+                unclaimed_set.remove(&component_procedure);
             });
 
             // Create the appropriate component interface
@@ -124,24 +158,20 @@ impl StandardAccountComponent {
 
     /// Gets all standard components which could be constructed from the provided procedures map
     /// and pushes them to the `component_interface_vec`.
+    ///
+    /// On return, `procedures_set` holds exactly the procedures that no standard component
+    /// claimed.
     pub fn extract_standard_components(
         procedures_set: &mut BTreeSet<AccountProcedureRoot>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
-        Self::BasicWallet.extract_component(procedures_set, component_interface_vec);
-        // Must run after `BasicWallet`: `NoteCreator`'s only procedure (`create_note`) is a subset
-        // of the basic wallet's, so a full wallet must claim it first to avoid misdetection.
-        Self::NoteCreator.extract_component(procedures_set, component_interface_vec);
-        Self::FungibleFaucet.extract_component(procedures_set, component_interface_vec);
-        Self::CodeInspection.extract_component(procedures_set, component_interface_vec);
-        Self::Authority.extract_component(procedures_set, component_interface_vec);
-        Self::RoleBasedAccessControl.extract_component(procedures_set, component_interface_vec);
-        Self::Ownable2Step.extract_component(procedures_set, component_interface_vec);
-        Self::AuthSingleSig.extract_component(procedures_set, component_interface_vec);
-        Self::AuthGuardedMultisig.extract_component(procedures_set, component_interface_vec);
-        Self::AuthMultisig.extract_component(procedures_set, component_interface_vec);
-        Self::AuthMultisigSmart.extract_component(procedures_set, component_interface_vec);
-        Self::AuthNoAuth.extract_component(procedures_set, component_interface_vec);
-        Self::AuthNetworkAccount.extract_component(procedures_set, component_interface_vec);
+        // Match against a snapshot of the full interface so that a procedure root exported by two
+        // standard components can satisfy both, while `procedures_set` tracks what is still
+        // unclaimed.
+        let all_procedures = procedures_set.clone();
+
+        for component in Self::ALL {
+            component.extract_component(&all_procedures, procedures_set, component_interface_vec);
+        }
     }
 }

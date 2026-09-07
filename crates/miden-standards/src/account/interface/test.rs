@@ -1,8 +1,10 @@
+use alloc::vec::Vec;
+
 use assert_matches::assert_matches;
 use miden_protocol::Word;
-use miden_protocol::account::AccountBuilder;
 use miden_protocol::account::auth::{self, PublicKeyCommitment};
-use miden_protocol::asset::NonFungibleAsset;
+use miden_protocol::account::{AccountBuilder, AccountProcedureRoot, AccountType};
+use miden_protocol::asset::{AssetAmount, NonFungibleAsset, TokenSymbol};
 use miden_protocol::crypto::rand::RandomCoin;
 use miden_protocol::errors::NoteError;
 use miden_protocol::note::NoteType;
@@ -16,6 +18,8 @@ use crate::account::auth::{
     AuthSingleSig,
     NoAuth,
 };
+use crate::account::faucets::{FungibleFaucet, TokenName};
+use crate::account::inspection::CodeInspection;
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
 use crate::account::wallets::BasicWallet;
 use crate::note::SwapNote;
@@ -47,6 +51,72 @@ fn get_mock_falcon_auth_component() -> AuthSingleSig {
     let mock_word = Word::from([0, 1, 2, 3u32]);
     let mock_public_key = PublicKeyCommitment::from(mock_word);
     AuthSingleSig::new(Approver::new(mock_public_key, auth::AuthScheme::Falcon512Poseidon2))
+}
+
+fn get_mock_fungible_faucet_component() -> FungibleFaucet {
+    FungibleFaucet::builder()
+        .name(TokenName::new("Mock Token").unwrap())
+        .symbol(TokenSymbol::new("MOCK").unwrap())
+        .decimals(6)
+        .max_supply(AssetAmount::from(1_000_000u32))
+        .build()
+        .expect("mock fungible faucet should be valid")
+}
+
+/// Returns the procedure roots reported in the custom buckets of the provided interface.
+fn custom_procedures(interface: &AccountInterface) -> Vec<AccountProcedureRoot> {
+    interface
+        .components()
+        .iter()
+        .filter_map(|component| match component {
+            AccountComponentInterface::Custom(proc_roots) => Some(proc_roots.clone()),
+            _ => None,
+        })
+        .flatten()
+        .collect()
+}
+
+// STANDARD COMPONENT IDENTIFICATION TESTS
+// ================================================================================================
+
+/// A procedure root exported by two standard components must satisfy both: the fungible faucet
+/// and the code inspection component both export `has_procedure`.
+#[test]
+fn test_shared_procedure_root_does_not_hide_a_standard_component() -> anyhow::Result<()> {
+    let account = AccountBuilder::new([1; 32])
+        .account_type(AccountType::Public)
+        .with_component(NoAuth)
+        .with_component(get_mock_fungible_faucet_component())
+        .with_component(CodeInspection)
+        .build_existing()?;
+
+    let interface = AccountInterface::from_account(&account);
+
+    assert!(interface.components().contains(&AccountComponentInterface::FungibleFaucet));
+    assert!(interface.components().contains(&AccountComponentInterface::CodeInspection));
+    // Every procedure root is claimed by one of the two standard components.
+    assert!(custom_procedures(&interface).is_empty());
+
+    Ok(())
+}
+
+/// `NoteCreator`'s only procedure is also exported by `BasicWallet`, so a full wallet must not
+/// additionally be reported as a note creator.
+#[test]
+fn test_basic_wallet_is_not_reported_as_note_creator() -> anyhow::Result<()> {
+    let account = AccountBuilder::new([2; 32])
+        .account_type(AccountType::Public)
+        .with_component(NoAuth)
+        .with_component(BasicWallet)
+        .build_existing()?;
+
+    let interface = AccountInterface::from_account(&account);
+
+    assert!(interface.components().contains(&AccountComponentInterface::BasicWallet));
+    assert!(!interface.components().contains(&AccountComponentInterface::NoteCreator));
+    assert!(custom_procedures(&interface).is_empty());
+
+    Ok(())
 }
 
 // AUTH COMPONENT IDENTIFICATION TESTS
