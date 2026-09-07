@@ -61,8 +61,9 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// must list every asset the input notes deposit, or what is left behind stays in the vault. Both
 /// change the account's commitment. No auth component that rejects a changed account ships yet -
 /// `AuthPassThrough` arrives in [#3733](https://github.com/0xMiden/protocol/pull/3733) - so with
-/// [`NoAuth`], the only auth that leaves the commitment alone when nothing changed, both mistakes
-/// are silent: the nonce is bumped and the transaction succeeds.
+/// an auth that leaves the commitment alone when nothing changed, such as [`NoAuth`] or
+/// [`AuthNetworkAccount`], both mistakes are silent: the nonce is bumped and the transaction
+/// succeeds.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThrough`]), after which this script's own
@@ -79,6 +80,7 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 ///     .with_tx_script_and_args(script.tx_script().clone(), script.tx_script_args());
 /// ```
 ///
+/// [`AuthNetworkAccount`]: crate::account::auth::AuthNetworkAccount
 /// [`NoAuth`]: crate::account::auth::NoAuth
 /// [`PassThrough`]: crate::account::pass_through::PassThrough
 /// [`BasicWallet`]: crate::account::wallets::BasicWallet
