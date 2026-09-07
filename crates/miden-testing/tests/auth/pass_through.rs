@@ -20,7 +20,8 @@ use crate::scripts::pass_through::pass_through_account;
 
 const SERIAL_NUMBER: Word = Word::new([Felt::new_unchecked(9); 4]);
 
-/// A non-zero verification base fee, so the chain charges for transactions.
+/// The verification base fee the fee-charging chain in this module is built with. Any non-zero
+/// value works; the tests only care that the chain charges at all.
 const VERIFICATION_BASE_FEE: u32 = 500;
 
 // TESTS
