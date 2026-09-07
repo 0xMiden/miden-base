@@ -8,6 +8,9 @@ use miden_protocol::protocol_config::{
 
 use crate::proto;
 
+#[cfg(test)]
+mod tests;
+
 impl From<&KernelConfig> for proto::protocol_config::KernelConfig {
     fn from(config: &KernelConfig) -> Self {
         Self {

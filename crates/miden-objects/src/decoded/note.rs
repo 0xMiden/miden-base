@@ -3,6 +3,9 @@ pub use proto::note::DecodedNoteId as NoteId;
 
 use crate::{Verify, proto};
 
+#[cfg(test)]
+mod tests;
+
 impl Verify for NoteId {
     type Verified = miden_protocol::note::NoteId;
     type Error = core::convert::Infallible;

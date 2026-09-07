@@ -13,6 +13,9 @@ use miden_protocol::transaction::{OutputNote, PartialBlockchain};
 
 use crate::proto;
 
+#[cfg(test)]
+mod tests;
+
 // BLOCK NUMBER
 // ================================================================================================
 

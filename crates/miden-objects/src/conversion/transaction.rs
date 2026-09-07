@@ -13,6 +13,9 @@ use miden_protocol::transaction::{
 
 use crate::proto;
 
+#[cfg(test)]
+mod tests;
+
 // TRANSACTION ARGUMENTS
 // ================================================================================================
 

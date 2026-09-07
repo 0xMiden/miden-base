@@ -3,6 +3,9 @@ pub use proto::asset::DecodedAssetClass as AssetClass;
 
 use crate::{Verify, proto};
 
+#[cfg(test)]
+mod tests;
+
 impl Verify for AssetClass {
     type Verified = miden_protocol::asset::AssetClass;
     type Error = core::convert::Infallible;

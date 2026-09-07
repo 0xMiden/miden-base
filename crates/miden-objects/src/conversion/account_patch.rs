@@ -15,6 +15,9 @@ use miden_protocol::account::{
 
 use crate::proto;
 
+#[cfg(test)]
+mod tests;
+
 // ACCOUNT CODE
 // ================================================================================================
 

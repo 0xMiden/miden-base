@@ -17,6 +17,9 @@ use miden_protocol::block::account_tree::AccountWitness;
 
 use crate::proto;
 
+#[cfg(test)]
+mod tests;
+
 impl From<&AccountIdV1> for proto::account::AccountIdV1 {
     fn from(account_id: &AccountIdV1) -> Self {
         Self {

@@ -2,6 +2,9 @@ use miden_protocol::asset::{Asset, AssetClass, AssetComposition, AssetId};
 
 use crate::proto;
 
+#[cfg(test)]
+mod tests;
+
 impl From<&AssetClass> for proto::asset::AssetClass {
     fn from(asset_class: &AssetClass) -> Self {
         Self {

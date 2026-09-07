@@ -3,6 +3,12 @@ pub use proto::blockchain::DecodedTrackedMmrLeaf as TrackedMmrLeaf;
 
 use crate::{Verify, proto};
 
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+pub(crate) mod test_utils;
+
 impl Verify for TrackedMmrLeaf {
     type Verified = (u64, miden_protocol::Word, alloc::vec::Vec<miden_protocol::Word>);
     type Error = core::convert::Infallible;

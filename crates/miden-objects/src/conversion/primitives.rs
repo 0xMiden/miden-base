@@ -10,6 +10,9 @@ use miden_protocol::{Felt, MastForest, Word};
 
 use crate::{ConversionError, proto};
 
+#[cfg(test)]
+mod tests;
+
 // FELT
 // ================================================================================================
 
@@ -236,117 +239,4 @@ impl crate::DecodeMessage for proto::primitives::Felt {
 // Canonical representation adapter; domain interpretation is left to the containing record.
 impl crate::DecodeMessage for proto::primitives::ExecutionProof {
     type Decoded = miden_protocol::vm::ExecutionProof;
-}
-
-#[cfg(test)]
-mod tests {
-    use alloc::string::ToString;
-    use alloc::vec;
-    use core::error::Error;
-
-    use assert_matches::assert_matches;
-    use miden_protocol::testing::dummy_execution_proof;
-    use miden_protocol::testing::random_secret_key::random_secret_key;
-
-    use super::*;
-    use crate::{DecodeMessage, Verify};
-
-    #[test]
-    fn felt_roundtrips_zero_and_rejects_the_field_order() {
-        for felt in [Felt::ZERO, Felt::from(42_u32)] {
-            let encoded = proto::primitives::Felt::from(felt);
-            assert_eq!(encoded.value, felt.as_canonical_u64());
-            assert_eq!(Felt::try_from(encoded).unwrap(), felt);
-        }
-
-        let error = Felt::try_from(proto::primitives::Felt { value: Felt::ORDER }).unwrap_err();
-        assert_matches!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<<Felt as TryFrom<u64>>::Error>()),
-            Some(source) if source.as_u64() == Felt::ORDER
-        );
-    }
-
-    #[test]
-    fn word_roundtrips_and_rejects_invalid_lengths() {
-        let felt = Felt::from(42_u32);
-
-        let word = Word::new([felt, Felt::ZERO, Felt::ONE, Felt::new_unchecked(7)]);
-        assert_eq!(Word::try_from(proto::primitives::Word::from(word)).unwrap(), word);
-
-        let error = Word::try_from(proto::primitives::Word { encoded: vec![0; 31] }).unwrap_err();
-        assert!(error.to_string().starts_with("encoded: "), "{error}");
-        assert!(error.to_string().contains("expected exactly 32 bytes, got 31"), "{error}");
-    }
-
-    #[test]
-    fn public_key_and_signature_roundtrip_with_ecdsa_k256_keccak_variants() {
-        let signing_key = random_secret_key();
-        let public_key = signing_key.public_key();
-        let signature = signing_key.sign(Word::empty());
-
-        let encoded_public_key = proto::primitives::PublicKey::from(&public_key);
-        assert_eq!(encoded_public_key.decode_fields().unwrap().verify().unwrap(), public_key);
-
-        let encoded_signature = proto::primitives::Signature::from(&signature);
-        assert_eq!(encoded_signature.decode_fields().unwrap().verify().unwrap(), signature);
-    }
-
-    #[test]
-    fn public_key_and_signature_reject_malformed_encodings() {
-        let public_key_error = proto::primitives::PublicKey {
-            key: Some(proto::primitives::public_key::Key::EcdsaK256Keccak(vec![])),
-        }
-        .decode_fields()
-        .unwrap_err();
-        assert_matches!(
-            public_key_error
-                .source()
-                .and_then(|source| source.downcast_ref::<DeserializationError>()),
-            Some(DeserializationError::UnexpectedEOF)
-        );
-
-        let signature_error = proto::primitives::Signature {
-            signature: Some(proto::primitives::signature::Signature::EcdsaK256Keccak(vec![])),
-        }
-        .decode_fields()
-        .unwrap_err();
-        assert_matches!(
-            signature_error
-                .source()
-                .and_then(|source| source.downcast_ref::<DeserializationError>()),
-            Some(DeserializationError::UnexpectedEOF)
-        );
-    }
-
-    #[test]
-    fn execution_proof_roundtrips() {
-        let proof = dummy_execution_proof();
-        let encoded = proto::primitives::ExecutionProof::from(&proof);
-        assert_eq!(ExecutionProof::try_from(encoded).unwrap(), proof);
-    }
-
-    #[test]
-    fn execution_proof_rejects_unversioned_wire_bytes() {
-        let proof = dummy_execution_proof();
-        let compatibility = proof.compatibility();
-        let compatibility_len = 1
-            + compatibility.vm_verifier_roots().to_vec().to_bytes().len()
-            + compatibility.pvm_verifier_roots().to_vec().to_bytes().len();
-        let unversioned = proof.to_bytes()[compatibility_len..].to_vec();
-
-        let error =
-            ExecutionProof::try_from(proto::primitives::ExecutionProof { encoded: unversioned })
-                .unwrap_err();
-
-        assert!(error.to_string().starts_with("encoded:"));
-    }
-
-    #[test]
-    fn mast_forest_roundtrips() {
-        let mast = MastForest::new();
-        let encoded = proto::primitives::MastForest::from(&mast);
-        assert_eq!(encoded.decode_fields().unwrap().verify().unwrap(), mast);
-    }
 }

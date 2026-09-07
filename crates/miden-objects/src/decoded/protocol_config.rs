@@ -3,6 +3,12 @@ pub use proto::protocol_config::DecodedKernelConfig as KernelConfig;
 
 use crate::{Verify, proto};
 
+#[cfg(test)]
+mod tests;
+
+#[cfg(test)]
+pub(crate) mod test_utils;
+
 impl Verify for KernelConfig {
     type Verified = miden_protocol::protocol_config::KernelConfig;
     type Error = miden_protocol::errors::ProtocolConfigError;

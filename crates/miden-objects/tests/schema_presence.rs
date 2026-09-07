@@ -155,3 +155,12 @@ fn cryptographic_payloads_use_algorithm_oneofs() {
         assert_eq!(field.oneof_index, Some(0));
     }
 }
+
+#[test]
+fn protobuf_descriptor_includes_structured_asset_schema() {
+    assert!(
+        miden_objects::FILE_DESCRIPTOR_SET
+            .windows(b"asset.proto".len())
+            .any(|window| window == b"asset.proto")
+    );
+}
