@@ -102,7 +102,7 @@
 - The PSWAP note script now bounds its lineage depth to a u32 and the `PswapNote` builder rejects a malformed `PswapAttachment` [#3777](https://github.com/0xMiden/protocol/pull/3777).
 - The standard config note scripts now reject a non-public note [#3779](https://github.com/0xMiden/protocol/pull/3779).
 - [BREAKING] `multisig_smart` now rejects delay-only procedure policies ([#3781](https://github.com/0xMiden/protocol/pull/3781)).
-- [BREAKING] Fixed `AccountInterface::from_account` and `from_code` panicking on accounts that authenticate through a custom auth component; `AccountComponentInterface` gained a `CustomAuth` variant carrying the account's authentication procedure ([#XXXX](https://github.com/0xMiden/protocol/pull/XXXX)).
+- [BREAKING] Fixed `AccountInterface::from_account` and `from_code` panicking on accounts that authenticate through a custom auth component ([#3825](https://github.com/0xMiden/protocol/pull/3825)).
 
 ## v0.16.0 (2026-08-17)
 
