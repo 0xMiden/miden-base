@@ -1,4 +1,4 @@
-use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
@@ -177,43 +177,32 @@ impl NoteBundle {
     /// instead of dropping the notes it would otherwise have been grouped with. Every other note
     /// forms a bundle of its own.
     ///
-    /// Bundles are ordered by their lowest-indexed note, and notes keep their relative order within
-    /// a bundle, so the caller's ordering of `notes` still determines the order in which candidates
-    /// are probed.
+    /// The note heading a bundle, the one every other note in it is bound to, is always first.
+    /// Bundles are ordered by that note's position in `notes`, and the notes bound to it keep their
+    /// relative order, so the caller's ordering still determines the order in which candidates are
+    /// probed.
     fn group(notes: Vec<Note>) -> Vec<Self> {
-        let note_ids: BTreeSet<NoteId> = notes.iter().map(Note::id).collect();
+        let note_indices: BTreeMap<NoteId, usize> =
+            notes.iter().enumerate().map(|(idx, note)| (note.id(), idx)).collect();
 
-        // Map every note that sponsorships can attach to onto the index of its bundle, so a
-        // sponsorship can find its feature note's bundle regardless of their relative order.
-        let mut bundle_of_note = BTreeMap::new();
-        let mut bundles: Vec<Vec<Note>> = Vec::new();
-        // Sponsorships are collected in a second pass: the feature note may come after them.
-        let mut sponsorships = Vec::new();
-
-        for note in notes {
+        // Key every note by the index of the note heading its bundle: its feature note's for a
+        // sponsorship bound to one, its own otherwise. Keying by index rather than by note ID keeps
+        // the bundles in the caller's order.
+        let mut bundles: BTreeMap<usize, Vec<Note>> = BTreeMap::new();
+        for (idx, note) in notes.into_iter().enumerate() {
             // A sponsorship is only bundled when the note it names is actually an input; otherwise
             // it can only be reclaimed, which is something it has to attempt on its own.
             match FeeSponsorshipNote::sponsored_feature_note_id(&note)
-                .filter(|feature_note_id| note_ids.contains(feature_note_id))
+                .and_then(|feature_note_id| note_indices.get(&feature_note_id).copied())
             {
-                Some(feature_note_id) => sponsorships.push((feature_note_id, note)),
-                None => {
-                    bundle_of_note.insert(note.id(), bundles.len());
-                    bundles.push(vec![note]);
-                },
+                Some(head_idx) => bundles.entry(head_idx).or_default().push(note),
+                // This note heads its own bundle, so it goes first whichever side of the notes
+                // bound to it it arrives on.
+                None => bundles.entry(idx).or_default().insert(0, note),
             }
         }
 
-        for (feature_note_id, sponsorship) in sponsorships {
-            match bundle_of_note.get(&feature_note_id) {
-                Some(&bundle_idx) => bundles[bundle_idx].push(sponsorship),
-                // The named note is itself a bundled sponsorship, which no well-formed sponsorship
-                // does. Leave such a note on its own rather than guessing where it belongs.
-                None => bundles.push(vec![sponsorship]),
-            }
-        }
-
-        bundles.into_iter().map(|notes| Self { notes }).collect()
+        bundles.into_values().map(|notes| Self { notes }).collect()
     }
 
     /// Returns the notes forming the bundle.
@@ -485,9 +474,8 @@ where
                     Err(error) => {
                         // This combination failed, so the whole bundle is rejected. Blame the note
                         // the executor pointed at, when it pointed at one of the bundle's notes;
-                        // an epilogue failure blames no particular note, so it falls to the
-                        // bundle's first note, which is the feature note of
-                        // a sponsored bundle.
+                        // an epilogue failure blames no particular note, so it falls to the note
+                        // heading the bundle, the one the rest of the bundle is bound to.
                         let (blamed_idx, num_cycles) = match &error {
                             TransactionCheckerError::NoteExecution {
                                 failed_note_index,
