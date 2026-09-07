@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use miden_protocol::account::AccountId;
+use miden_protocol::account::{AccountCodeInterface, AccountId};
 use miden_protocol::asset::AssetId;
 use miden_protocol::note::{NoteAssets, NoteRecipient, NoteTag, NoteType};
 use miden_protocol::transaction::{TransactionScript, TransactionScriptRoot};
@@ -9,6 +9,8 @@ use miden_protocol::vm::AdviceMap;
 use miden_protocol::{Felt, Hasher, Word};
 use thiserror::Error;
 
+use crate::account::pass_through::PassThrough;
+use crate::account::wallets::BasicWallet;
 use crate::note::P2idNoteStorage;
 use crate::tx_script::transaction_script;
 
@@ -34,26 +36,23 @@ const _: () = assert!(
 static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
     LazyLock::new(|| transaction_script(PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT_PATH));
 
-/// The canonical transaction script that forwards the account's balance of the named assets into a
-/// single P2ID output note.
+/// The canonical transaction script that forwards the account's balance of the listed assets into
+/// a single P2ID output note.
 ///
-/// The state of the account it executes against does not change: the input notes' scripts deposit
-/// their assets into the account's vault, and the script moves the whole balance of each named
-/// asset back out into one P2ID note addressed to `target`, so the account's vault delta is zero.
+/// The state of the account it executes against does not change: it assumes the input notes
+/// already deposited their assets into the account's vault, and moves the whole balance of each
+/// listed asset into one P2ID note addressed to `target`, so the account's vault delta is zero.
 /// Its commitment is unchanged as long as the auth procedure neither bumps the nonce nor funds a
-/// fee note from the vault, e.g. [`NoAuth`] on a chain with a zero verification base fee.
+/// fee note from the vault.
 ///
-/// Naming assets rather than notes is what makes the script's cost independent of how many notes
-/// the transaction consumes. The account must not hold a named asset of its own, which
-/// `sweep_asset_to_note` asserts. If the transaction moved more assets out of the vault than were
-/// deposited, or left an asset the payload failed to name behind, the vault would differ from how
-/// it started and the transaction fails, rather than the account being silently changed - the
-/// script calls [`PassThrough::assert_vault_unchanged_root`] once it is done.
+/// Listing assets rather than notes is what makes the script's cost depend on how many assets it
+/// lists, not on how many notes the transaction consumes. The account must not hold any of the
+/// listed assets of its own: it would then move more assets out of the vault than were deposited,
+/// so the final account commitment would differ from the initial one and the transaction would
+/// fail, rather than the account being silently changed. Leaving an asset the payload failed to
+/// list behind fails the same way.
 ///
-/// The account must expose the [`PassThrough`] component alongside a component providing
-/// `create_note` and `receive_asset`, e.g. [`BasicWallet`].
-///
-/// A successful transaction does not imply the named assets reached `target`. A note script the
+/// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThrough`]), after which this script's own
 /// sweep is a no-op and the vault ends as it started either way.
 ///
@@ -62,14 +61,13 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// number and asset set, and callers only have to set the script and its arguments:
 ///
 /// ```ignore
-/// let script = PassThroughSingleP2idTransactionScript::new(target, NoteType::Public, serial_number, ids)?;
+/// let script =
+///     PassThroughSingleP2idTransactionScript::new(&interface, target, note_type, serial, ids)?;
 /// let tx_args = TransactionArgs::new(AdviceMap::default())
 ///     .with_tx_script_and_args(script.tx_script().clone(), script.tx_script_args());
 /// ```
 ///
-/// [`NoAuth`]: crate::account::auth::NoAuth
 /// [`PassThrough`]: crate::account::pass_through::PassThrough
-/// [`PassThrough::assert_vault_unchanged_root`]: crate::account::pass_through::PassThrough::assert_vault_unchanged_root
 /// [`BasicWallet`]: crate::account::wallets::BasicWallet
 #[derive(Debug, Clone)]
 pub struct PassThroughSingleP2idTransactionScript {
@@ -98,28 +96,43 @@ impl PassThroughSingleP2idTransactionScript {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Builds a pass-through script forwarding the account's balance of every asset in `asset_ids`
-    /// into a P2ID note of type `note_type` addressed to `target`, carrying `serial_number`.
+    /// Builds a pass-through script forwarding the balance of every asset in `asset_ids` out of the
+    /// account described by `interface`, into a P2ID note of type `note_type` addressed to
+    /// `target`, carrying `serial_number`.
     ///
-    /// `asset_ids` must name every asset the transaction's input notes deposit; an unnamed asset
+    /// `asset_ids` must list every asset the transaction's input notes deposit; an unlisted asset
     /// stays in the vault and fails the transaction.
     ///
-    /// `serial_number` must be unique per transaction: the account's state never changes, so
-    /// nothing else distinguishes two of its transactions and two notes sharing a serial number
-    /// would collide.
+    /// `serial_number` must be unique per transaction, as for any note: two notes sharing a target,
+    /// an asset set and a serial number have the same ID and nullifier. Note that the pass-through
+    /// account's state is constant, so the `(account, nonce)` tuple other standard notes derive a
+    /// serial number from is not available here.
     ///
     /// The note's tag is derived as [`NoteTag::with_account_target`], matching the tag a
     /// Rust-built [`P2idNote`](crate::note::P2idNote) carries.
     ///
     /// # Errors
     ///
-    /// Returns an error if more than [`Self::MAX_ASSET_IDS`] asset IDs are given.
+    /// Returns an error if more than [`Self::MAX_ASSET_IDS`] asset IDs are given, or if the
+    /// account does not expose the procedures the script and its input notes call.
     pub fn new(
+        interface: &AccountCodeInterface,
         target: AccountId,
         note_type: NoteType,
         serial_number: Word,
         asset_ids: impl IntoIterator<Item = AssetId>,
     ) -> Result<Self, PassThroughTransactionScriptError> {
+        // `create_note` and `sweep_asset_to_note` are what the script itself calls; `receive_asset`
+        // is what the input notes deposit through, without which there is nothing to forward.
+        let supports_pass_through = interface.contains([
+            PassThrough::sweep_asset_to_note_root(),
+            BasicWallet::create_note_root(),
+            BasicWallet::receive_asset_root(),
+        ]);
+        if !supports_pass_through {
+            return Err(PassThroughTransactionScriptError::UnsupportedAccountInterface);
+        }
+
         let asset_ids: Vec<AssetId> = asset_ids.into_iter().collect();
         if asset_ids.len() > Self::MAX_ASSET_IDS {
             return Err(PassThroughTransactionScriptError::TooManyAssetIds {
@@ -197,8 +210,13 @@ impl From<PassThroughSingleP2idTransactionScript> for TransactionScript {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum PassThroughTransactionScriptError {
-    #[error("pass-through payload names {actual} assets but at most {max} fit into one note")]
+    #[error("pass-through payload lists {actual} assets but at most {max} fit into one note")]
     TooManyAssetIds { actual: usize, max: usize },
+    #[error(
+        "account does not expose the pass-through sweep and basic wallet procedures which are \
+         needed to support the pass-through script generation"
+    )]
+    UnsupportedAccountInterface,
 }
 
 // PAYLOAD ENCODING

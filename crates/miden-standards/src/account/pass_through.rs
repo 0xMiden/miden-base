@@ -24,18 +24,9 @@ procedure_root!(
     PassThrough::code()
 );
 
-// Initialize the procedure root of the `assert_vault_unchanged` procedure only once.
-procedure_root!(
-    PASS_THROUGH_ASSERT_VAULT_UNCHANGED,
-    PASS_THROUGH_LIBRARY_PATH,
-    PassThrough::ASSERT_VAULT_UNCHANGED_PROC_NAME,
-    PassThrough::code()
-);
-
-/// An [`AccountComponent`] providing the account procedures a pass-through transaction needs:
-/// - `sweep_asset_to_note`, which moves the account's entire balance of an asset into an output
-///   note.
-/// - `assert_vault_unchanged`, which asserts the vault is the one the transaction started with.
+/// An [`AccountComponent`] providing the account procedure a pass-through transaction needs:
+/// `sweep_asset_to_note`, which moves the account's entire balance of an asset into an output
+/// note.
 ///
 /// # Security
 ///
@@ -70,7 +61,6 @@ impl PassThrough {
     pub const NAME: &'static str = "miden::standards::pass_through";
 
     const SWEEP_ASSET_TO_NOTE_PROC_NAME: &str = "sweep_asset_to_note";
-    const ASSERT_VAULT_UNCHANGED_PROC_NAME: &str = "assert_vault_unchanged";
 
     /// Returns the canonical [`AccountComponentName`] of this component.
     pub const fn name() -> AccountComponentName {
@@ -88,11 +78,6 @@ impl PassThrough {
     /// Returns the procedure root of the `sweep_asset_to_note` procedure.
     pub fn sweep_asset_to_note_root() -> AccountProcedureRoot {
         *PASS_THROUGH_SWEEP_ASSET_TO_NOTE
-    }
-
-    /// Returns the procedure root of the `assert_vault_unchanged` procedure.
-    pub fn assert_vault_unchanged_root() -> AccountProcedureRoot {
-        *PASS_THROUGH_ASSERT_VAULT_UNCHANGED
     }
 
     /// Returns the [`AccountComponentMetadata`] for this component.
