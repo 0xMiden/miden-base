@@ -61,8 +61,16 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// listed assets of its own, or it moves more out of the vault than was deposited; and the payload
 /// must list every asset the input notes deposit, or what is left behind stays in the vault. Both
 /// change the account's commitment, which [`AuthPassThrough`] rejects. `new` requires that
-/// component for exactly this reason: on an auth that accepts a changed account - [`NoAuth`] or
-/// [`AuthNetworkAccount`], which just bump the nonce - both mistakes would be silent.
+/// component for exactly this reason: under an auth that accepts a changed account, both mistakes
+/// are silent, and [`NoAuth`] additionally funds a fee note out of the vault on a fee-charging
+/// chain, so assets only passing through can be spent.
+///
+/// That requirement is a footgun guard, not a vetting step for an untrusted account:
+/// [`AccountCodeInterface`] is a set of procedure roots that does not record which one is the auth
+/// procedure, so an account exporting the same body as an ordinary procedure while authenticating
+/// with something else passes the check. Nothing enforces it on-chain either - the script root is
+/// stable and allowlistable, so a caller can build the [`TransactionScript`] without going through
+/// `new` at all.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThroughSweep`]), after which this script's
@@ -149,8 +157,10 @@ impl PassThroughSingleP2idTransactionScript {
             return Err(PassThroughTransactionScriptError::UnsupportedAccountInterface);
         }
 
-        // the script leaves the account unchanged only if its auth procedure rejects a change; on
-        // any other auth a mislisted asset is absorbed silently instead of failing
+        // The script leaves the account unchanged only if its auth procedure rejects a change; on
+        // any other auth a mislisted asset is absorbed silently instead of failing. The interface
+        // does not record which procedure is the auth one, so this catches a misconfiguration, not
+        // a hostile account that exports the same body as an ordinary procedure.
         if !interface.contains(AuthPassThrough::code().procedure_roots()) {
             return Err(PassThroughTransactionScriptError::UnsupportedAuthComponent);
         }
@@ -240,8 +250,8 @@ pub enum PassThroughTransactionScriptError {
     )]
     UnsupportedAccountInterface,
     #[error(
-        "account does not authenticate with the pass-through auth component, without which a \
-         mislisted asset changes the account instead of failing the transaction"
+        "account does not expose the pass-through auth component, without which a mislisted \
+         asset changes the account instead of failing the transaction"
     )]
     UnsupportedAuthComponent,
 }
