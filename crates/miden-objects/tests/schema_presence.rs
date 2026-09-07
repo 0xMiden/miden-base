@@ -42,6 +42,27 @@ fn account_id_uses_a_versioned_field_payload() {
 }
 
 #[test]
+fn asset_composition_payloads_only_carry_applicable_fields() {
+    let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
+    let id = message(&descriptors, "asset", "AssetId");
+    assert_eq!(id.oneof_decl.len(), 1);
+    assert_eq!(id.oneof_decl[0].name(), "composition");
+    assert_eq!(id.field.len(), 5);
+    assert!(id.field.iter().all(|field| field.name() != "asset_class"));
+    for (name, number, payload) in [
+        ("fungible", 3, ".google.protobuf.Empty"),
+        ("non_fungible", 4, ".asset.AssetClass"),
+        ("custom", 5, ".asset.AssetClass"),
+    ] {
+        let field = id.field.iter().find(|field| field.name() == name).unwrap();
+        assert_eq!(field.number(), number);
+        assert_eq!(field.r#type(), Type::Message);
+        assert_eq!(field.type_name(), payload);
+        assert_eq!(field.oneof_index, Some(0));
+    }
+}
+
+#[test]
 fn block_header_scheduled_upgrade_has_explicit_presence() {
     let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
     let header = message(&descriptors, "blockchain", "BlockHeader");

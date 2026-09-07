@@ -73,10 +73,11 @@ fn fungible_asset_roundtrips_through_structured_protobuf() {
         encoded.asset_id.as_ref().unwrap().version,
         proto::asset::AssetVersion::V1 as i32
     );
-    assert_eq!(
+    assert_matches!(
         encoded.asset_id.as_ref().unwrap().composition,
-        proto::asset::AssetComposition::Fungible as i32
+        Some(proto::asset::asset_id::Composition::Fungible(()))
     );
+    let encoded = proto::asset::Asset::decode(encoded.encode_to_vec().as_slice()).unwrap();
     assert_eq!(encoded.decode_fields().unwrap().verify().unwrap(), asset);
 }
 
@@ -86,38 +87,25 @@ fn non_fungible_asset_roundtrips_through_structured_protobuf() {
 
     let encoded = proto::asset::Asset::from(asset);
 
-    assert_eq!(
+    assert_matches!(
         encoded.asset_id.as_ref().unwrap().composition,
-        proto::asset::AssetComposition::None as i32
+        Some(proto::asset::asset_id::Composition::NonFungible(_))
     );
+    let encoded = proto::asset::Asset::decode(encoded.encode_to_vec().as_slice()).unwrap();
     assert_eq!(encoded.decode_fields().unwrap().verify().unwrap(), asset);
 }
 
 #[test]
-fn structured_asset_conversion_rejects_unspecified_and_custom_compositions() {
+fn structured_asset_conversion_rejects_custom_composition_after_decoding() {
     let asset_class = proto::asset::AssetClass {
         suffix: Some(Felt::ZERO.into()),
         prefix: Some(Felt::ZERO.into()),
     };
     let faucet_id = Some(FungibleAsset::mock_issuer().into());
 
-    let unspecified = proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(asset_class),
-        composition: proto::asset::AssetComposition::Unspecified as i32,
-        faucet_id,
-    }
-    .decode_fields()
-    .unwrap()
-    .verify()
-    .map_err(ConversionError::new)
-    .unwrap_err();
-    assert_eq!(unspecified.to_string(), "asset composition is unspecified");
-
     let custom = proto::asset::AssetId {
         version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(asset_class),
-        composition: proto::asset::AssetComposition::Custom as i32,
+        composition: Some(proto::asset::asset_id::Composition::Custom(asset_class)),
         faucet_id,
     }
     .decode_fields()
@@ -135,41 +123,11 @@ fn structured_asset_conversion_rejects_unspecified_and_custom_compositions() {
 }
 
 #[test]
-fn structured_asset_conversion_rejects_nonzero_fungible_class() {
-    let error = proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(proto::asset::AssetClass {
-            suffix: Some(Felt::ONE.into()),
-            prefix: Some(Felt::ZERO.into()),
-        }),
-        composition: proto::asset::AssetComposition::Fungible as i32,
-        faucet_id: Some(FungibleAsset::mock_issuer().into()),
-    }
-    .decode_fields()
-    .unwrap()
-    .verify()
-    .map_err(ConversionError::new)
-    .unwrap_err();
-
-    assert_matches!(
-        error
-            .source()
-            .and_then(Error::source)
-            .and_then(|source| source.downcast_ref::<AssetError>()),
-        Some(AssetError::FungibleAssetClassMustBeZero(_))
-    );
-}
-
-#[test]
 fn structured_asset_conversion_rejects_invalid_fungible_values() {
     let error = proto::asset::Asset {
         asset_id: Some(proto::asset::AssetId {
             version: proto::asset::AssetVersion::V1 as i32,
-            asset_class: Some(proto::asset::AssetClass {
-                suffix: Some(Felt::ZERO.into()),
-                prefix: Some(Felt::ZERO.into()),
-            }),
-            composition: proto::asset::AssetComposition::Fungible as i32,
+            composition: Some(proto::asset::asset_id::Composition::Fungible(())),
             faucet_id: Some(FungibleAsset::mock_issuer().into()),
         }),
         value: Some(Word::from([1_u32, 1, 0, 0]).into()),
@@ -193,11 +151,7 @@ fn structured_asset_conversion_rejects_invalid_fungible_values() {
 fn asset_id_protobuf_rejects_unspecified_version_after_decoding() {
     let error = proto::asset::AssetId {
         version: proto::asset::AssetVersion::Unspecified as i32,
-        asset_class: Some(proto::asset::AssetClass {
-            suffix: Some(Felt::ZERO.into()),
-            prefix: Some(Felt::ZERO.into()),
-        }),
-        composition: proto::asset::AssetComposition::Fungible as i32,
+        composition: Some(proto::asset::asset_id::Composition::Fungible(())),
         faucet_id: Some(FungibleAsset::mock_issuer().into()),
     }
     .decode_fields()

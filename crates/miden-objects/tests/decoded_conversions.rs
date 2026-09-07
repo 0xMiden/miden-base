@@ -799,29 +799,30 @@ fn storage_map_patch_oneof_roundtrips_all_operations() {
 }
 
 #[test]
-fn asset_id_decodes_named_enums_before_verifying_composition() {
-    use miden_protocol::asset::FungibleAsset;
-    let wire = proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(proto::asset::AssetClass {
-            suffix: Some(miden_protocol::Felt::ZERO.into()),
-            prefix: Some(miden_protocol::Felt::ZERO.into()),
-        }),
-        composition: proto::asset::AssetComposition::Fungible as i32,
-        faucet_id: Some(FungibleAsset::mock_issuer().into()),
-    };
-    let decoded = wire.decode_fields().unwrap();
-    assert_eq!(decoded.version, proto::asset::AssetVersion::V1);
-    assert_eq!(decoded.composition, proto::asset::AssetComposition::Fungible);
-    assert!(decoded.verify().is_ok());
-    let decoded = proto::asset::AssetId {
-        composition: proto::asset::AssetComposition::Custom as i32,
-        ..wire
+fn asset_id_composition_payloads_preserve_the_asset_class() {
+    use miden_protocol::asset::{AssetClass, AssetComposition, AssetId, FungibleAsset};
+    use proto::asset::asset_id::DecodedComposition;
+
+    let faucet_id = FungibleAsset::mock_issuer();
+    let nonzero_class =
+        AssetClass::new(miden_protocol::Felt::ONE, miden_protocol::Felt::from(2_u32));
+    for id in [
+        AssetId::new_fungible(faucet_id),
+        AssetId::new(AssetClass::default(), faucet_id, AssetComposition::None).unwrap(),
+        AssetId::new(nonzero_class, faucet_id, AssetComposition::None).unwrap(),
+    ] {
+        let decoded = proto::asset::AssetId::from(id).decode_fields().unwrap();
+        assert_eq!(decoded.version, proto::asset::AssetVersion::V1);
+        match &decoded.composition {
+            DecodedComposition::Fungible(()) => assert!(id.asset_class().is_empty()),
+            DecodedComposition::NonFungible(class) => {
+                assert_eq!(class.suffix, id.asset_class().suffix());
+                assert_eq!(class.prefix, id.asset_class().prefix());
+            },
+            DecodedComposition::Custom(_) => panic!("unexpected custom composition"),
+        }
+        assert_eq!(decoded.verify().unwrap(), id);
     }
-    .decode_fields()
-    .unwrap();
-    assert_eq!(decoded.composition, proto::asset::AssetComposition::Custom);
-    assert!(decoded.verify().is_err());
 }
 
 #[test]

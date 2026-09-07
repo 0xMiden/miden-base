@@ -17,29 +17,29 @@ impl Verify for AssetId {
     type Verified = miden_protocol::asset::AssetId;
     type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use miden_protocol::asset::AssetComposition;
+        use proto::asset::asset_id::DecodedComposition;
+
         match self.version {
             proto::asset::AssetVersion::V1 => {},
             proto::asset::AssetVersion::Unspecified => {
                 return Err(VerificationError::UnspecifiedVersion);
             },
         }
-        let composition = match self.composition {
-            proto::asset::AssetComposition::None => miden_protocol::asset::AssetComposition::None,
-            proto::asset::AssetComposition::Fungible => {
-                miden_protocol::asset::AssetComposition::Fungible
-            },
-            proto::asset::AssetComposition::Custom => {
-                miden_protocol::asset::AssetComposition::Custom
-            },
-            proto::asset::AssetComposition::Unspecified => {
-                return Err(VerificationError::UnspecifiedComposition);
-            },
-        };
-        Ok(Self::Verified::new(
-            self.asset_class.verify().expect("infallible asset class"),
-            self.faucet_id.verify()?,
-            composition,
-        )?)
+        let faucet_id = self.faucet_id.verify()?;
+        match self.composition {
+            DecodedComposition::Fungible(()) => Ok(Self::Verified::new_fungible(faucet_id)),
+            DecodedComposition::NonFungible(asset_class) => Ok(Self::Verified::new(
+                asset_class.verify().expect("infallible asset class"),
+                faucet_id,
+                AssetComposition::None,
+            )?),
+            DecodedComposition::Custom(asset_class) => Ok(Self::Verified::new(
+                asset_class.verify().expect("infallible asset class"),
+                faucet_id,
+                AssetComposition::Custom,
+            )?),
+        }
     }
 }
 #[derive(Debug, thiserror::Error)]
@@ -48,8 +48,6 @@ pub enum VerificationError {
     AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("asset id version is unspecified")]
     UnspecifiedVersion,
-    #[error("asset composition is unspecified")]
-    UnspecifiedComposition,
     #[error("invalid asset: {0}")]
     Asset(#[from] miden_protocol::errors::AssetError),
 }

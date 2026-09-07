@@ -17,7 +17,6 @@ impl From<AssetClass> for proto::asset::AssetClass {
     }
 }
 
-
 impl From<&AssetId> for proto::asset::AssetId {
     fn from(asset_id: &AssetId) -> Self {
         use proto::asset::asset_id::Composition;

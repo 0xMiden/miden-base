@@ -109,6 +109,10 @@ uses the public `SignedBlock::validate` API rather than duplicating that logic.
   carry a Word or `StorageMapPatchEntries`, respectively; remove carries `google.protobuf.Empty`.
   Map entries still reject duplicate keys, and map updates must be non-empty during verification.
 - `PublicKey` and `Signature` use algorithm-specific byte oneofs instead of an enum plus bytes.
+- `AssetId.composition` is a oneof: fungible carries `google.protobuf.Empty`, while non-fungible
+  and custom carry `AssetClass`. Fungible IDs cannot supply a nonzero asset class; verification
+  uses the protocol's fungible constructor. Custom composition remains unsupported by the
+  protocol and is rejected during verification. The common version and faucet ID fields remain.
 - `AccountId` uses a version oneof instead of canonical bytes. Its `AccountIdV1` payload
   carries suffix/prefix Felts. Structural decoding is generated; `Verify` checks the account-ID
   bit constraints with the protocol's checked constructor before wrapping the V1 variant.
@@ -116,8 +120,9 @@ uses the public `SignedBlock::validate` API rather than duplicating that logic.
   `NoteHeader` retain full attachment metadata. Full notes derive attachment headers and
   commitments from attachment content rather than silently ignoring redundant fields.
 
-Storage patches, account IDs, and cryptographic oneofs change the wire layout. These schemas are
-unreleased; regenerate consumers together. Existing domain encoders remain handwritten.
+Storage patches, account IDs, asset composition, and cryptographic oneofs change the wire layout.
+These schemas are unreleased; regenerate consumers together. Existing domain encoders remain
+handwritten.
 
 ## Validation
 
