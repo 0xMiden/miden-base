@@ -19,7 +19,7 @@ pub use {update_guardian_public_key} from miden::standards::auth::guardian
 #!
 #! It first decodes the fee conversion info committed to by the AUTH_ARGS (see
 #! miden::standards::fee::load_conversion_info) and pays the transaction fee by creating and
-#! funding a public TX_FEE note, bounded to the native fee asset at at most twice the computed fee
+#! funding a public TX_FEE note, bounded to the native fee asset, capped at twice the computed fee
 #! (see miden::standards::auth::multisig::pay_bounded_fee). On chains with a zero verification base
 #! fee no note is created. Because the fee is paid before the transaction summary is created, the
 #! fee note and the vault withdrawal funding it are covered by the approver and guardian
