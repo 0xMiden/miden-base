@@ -102,7 +102,7 @@
 - The PSWAP note script now bounds its lineage depth to a u32 and the `PswapNote` builder rejects a malformed `PswapAttachment` [#3777](https://github.com/0xMiden/protocol/pull/3777).
 - The standard config note scripts now reject a non-public note [#3779](https://github.com/0xMiden/protocol/pull/3779).
 - [BREAKING] `multisig_smart` now rejects delay-only procedure policies ([#3781](https://github.com/0xMiden/protocol/pull/3781)).
-- `AccountInterface` now matches standard components against the account's full interface, so a procedure root exported by two standard components (e.g. `has_procedure`, re-exported by both the fungible faucet and the code inspection component) no longer keeps the second component from being detected ([#3816](https://github.com/0xMiden/protocol/pull/3816)).
+- Fixed `AccountInterface` misreporting a standard component as custom when it shares a procedure root with another standard component, such as `has_procedure` on a fungible faucet installed alongside `CodeInspection` ([#3823](https://github.com/0xMiden/protocol/pull/3823)).
 
 ## v0.16.0 (2026-08-17)
 
