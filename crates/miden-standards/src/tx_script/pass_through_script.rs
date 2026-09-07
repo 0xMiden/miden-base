@@ -87,11 +87,9 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 ///     .with_tx_script_and_args(script.tx_script().clone(), script.tx_script_args());
 /// ```
 ///
-/// [`AuthNetworkAccount`]: crate::account::auth::AuthNetworkAccount
 /// [`AuthPassThrough`]: crate::account::auth::AuthPassThrough
 /// [`NoAuth`]: crate::account::auth::NoAuth
 /// [`PassThroughSweep`]: crate::account::pass_through::PassThroughSweep
-/// [`BasicWallet`]: crate::account::wallets::BasicWallet
 #[derive(Debug, Clone)]
 pub struct PassThroughSingleP2idTransactionScript {
     script: TransactionScript,
@@ -138,7 +136,8 @@ impl PassThroughSingleP2idTransactionScript {
     ///
     /// Returns an error if more than [`Self::MAX_ASSET_IDS`] asset IDs are given, if the account
     /// does not expose the procedures the script and its input notes call, or if it does not
-    /// authenticate with [`AuthPassThrough`].
+    /// expose [`AuthPassThrough`]'s procedure - see the type docs for what that does and does not
+    /// prove.
     pub fn new(
         interface: &AccountCodeInterface,
         target: AccountId,

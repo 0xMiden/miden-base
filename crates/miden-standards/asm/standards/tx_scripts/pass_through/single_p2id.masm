@@ -60,8 +60,10 @@ const ERR_PASS_THROUGH_PAYLOAD_NOT_WORD_ALIGNED = "pass through payload length i
 #! assets of its own, or it moves more out of the vault than was deposited; and the payload must
 #! list every asset the input notes deposit, or what is left behind stays in the vault. Both
 #! change the account's commitment, which the pass-through auth procedure rejects. This script
-#! cannot check which auth procedure the account installs, so on one that accepts a changed
-#! account - no_auth or network_account, which just bump the nonce - both mistakes are silent.
+#! cannot check which auth procedure the account installs; the Rust builder applies a best-effort
+#! check instead. Under an auth that accepts a changed account both mistakes are silent, and
+#! no_auth and network_account additionally fund a fee note out of the vault on a fee-charging
+#! chain, so assets only passing through can be spent.
 #!
 #! A successful transaction does not imply the listed assets reached the target. A note script the
 #! transaction consumes can sweep them first (see pass_through::sweep::sweep_asset_to_note),
