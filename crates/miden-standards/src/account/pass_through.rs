@@ -4,24 +4,24 @@ use miden_protocol::account::{AccountComponent, AccountComponentName, AccountPro
 use crate::account::account_component_code;
 use crate::procedure_root;
 
-// PASS THROUGH
+// PASS THROUGH SWEEP
 // ================================================================================================
 
-account_component_code!(PASS_THROUGH_CODE, "miden-standards-pass-through.masp");
+account_component_code!(PASS_THROUGH_SWEEP_CODE, "miden-standards-pass-through-sweep.masp");
 
 // PROCEDURE ROOTS
 // ================================================================================================
 
-/// MASL library namespace used for procedure-root lookups. Distinct from [`PassThrough::NAME`],
-/// which mirrors the standards-side MASM module path.
-const PASS_THROUGH_LIBRARY_PATH: &str = "miden::standards::components::pass_through";
+/// MASL library namespace used for procedure-root lookups. Distinct from
+/// [`PassThroughSweep::NAME`], which mirrors the standards-side MASM module path.
+const PASS_THROUGH_SWEEP_LIBRARY_PATH: &str = "miden::standards::components::pass_through::sweep";
 
 // Initialize the procedure root of the `sweep_asset_to_note` procedure only once.
 procedure_root!(
     PASS_THROUGH_SWEEP_ASSET_TO_NOTE,
-    PASS_THROUGH_LIBRARY_PATH,
-    PassThrough::SWEEP_ASSET_TO_NOTE_PROC_NAME,
-    PassThrough::code()
+    PASS_THROUGH_SWEEP_LIBRARY_PATH,
+    PassThroughSweep::SWEEP_ASSET_TO_NOTE_PROC_NAME,
+    PassThroughSweep::code()
 );
 
 /// An [`AccountComponent`] providing the account procedure a pass-through transaction needs:
@@ -53,14 +53,14 @@ procedure_root!(
 /// exposing `receive_asset` (e.g.
 /// [`BasicWallet`](crate::account::wallets::BasicWallet)) so that input notes can deposit into the
 /// account in the first place.
-pub struct PassThrough;
+pub struct PassThroughSweep;
 
-impl PassThrough {
+impl PassThroughSweep {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
     /// The name of the component.
-    pub const NAME: &'static str = "miden::standards::pass_through";
+    pub const NAME: &'static str = "miden::standards::pass_through::sweep";
 
     const SWEEP_ASSET_TO_NOTE_PROC_NAME: &str = "sweep_asset_to_note";
 
@@ -74,7 +74,7 @@ impl PassThrough {
 
     /// Returns the [`AccountComponentCode`] of this component.
     pub fn code() -> &'static AccountComponentCode {
-        &PASS_THROUGH_CODE
+        &PASS_THROUGH_SWEEP_CODE
     }
 
     /// Returns the procedure root of the `sweep_asset_to_note` procedure.
@@ -91,11 +91,11 @@ impl PassThrough {
     }
 }
 
-impl From<PassThrough> for AccountComponent {
-    fn from(_: PassThrough) -> Self {
-        let metadata = PassThrough::component_metadata();
+impl From<PassThroughSweep> for AccountComponent {
+    fn from(_: PassThroughSweep) -> Self {
+        let metadata = PassThroughSweep::component_metadata();
 
-        AccountComponent::new(PassThrough::code().clone(), vec![], metadata).expect(
+        AccountComponent::new(PassThroughSweep::code().clone(), vec![], metadata).expect(
             "pass through component should satisfy the requirements of a valid account component",
         )
     }

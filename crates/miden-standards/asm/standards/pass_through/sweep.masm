@@ -1,6 +1,6 @@
-# The account procedure a pass-through transaction needs.
+# Moving a whole account balance into an output note.
 #
-# See the `PassThrough` Rust type's documentation for more details.
+# See the `PassThroughSweep` Rust type's documentation for more details.
 
 use miden::core::word
 use miden::protocol::active_account

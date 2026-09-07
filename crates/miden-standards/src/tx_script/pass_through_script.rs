@@ -9,7 +9,7 @@ use miden_protocol::vm::AdviceMap;
 use miden_protocol::{Felt, Hasher, WORD_SIZE, Word};
 use thiserror::Error;
 
-use crate::account::pass_through::PassThrough;
+use crate::account::pass_through::PassThroughSweep;
 use crate::account::wallets::BasicWallet;
 use crate::note::P2idNoteStorage;
 use crate::tx_script::transaction_script;
@@ -66,8 +66,8 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// succeeds.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
-/// transaction consumes can sweep them first (see [`PassThrough`]), after which this script's own
-/// sweep is a no-op and the vault ends as it started either way.
+/// transaction consumes can sweep them first (see [`PassThroughSweep`]), after which this script's
+/// own sweep is a no-op and the vault ends as it started either way.
 ///
 /// The payload is embedded into the script's MAST forest and committed to by `TX_SCRIPT_ARGS`, so
 /// a single [`PassThroughSingleP2idTransactionScript::script_root`] covers every target, serial
@@ -82,7 +82,7 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 ///
 /// [`AuthNetworkAccount`]: crate::account::auth::AuthNetworkAccount
 /// [`NoAuth`]: crate::account::auth::NoAuth
-/// [`PassThrough`]: crate::account::pass_through::PassThrough
+/// [`PassThroughSweep`]: crate::account::pass_through::PassThroughSweep
 /// [`BasicWallet`]: crate::account::wallets::BasicWallet
 #[derive(Debug, Clone)]
 pub struct PassThroughSingleP2idTransactionScript {
@@ -140,7 +140,7 @@ impl PassThroughSingleP2idTransactionScript {
         // `create_note` and `sweep_asset_to_note` are what the script itself calls; `receive_asset`
         // is what the input notes deposit through, without which there is nothing to forward.
         let supports_pass_through = interface.contains([
-            PassThrough::sweep_asset_to_note_root(),
+            PassThroughSweep::sweep_asset_to_note_root(),
             BasicWallet::create_note_root(),
             BasicWallet::receive_asset_root(),
         ]);

@@ -6,7 +6,7 @@ use miden_protocol::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, A
 use miden_protocol::transaction::RawOutputNote;
 use miden_protocol::{Felt, Hasher, Word};
 use miden_standards::account::auth::NoAuth;
-use miden_standards::account::pass_through::PassThrough;
+use miden_standards::account::pass_through::PassThroughSweep;
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::errors::standards::{
     ERR_PASS_THROUGH_PAYLOAD_LENGTH_INVALID,
@@ -384,7 +384,7 @@ async fn a_pre_held_balance_is_swept_out_with_the_deposits() -> anyhow::Result<(
     let account = AccountBuilder::new([47; 32])
         .with_component(NoAuth)
         .with_component(BasicWallet)
-        .with_component(PassThrough)
+        .with_component(PassThroughSweep)
         .with_assets([asset])
         .account_type(AccountType::Public)
         .build_existing()?;
