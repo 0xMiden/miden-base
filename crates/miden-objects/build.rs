@@ -91,6 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ".asset.Asset",
             ".asset.AssetId",
             ".account.StorageMapPatch",
+            ".account.StorageMapPatchEntries",
             ".account.AccountStorageHeader",
             ".account.AccountStorageHeader.StorageSlot",
             ".account.AccountHeader",

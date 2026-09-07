@@ -208,13 +208,12 @@ impl Verify for AccountStorageHeader {
     }
 }
 
-pub use proto::account::DecodedStorageMapPatch as StorageMapPatch;
+pub use proto::account::DecodedStorageMapPatchEntries as StorageMapPatchEntries;
 
-impl Verify for StorageMapPatch {
-    type Verified = miden_protocol::account::StorageMapPatch;
+impl Verify for StorageMapPatchEntries {
+    type Verified = miden_protocol::account::StorageMapPatchEntries;
     type Error = StorageMapPatchError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        use proto::account::StoragePatchOperation;
         let mut entries = alloc::collections::BTreeMap::new();
         for entry in self.entries {
             let (key, value) = entry.verify().expect("infallible storage map entry");
@@ -222,27 +221,36 @@ impl Verify for StorageMapPatch {
                 return Err(StorageMapPatchError::DuplicateKey(key));
             }
         }
-        let entries = miden_protocol::account::StorageMapPatchEntries::from_raw(entries);
+        Ok(Self::Verified::from_raw(entries))
+    }
+}
+
+pub use proto::account::DecodedStorageMapPatch as StorageMapPatch;
+
+impl Verify for StorageMapPatch {
+    type Verified = miden_protocol::account::StorageMapPatch;
+    type Error = StorageMapPatchError;
+    fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use proto::account::storage_map_patch::DecodedOperation;
         match self.operation {
-            StoragePatchOperation::Create => Ok(Self::Verified::Create { entries }),
-            StoragePatchOperation::Update if entries.is_empty() => {
-                Err(StorageMapPatchError::EmptyUpdate)
+            DecodedOperation::Create(entries) => {
+                Ok(Self::Verified::Create { entries: entries.verify()? })
             },
-            StoragePatchOperation::Update => Ok(Self::Verified::Update { entries }),
-            StoragePatchOperation::Remove if entries.is_empty() => Ok(Self::Verified::Remove),
-            StoragePatchOperation::Remove => Err(StorageMapPatchError::NonEmptyRemove),
-            StoragePatchOperation::Unspecified => Err(StorageMapPatchError::UnspecifiedOperation),
+            DecodedOperation::Update(entries) => {
+                let entries = entries.verify()?;
+                if entries.is_empty() {
+                    return Err(StorageMapPatchError::EmptyUpdate);
+                }
+                Ok(Self::Verified::Update { entries })
+            },
+            DecodedOperation::Remove(()) => Ok(Self::Verified::Remove),
         }
     }
 }
 #[derive(Debug, thiserror::Error)]
 pub enum StorageMapPatchError {
-    #[error("storage patch operation is unspecified")]
-    UnspecifiedOperation,
     #[error("entries must be non-empty for an update operation")]
     EmptyUpdate,
-    #[error("entries must be empty for a remove operation")]
-    NonEmptyRemove,
     #[error("duplicate storage map key {0:?}")]
     DuplicateKey(miden_protocol::account::StorageMapKey),
 }

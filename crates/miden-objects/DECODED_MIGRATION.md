@@ -8,22 +8,22 @@ This experiment starts from `origin/next` at `8195bba1` on branch
 `DecodeMessage`, `Verify`, `VerifyWith<C>`, and `BuildUnchecked`.
 Each migration commit covers one wire message.
 
-All 97 Miden message declarations, including nested and empty messages, are integrated.
+All 98 Miden message declarations, including nested and empty messages, are integrated.
 The imported `google.protobuf.Empty` is not counted as a Miden message.
 
 | Primary construction capability | Messages |
 | --- | ---: |
-| Generated records with manual `Verify` | 83 |
+| Generated records with manual `Verify` | 84 |
 | Generated records with manual `BuildUnchecked` | 10 |
 | Generated record with contextual verification only | 1 |
 | Canonical atomic representation adapters | 3 |
 | Unmigrated messages | 0 |
-| Total | 97 |
+| Total | 98 |
 
 Two unchecked records also implement `VerifyWith`. The three atoms are
 `primitives.Word`, `primitives.Felt`, and `primitives.ExecutionProof`. Canonical representation
 parsing remains handwritten, but `ProtoDecodeValue` generates their payload field paths and
-error wrapping. This is not 97 fully generated domain conversions.
+error wrapping. This is not 98 fully generated domain conversions.
 
 Generated-record selection and byte adapter attributes live in [build.rs](build.rs).
 Handwritten construction lives in [src/decoded](src/decoded). Combined protobuf-to-domain
@@ -105,8 +105,9 @@ uses the public `SignedBlock::validate` API rather than duplicating that logic.
 ## Unreleased Schema Changes
 
 - `BlockHeader.next_protocol_config` is explicitly optional. Its tag and encoding are unchanged.
-- `StorageValuePatch` is a create/update/remove oneof, with a Word for create/update and
-  `google.protobuf.Empty` for remove.
+- `StorageValuePatch` and `StorageMapPatch` are create/update/remove oneofs. Create/update
+  carry a Word or `StorageMapPatchEntries`, respectively; remove carries `google.protobuf.Empty`.
+  Map entries still reject duplicate keys, and map updates must be non-empty during verification.
 - `PublicKey` and `Signature` use algorithm-specific byte oneofs instead of an enum plus bytes.
 - `AccountId` uses a version oneof instead of canonical bytes. Its `AccountIdV1` payload
   carries suffix/prefix Felts. Structural decoding is generated; `Verify` checks the account-ID

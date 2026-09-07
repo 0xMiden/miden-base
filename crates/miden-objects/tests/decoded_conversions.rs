@@ -740,30 +740,61 @@ fn storage_header_defers_duplicate_validation() {
 }
 
 #[test]
-fn storage_map_patch_verifies_operation_constraints_after_decoding() {
-    use proto::account::StoragePatchOperation::{Create, Remove, Unspecified, Update};
+fn storage_map_patch_rejects_empty_updates_after_decoding() {
+    let wire = proto::account::StorageMapPatch {
+        operation: Some(proto::account::storage_map_patch::Operation::Update(
+            proto::account::StorageMapPatchEntries { entries: vec![] },
+        )),
+    };
+    assert!(matches!(
+        wire.decode_fields().unwrap().verify(),
+        Err(miden_objects::decoded::account::StorageMapPatchError::EmptyUpdate)
+    ));
+}
+
+#[test]
+fn storage_map_patch_rejects_duplicate_keys_after_decoding() {
+    use proto::account::storage_map_patch::Operation;
+
     let entry = proto::account::StorageMapEntry {
         key: Some(Word::empty().into()),
         value: Some(Word::empty().into()),
     };
-    for (operation, count, valid) in [
-        (Create, 0, true),
-        (Create, 1, true),
-        (Update, 0, false),
-        (Update, 1, true),
-        (Remove, 0, true),
-        (Remove, 1, false),
-        (Unspecified, 0, false),
-        (Create, 2, false),
+    let entries = proto::account::StorageMapPatchEntries { entries: vec![entry.clone(), entry] };
+    for operation in [Operation::Create(entries.clone()), Operation::Update(entries)] {
+        let decoded = proto::account::StorageMapPatch { operation: Some(operation) }
+            .decode_fields()
+            .unwrap();
+        assert!(matches!(
+            decoded.verify(),
+            Err(miden_objects::decoded::account::StorageMapPatchError::DuplicateKey(_))
+        ));
+    }
+}
+
+#[test]
+fn storage_map_patch_oneof_roundtrips_all_operations() {
+    use miden_protocol::account::{StorageMapKey, StorageMapPatch, StorageMapPatchEntries};
+    use prost::Message;
+
+    let entries: StorageMapPatchEntries = [
+        (StorageMapKey::from_raw(Word::from([1_u32, 0, 0, 0])), Word::empty()),
+        (
+            StorageMapKey::from_raw(Word::from([2_u32, 0, 0, 0])),
+            Word::from([3_u32, 0, 0, 0]),
+        ),
+    ]
+    .into_iter()
+    .collect();
+    for patch in [
+        StorageMapPatch::Create { entries: StorageMapPatchEntries::new() },
+        StorageMapPatch::Create { entries: entries.clone() },
+        StorageMapPatch::Update { entries },
+        StorageMapPatch::Remove,
     ] {
-        let decoded = proto::account::StorageMapPatch {
-            operation: operation as i32,
-            entries: vec![entry.clone(); count],
-        }
-        .decode_fields()
-        .unwrap();
-        assert_eq!(decoded.operation, operation);
-        assert_eq!(decoded.verify().is_ok(), valid, "{operation:?}, {count}");
+        let bytes = proto::account::StorageMapPatch::from(&patch).encode_to_vec();
+        let wire = proto::account::StorageMapPatch::decode(bytes.as_slice()).unwrap();
+        assert_eq!(wire.decode_fields().unwrap().verify().unwrap(), patch);
     }
 }
 
