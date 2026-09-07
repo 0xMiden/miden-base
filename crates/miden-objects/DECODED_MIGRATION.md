@@ -105,6 +105,8 @@ uses the public `SignedBlock::validate` API rather than duplicating that logic.
 ## Unreleased Schema Changes
 
 - `BlockHeader.next_protocol_config` is explicitly optional. Its tag and encoding are unchanged.
+- Storage slot headers use a `content` oneof with `value` and `map_root` Word payloads instead
+  of a slot-type enum and shared commitment. Slot names and header invariants are still verified.
 - `StorageValuePatch` and `StorageMapPatch` are create/update/remove oneofs. Create/update
   carry a Word or `StorageMapPatchEntries`, respectively; remove carries `google.protobuf.Empty`.
   Map entries still reject duplicate keys, and map updates must be non-empty during verification.
@@ -120,9 +122,9 @@ uses the public `SignedBlock::validate` API rather than duplicating that logic.
   `NoteHeader` retain full attachment metadata. Full notes derive attachment headers and
   commitments from attachment content rather than silently ignoring redundant fields.
 
-Storage patches, account IDs, asset composition, and cryptographic oneofs change the wire layout.
-These schemas are unreleased; regenerate consumers together. Existing domain encoders remain
-handwritten.
+Storage slot headers, storage patches, account IDs, asset composition, and cryptographic oneofs
+change the wire layout. These schemas are unreleased; regenerate consumers together. Existing
+domain encoders remain handwritten.
 
 ## Validation
 

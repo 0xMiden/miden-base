@@ -79,6 +79,27 @@ fn block_header_scheduled_upgrade_has_explicit_presence() {
 }
 
 #[test]
+fn storage_slot_headers_distinguish_values_from_map_roots() {
+    let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
+    let header = message(&descriptors, "account", "AccountStorageHeader");
+    let slot = header
+        .nested_type
+        .iter()
+        .find(|message| message.name() == "StorageSlot")
+        .unwrap();
+    assert_eq!(slot.oneof_decl.len(), 1);
+    assert_eq!(slot.oneof_decl[0].name(), "content");
+    assert_eq!(slot.field.len(), 3);
+    for (name, number) in [("value", 2), ("map_root", 3)] {
+        let field = slot.field.iter().find(|field| field.name() == name).unwrap();
+        assert_eq!(field.number(), number);
+        assert_eq!(field.r#type(), Type::Message);
+        assert_eq!(field.type_name(), ".primitives.Word");
+        assert_eq!(field.oneof_index, Some(0));
+    }
+}
+
+#[test]
 fn storage_patch_operations_have_distinct_payloads() {
     let descriptors = FileDescriptorSet::decode(miden_objects::FILE_DESCRIPTOR_SET).unwrap();
     for (name, entries) in [

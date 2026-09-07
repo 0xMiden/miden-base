@@ -704,34 +704,27 @@ fn account_header_decodes_named_version_before_verifying() {
 }
 
 #[test]
-fn storage_slot_decodes_named_type_and_defers_semantics() {
-    use miden_protocol::account::{StorageSlotName, StorageSlotType};
+fn storage_slot_defers_name_validation() {
     let wire = proto::account::account_storage_header::StorageSlot {
-        slot_name: StorageSlotName::mock(1).as_str().into(),
-        slot_type: proto::account::StorageSlotType::Map as i32,
-        commitment: Some(Word::empty().into()),
+        slot_name: "".into(),
+        content: Some(proto::account::account_storage_header::storage_slot::Content::MapRoot(
+            Word::empty().into(),
+        )),
     };
-    let decoded = wire.clone().decode_fields().unwrap();
-    assert_eq!(decoded.slot_type, proto::account::StorageSlotType::Map);
-    assert_eq!(decoded.verify().unwrap().slot_type(), StorageSlotType::Map);
-    let decoded =
-        proto::account::account_storage_header::StorageSlot { slot_type: 0, ..wire.clone() }
-            .decode_fields()
-            .unwrap();
-    assert!(decoded.verify().is_err());
-    let decoded =
-        proto::account::account_storage_header::StorageSlot { slot_name: "".into(), ..wire }
-            .decode_fields()
-            .unwrap();
-    assert!(decoded.verify().is_err());
+    let decoded = wire.decode_fields().unwrap();
+    assert!(matches!(
+        decoded.verify(),
+        Err(miden_objects::decoded::account::StorageHeaderError::Name(_))
+    ));
 }
 
 #[test]
 fn storage_header_defers_duplicate_validation() {
     let slot = proto::account::account_storage_header::StorageSlot {
         slot_name: miden_protocol::account::StorageSlotName::mock(1).as_str().into(),
-        slot_type: proto::account::StorageSlotType::Value as i32,
-        commitment: Some(Word::empty().into()),
+        content: Some(proto::account::account_storage_header::storage_slot::Content::Value(
+            Word::empty().into(),
+        )),
     };
     let decoded = proto::account::AccountStorageHeader { slots: vec![slot.clone(), slot] }
         .decode_fields()

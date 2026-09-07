@@ -174,17 +174,15 @@ impl Verify for AccountStorageHeaderStorageSlot {
     type Verified = miden_protocol::account::StorageSlotHeader;
     type Error = StorageHeaderError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
+        use miden_protocol::account::StorageSlotType;
+        use proto::account::account_storage_header::storage_slot::DecodedContent;
+
         let name = miden_protocol::account::StorageSlotName::new(self.slot_name)?;
-        let slot_type = match self.slot_type {
-            proto::account::StorageSlotType::Value => {
-                miden_protocol::account::StorageSlotType::Value
-            },
-            proto::account::StorageSlotType::Map => miden_protocol::account::StorageSlotType::Map,
-            proto::account::StorageSlotType::Unspecified => {
-                return Err(StorageHeaderError::UnspecifiedSlotType);
-            },
+        let (slot_type, value) = match self.content {
+            DecodedContent::Value(value) => (StorageSlotType::Value, value),
+            DecodedContent::MapRoot(root) => (StorageSlotType::Map, root),
         };
-        Ok(Self::Verified::new(name, slot_type, self.commitment))
+        Ok(Self::Verified::new(name, slot_type, value))
     }
 }
 #[derive(Debug, thiserror::Error)]
@@ -193,8 +191,6 @@ pub enum StorageHeaderError {
     Header(#[from] miden_protocol::errors::AccountError),
     #[error("invalid storage slot name: {0}")]
     Name(#[from] miden_protocol::errors::StorageSlotNameError),
-    #[error("storage slot type is unspecified")]
-    UnspecifiedSlotType,
 }
 
 pub use proto::account::DecodedAccountStorageHeader as AccountStorageHeader;

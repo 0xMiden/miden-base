@@ -479,34 +479,31 @@ fn block_body_and_transaction_header_roundtrip() {
 }
 
 #[test]
-fn account_storage_header_rejects_unspecified_slot_types() {
-    let message = proto::account::AccountStorageHeader {
-        slots: vec![proto::account::account_storage_header::StorageSlot {
-            slot_name: "miden::test::storage".into(),
-            slot_type: proto::account::StorageSlotType::Unspecified as i32,
-            commitment: Some(Word::empty().into()),
-        }],
-    };
-    let error = message.decode_fields().unwrap().verify().unwrap_err();
-    assert_eq!(error.to_string(), "storage slot type is unspecified");
-}
+fn account_storage_header_roundtrips_value_and_map_root_payloads() {
+    use proto::account::account_storage_header::storage_slot::Content;
 
-#[test]
-fn account_storage_header_uses_generated_slot_type_values() {
-    for (slot_type, expected_slot_type) in [
-        (StorageSlotType::Value, proto::account::StorageSlotType::Value),
-        (StorageSlotType::Map, proto::account::StorageSlotType::Map),
-    ] {
-        let header = AccountStorageHeader::new(vec![StorageSlotHeader::new(
-            StorageSlotName::new("miden::test::storage").unwrap(),
-            slot_type,
-            Word::empty(),
-        )])
-        .unwrap();
+    for slot_type in [StorageSlotType::Value, StorageSlotType::Map] {
+        for value in [Word::empty(), Word::from([1_u32, 2, 3, 4])] {
+            let header = AccountStorageHeader::new(vec![StorageSlotHeader::new(
+                StorageSlotName::new("miden::test::storage").unwrap(),
+                slot_type,
+                value,
+            )])
+            .unwrap();
 
-        let message = proto::account::AccountStorageHeader::from(&header);
-        assert_eq!(message.slots[0].slot_type, expected_slot_type as i32);
-        assert_eq!(message.decode_fields().unwrap().verify().unwrap(), header);
+            let message = proto::account::AccountStorageHeader::from(&header);
+            match (slot_type, message.slots[0].content.as_ref().unwrap()) {
+                (StorageSlotType::Value, Content::Value(encoded))
+                | (StorageSlotType::Map, Content::MapRoot(encoded)) => {
+                    assert_eq!(encoded, &proto::primitives::Word::from(value));
+                },
+                _ => panic!("storage slot kind changed"),
+            }
+            let message =
+                proto::account::AccountStorageHeader::decode(message.encode_to_vec().as_slice())
+                    .unwrap();
+            assert_eq!(message.decode_fields().unwrap().verify().unwrap(), header);
+        }
     }
 }
 

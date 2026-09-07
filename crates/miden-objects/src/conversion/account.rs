@@ -65,7 +65,6 @@ impl From<&StorageSlotId> for proto::account::StorageSlotId {
     }
 }
 
-
 impl From<&AccountStorageHeader> for proto::account::AccountStorageHeader {
     fn from(account_storage_header: &AccountStorageHeader) -> Self {
         use proto::account::account_storage_header::storage_slot::Content;
