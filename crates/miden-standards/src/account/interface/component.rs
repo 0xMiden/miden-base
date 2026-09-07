@@ -55,6 +55,8 @@ pub enum AccountComponentInterface {
     /// transactions that do not consume an input note, create an output note, or change the
     /// account before fee payment.
     AuthNetworkAccount,
+    /// A non-standard authentication component, holding the account's authentication procedure.
+    CustomAuth(AccountProcedureRoot),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds all procedures which are not part of some standard interface which is
@@ -85,6 +87,9 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthGuardedMultisig => "Guarded Multisig".to_string(),
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::AuthNetworkAccount => "Network Account Auth".to_string(),
+            AccountComponentInterface::CustomAuth(proc_root) => {
+                format!("CustomAuth({})", &proc_root.mast_root().to_hex()[..9])
+            },
             AccountComponentInterface::Custom(proc_root_vec) => {
                 let result = proc_root_vec
                     .iter()
@@ -97,8 +102,6 @@ impl AccountComponentInterface {
     }
 
     /// Returns true if this component interface is an authentication component.
-    ///
-    /// TODO: currently this can identify only standard auth components
     pub fn is_auth_component(&self) -> bool {
         matches!(
             self,
@@ -108,6 +111,7 @@ impl AccountComponentInterface {
                 | AccountComponentInterface::AuthGuardedMultisig
                 | AccountComponentInterface::AuthNoAuth
                 | AccountComponentInterface::AuthNetworkAccount
+                | AccountComponentInterface::CustomAuth(_)
         )
     }
 }

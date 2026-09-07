@@ -42,6 +42,8 @@ impl AccountComponentInterfaceExt for AccountComponentInterface {
     fn from_procedures(procedures: &[AccountProcedureRoot]) -> Vec<Self> {
         let mut component_interface_vec = Vec::new();
 
+        let auth_procedure = procedures.first().copied();
+
         let mut procedures = BTreeSet::from_iter(procedures.iter().copied());
 
         // Standard component interfaces
@@ -53,6 +55,18 @@ impl AccountComponentInterfaceExt for AccountComponentInterface {
             &mut procedures,
             &mut component_interface_vec,
         );
+
+        // Custom authentication component interface
+        // ----------------------------------------------------------------------------------------
+
+        // If no standard auth interface claimed the authentication procedure, the account
+        // authenticates through a custom component.
+        let standard_auth_detected =
+            component_interface_vec.iter().any(|component| component.is_auth_component());
+        if let Some(auth_procedure) = auth_procedure.filter(|_| !standard_auth_detected) {
+            procedures.remove(&auth_procedure);
+            component_interface_vec.push(AccountComponentInterface::CustomAuth(auth_procedure));
+        }
 
         // Custom component interfaces
         // ----------------------------------------------------------------------------------------
