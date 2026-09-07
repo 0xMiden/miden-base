@@ -56,6 +56,9 @@ pub enum AccountComponentInterface {
     /// account before fee payment.
     AuthNetworkAccount,
     /// A non-standard, custom interface which exposes the contained procedures.
+    ///
+    /// Custom interface holds all procedures which are not part of some standard interface which is
+    /// used by this account.
     Custom(Vec<AccountProcedureRoot>),
 }
 
