@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.16.1 (TBD)
+
+### Changes
+
+- [BREAKING] The `AuthMultisig` component now bounds its fee payment to the native fee asset, capped at twice the computed fee via the new `multisig::pay_bounded_fee` shared by the three multisig components ([#3802](https://github.com/0xMiden/protocol/pull/3802)).
+
 ## v0.16.0 (2026-08-17)
 
 ### Features
