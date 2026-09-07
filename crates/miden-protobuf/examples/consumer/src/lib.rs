@@ -29,7 +29,7 @@ mod tests {
     }
 
     #[test]
-    fn records_and_oneofs_use_the_runtime_alias() {
+    fn records_and_oneofs_decode() {
         let decoded = valid().decode_fields().unwrap();
         assert!(decoded.explicit.is_none());
         assert!(matches!(decoded.selection, container::DecodedSelection::ChoiceValue(_)));
@@ -61,7 +61,7 @@ mod tests {
     }
 
     #[test]
-    fn payload_helpers_use_the_runtime_alias() {
+    fn payload_helpers_report_field_errors() {
         let error = Value { value: 256 }.decode_value(|value| u8::try_from(*value)).unwrap_err();
         assert!(error.to_string().starts_with("value: "));
     }

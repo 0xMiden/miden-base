@@ -21,7 +21,7 @@ fn field(name: &str, number: i32, type_name: &str) -> FieldDescriptorProto {
 fn main() {
     let descriptors = FileDescriptorSet {
         file: vec![FileDescriptorProto {
-            name: Some("renamed.proto".into()),
+            name: Some("consumer.proto".into()),
             package: Some("example".into()),
             syntax: Some("proto3".into()),
             message_type: vec![
