@@ -81,10 +81,8 @@ impl PassThroughSweep {
 
     /// Returns the [`AccountComponentMetadata`] for this component.
     pub fn component_metadata() -> AccountComponentMetadata {
-        AccountComponentMetadata::new(Self::NAME).with_description(
-            "Pass-through component exposing the account procedures a pass-through transaction \
-             needs",
-        )
+        AccountComponentMetadata::new(Self::NAME)
+            .with_description("Pass-through component moving a whole account balance into a note")
     }
 }
 

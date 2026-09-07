@@ -64,8 +64,8 @@ const ERR_PASS_THROUGH_PAYLOAD_NOT_WORD_ALIGNED = "pass through payload length i
 #! account - no_auth or network_account, which just bump the nonce - both mistakes are silent.
 #!
 #! A successful transaction does not imply the listed assets reached the target. A note script the
-#! transaction consumes can sweep them first (see pass_through::sweep::sweep_asset_to_note), after which
-#! this script's own sweep is a no-op and the vault ends as it started either way.
+#! transaction consumes can sweep them first (see pass_through::sweep::sweep_asset_to_note),
+#! after which this script's own sweep is a no-op and the vault ends as it started either way.
 #!
 #! Requires that the account exposes:
 #! - miden::standards::note::note_creator::create_note procedure.

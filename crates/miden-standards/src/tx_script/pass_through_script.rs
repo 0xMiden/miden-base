@@ -9,6 +9,7 @@ use miden_protocol::vm::AdviceMap;
 use miden_protocol::{Felt, Hasher, WORD_SIZE, Word};
 use thiserror::Error;
 
+use crate::account::auth::AuthPassThrough;
 use crate::account::pass_through::PassThroughSweep;
 use crate::account::wallets::BasicWallet;
 use crate::note::P2idNoteStorage;
@@ -59,9 +60,9 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// lists, not on how many notes the transaction consumes. The account must not hold any of the
 /// listed assets of its own, or it moves more out of the vault than was deposited; and the payload
 /// must list every asset the input notes deposit, or what is left behind stays in the vault. Both
-/// change the account's commitment, which [`AuthPassThrough`] rejects. This type cannot check
-/// which auth procedure the account installs, so on one that accepts a changed account -
-/// [`NoAuth`] or [`AuthNetworkAccount`], which just bump the nonce - both mistakes are silent.
+/// change the account's commitment, which [`AuthPassThrough`] rejects. `new` requires that
+/// component for exactly this reason: on an auth that accepts a changed account - [`NoAuth`] or
+/// [`AuthNetworkAccount`], which just bump the nonce - both mistakes would be silent.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThroughSweep`]), after which this script's
@@ -127,8 +128,9 @@ impl PassThroughSingleP2idTransactionScript {
     ///
     /// # Errors
     ///
-    /// Returns an error if more than [`Self::MAX_ASSET_IDS`] asset IDs are given, or if the
-    /// account does not expose the procedures the script and its input notes call.
+    /// Returns an error if more than [`Self::MAX_ASSET_IDS`] asset IDs are given, if the account
+    /// does not expose the procedures the script and its input notes call, or if it does not
+    /// authenticate with [`AuthPassThrough`].
     pub fn new(
         interface: &AccountCodeInterface,
         target: AccountId,
@@ -145,6 +147,12 @@ impl PassThroughSingleP2idTransactionScript {
         ]);
         if !supports_pass_through {
             return Err(PassThroughTransactionScriptError::UnsupportedAccountInterface);
+        }
+
+        // the script leaves the account unchanged only if its auth procedure rejects a change; on
+        // any other auth a mislisted asset is absorbed silently instead of failing
+        if !interface.contains(AuthPassThrough::code().procedure_roots()) {
+            return Err(PassThroughTransactionScriptError::UnsupportedAuthComponent);
         }
 
         let asset_ids: Vec<AssetId> = asset_ids.into_iter().collect();
@@ -231,6 +239,11 @@ pub enum PassThroughTransactionScriptError {
          procedures which are needed to support the pass-through script generation"
     )]
     UnsupportedAccountInterface,
+    #[error(
+        "account does not authenticate with the pass-through auth component, without which a \
+         mislisted asset changes the account instead of failing the transaction"
+    )]
+    UnsupportedAuthComponent,
 }
 
 // PAYLOAD ENCODING

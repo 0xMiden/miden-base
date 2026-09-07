@@ -5,7 +5,7 @@ use miden_protocol::note::{NoteAssets, NoteType};
 use miden_protocol::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_SENDER};
 use miden_protocol::transaction::RawOutputNote;
 use miden_protocol::{Felt, Hasher, Word};
-use miden_standards::account::auth::AuthPassThrough;
+use miden_standards::account::auth::{AuthPassThrough, NoAuth};
 use miden_standards::account::pass_through::PassThroughSweep;
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::errors::standards::{
@@ -429,6 +429,31 @@ fn rejects_an_account_without_the_pass_through_interface() -> anyhow::Result<()>
     .expect_err("an account without the pass-through component should be rejected");
 
     assert!(matches!(err, PassThroughTransactionScriptError::UnsupportedAccountInterface));
+
+    Ok(())
+}
+
+/// An account exposing the right procedures but authenticating with something that accepts a
+/// changed account is rejected too: the script's guarantee would not hold there.
+#[test]
+fn rejects_an_account_without_the_pass_through_auth() -> anyhow::Result<()> {
+    let account = AccountBuilder::new([48; 32])
+        .with_component(NoAuth)
+        .with_component(BasicWallet)
+        .with_component(PassThroughSweep)
+        .account_type(AccountType::Public)
+        .build_existing()?;
+
+    let err = PassThroughSingleP2idTransactionScript::new(
+        &account.code_interface(),
+        ACCOUNT_ID_SENDER.try_into()?,
+        NoteType::Public,
+        SERIAL_NUMBER,
+        [FungibleAsset::mock(1).id()],
+    )
+    .expect_err("an account without the pass-through auth component should be rejected");
+
+    assert!(matches!(err, PassThroughTransactionScriptError::UnsupportedAuthComponent));
 
     Ok(())
 }
