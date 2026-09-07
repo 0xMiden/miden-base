@@ -23,6 +23,8 @@ const NUM_STORAGE_ITEMS = 12
 
 const ERR_CONSTANT_FEE_POLICY_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS = "constant fee policy config note storage item count is not the expected count"
 
+const ERR_CONSTANT_FEE_POLICY_CONFIG_NOTE_IS_NOT_PUBLIC = "constant fee policy config note must be public"
+
 # NOTE SCRIPT
 # =================================================================================================
 
@@ -53,6 +55,7 @@ const ERR_CONSTANT_FEE_POLICY_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS = "const
 #! Outputs: [pad(16)]
 #!
 #! Panics if:
+#! - the note is not public.
 #! - the note is missing its `NetworkAccountTarget` attachment or carries a malformed one (e.g. a
 #!   hand-crafted note reusing this script), or the consuming account is not the target account.
 #! - the number of storage items is not NUM_STORAGE_ITEMS.
@@ -62,6 +65,10 @@ const ERR_CONSTANT_FEE_POLICY_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS = "const
 pub proc main
     # drop the note script args
     dropw
+    # => [pad(16)]
+
+    exec.active_note::is_public
+    assert.err=ERR_CONSTANT_FEE_POLICY_CONFIG_NOTE_IS_NOT_PUBLIC
     # => [pad(16)]
 
     # assert the consuming account is the account the note is targeted at, so it cannot be consumed
