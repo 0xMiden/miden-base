@@ -26,7 +26,7 @@ use miden::protocol::tx
 # CONSTANTS
 # =================================================================================================
 
-pub use {WORD_NUM_ELEMENTS} from miden::protocol::constants
+use {WORD_NUM_ELEMENTS} from miden::protocol::constants
 
 # Memory address at which the `send_notes` scripts write the payload, and the address of the note
 # count, which is the payload header's first element.
