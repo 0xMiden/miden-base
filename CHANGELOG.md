@@ -13,7 +13,7 @@
 
 ### Changes
 
-- Moved `MAX_ASSETS_PER_NOTE` into `miden::protocol_utils::constants` and re-exported it from `miden::protocol::constants` and `miden::tx_kernel_core::constants`, so standard scripts can import it ([#3821](https://github.com/0xMiden/protocol/pull/3821)).
+- Moved `MAX_ASSETS_PER_NOTE` into `miden::protocol_utils::constants` ([#3821](https://github.com/0xMiden/protocol/pull/3821)).
 - Fixed `RoleBasedAccessControl` role administration becoming permanently unmanageable when a role's admin was delegated to a memberless role ([#3476](https://github.com/0xMiden/protocol/pull/3476)).
 - [BREAKING] Moved the `note_tag` MASM module from `miden::standards::note_tag` to `miden::standards::note::note_tag` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
 - [BREAKING] Moved the `note_creator` account component MASM namespace from `miden::standards::components::wallets::note_creator` to `miden::standards::components::note::note_creator`, and moved the Rust `NoteCreator` type from `account::wallets` to `account::note_creator` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
