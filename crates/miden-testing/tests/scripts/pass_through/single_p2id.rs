@@ -325,8 +325,8 @@ async fn tolerates_a_listed_asset_the_vault_does_not_hold() -> anyhow::Result<()
     Ok(())
 }
 
-/// An asset the payload does not list stays in the vault, so the account changes. Nothing in this
-/// PR rejects that; the pass-through auth component turns it into a failed transaction.
+/// An asset the payload does not list stays in the vault, so the account changes. Nothing rejects
+/// that yet; `AuthPassThrough` (#3733) turns it into a failed transaction.
 #[tokio::test]
 async fn an_unlisted_asset_changes_the_account() -> anyhow::Result<()> {
     let listed: Asset = FungibleAsset::mock(10);
@@ -364,17 +364,18 @@ async fn an_unlisted_asset_changes_the_account() -> anyhow::Result<()> {
         &NoteAssets::new(vec![listed])?,
         "only the listed asset is forwarded",
     );
-    assert_ne!(
-        executed.final_account().to_commitment(),
-        account.to_commitment(),
-        "the unlisted asset is left in the vault, so the account changes",
+    assert_eq!(
+        executed.account_patch().vault().updated_assets().collect::<Vec<_>>(),
+        vec![unlisted],
+        "the unlisted asset is left in the vault",
     );
+    assert_ne!(executed.final_account().to_commitment(), account.to_commitment());
 
     Ok(())
 }
 
 /// A balance the account already held is swept out along with the deposits, so the account
-/// changes. As above, the pass-through auth component is what rejects this.
+/// changes. As above, `AuthPassThrough` (#3733) is what rejects this.
 #[tokio::test]
 async fn a_pre_held_balance_is_swept_out_with_the_deposits() -> anyhow::Result<()> {
     let asset = FungibleAsset::mock(10);
@@ -416,6 +417,10 @@ async fn a_pre_held_balance_is_swept_out_with_the_deposits() -> anyhow::Result<(
         executed.output_notes().get_note(0).assets(),
         &NoteAssets::new(vec![FungibleAsset::new(mock_faucet_id, 20)?.into()])?,
         "the pre-held balance leaves along with what the note deposited",
+    );
+    assert!(
+        executed.account_patch().vault().removed_asset_ids().any(|id| *id == asset.id()),
+        "the pre-held balance is gone from the vault",
     );
     assert_ne!(executed.final_account().to_commitment(), account.to_commitment());
 

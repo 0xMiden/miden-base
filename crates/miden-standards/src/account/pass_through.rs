@@ -45,6 +45,9 @@ procedure_root!(
 /// such as [`P2idNote`](crate::note::P2idNote) through one instead destroys that restriction,
 /// since the assets become claimable by whoever executes the next transaction as the account.
 ///
+/// No auth component rejecting a changed account ships yet; `AuthPassThrough` arrives in
+/// [#3733](https://github.com/0xMiden/protocol/pull/3733).
+///
 /// It is an account procedure, so the component must be combined with an authentication
 /// component - for a pass-through account, one that leaves the commitment unchanged - and with one
 /// exposing `receive_asset` (e.g.

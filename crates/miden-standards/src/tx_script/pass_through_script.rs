@@ -6,7 +6,7 @@ use miden_protocol::note::{NoteAssets, NoteRecipient, NoteTag, NoteType};
 use miden_protocol::transaction::{TransactionScript, TransactionScriptRoot};
 use miden_protocol::utils::sync::LazyLock;
 use miden_protocol::vm::AdviceMap;
-use miden_protocol::{Felt, Hasher, Word};
+use miden_protocol::{Felt, Hasher, WORD_SIZE, Word};
 use thiserror::Error;
 
 use crate::account::pass_through::PassThrough;
@@ -22,19 +22,18 @@ use crate::tx_script::transaction_script;
 const PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT_PATH: &str =
     "::miden::standards::tx_scripts::pass_through::single_p2id::main";
 
-/// The `@locals` frame of the script's `forward_assets`, which the payload is piped into, and the
-/// loop-state locals that follow the payload in it.
+/// The `@locals` frame of the script's `forward_assets`, which the payload is piped into.
 const MASM_NUM_LOCALS: usize = 75;
+
+/// The loop-state locals that follow the payload in that frame.
 const MASM_NUM_LOOP_STATE_LOCALS: usize = 3;
 
-/// The number of field elements in a word.
-const WORD_NUM_ELEMENTS: usize = 4;
-
-// The script bounds the payload by `MAX_ASSETS_PER_NOTE`, but its frame is a literal, so raising
-// the protocol constant would let an accepted payload be piped past the frame.
+// A tripwire, not a proof: both constants above are hand-copied from the script, so this catches a
+// change to `MAX_ASSETS_PER_NOTE` on the Rust side. The MASM side fails to assemble instead, since
+// the assembler rejects a static local index past the frame.
 const _: () = assert!(
     PassThroughSingleP2idTransactionScript::PAYLOAD_HEADER_NUM_ELEMENTS
-        + PassThroughSingleP2idTransactionScript::MAX_ASSET_IDS * WORD_NUM_ELEMENTS
+        + PassThroughSingleP2idTransactionScript::MAX_ASSET_IDS * WORD_SIZE
         + MASM_NUM_LOOP_STATE_LOCALS
         <= MASM_NUM_LOCALS,
     "the payload the script accepts must fit the @locals frame in \
@@ -60,10 +59,10 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// lists, not on how many notes the transaction consumes. The account must not hold any of the
 /// listed assets of its own, or it moves more out of the vault than was deposited; and the payload
 /// must list every asset the input notes deposit, or what is left behind stays in the vault. Both
-/// change the account's commitment, which is caught by an auth procedure that rejects a changed
-/// account. This type cannot check which auth procedure the account installs, so on one that
-/// accepts a changed account - [`NoAuth`], say, which just bumps the nonce - both mistakes are
-/// silent.
+/// change the account's commitment. No auth component that rejects a changed account ships yet -
+/// `AuthPassThrough` arrives in [#3733](https://github.com/0xMiden/protocol/pull/3733) - so with
+/// [`NoAuth`], the only auth that leaves the commitment alone when nothing changed, both mistakes
+/// are silent: the nonce is bumped and the transaction succeeds.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThrough`]), after which this script's own

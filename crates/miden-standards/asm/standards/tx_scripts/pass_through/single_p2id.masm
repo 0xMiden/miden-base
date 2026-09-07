@@ -59,10 +59,10 @@ const ERR_PASS_THROUGH_PAYLOAD_NOT_WORD_ALIGNED = "pass through payload length i
 #! not on how many notes the transaction consumes. The account must not hold any of the listed
 #! assets of its own, or it moves more out of the vault than was deposited; and the payload must
 #! list every asset the input notes deposit, or what is left behind stays in the vault. Both
-#! change the account's commitment, which is caught by an auth procedure that rejects a changed
-#! account. This script cannot check which auth procedure the account installs, so on one that
-#! accepts a changed account - no_auth, say, which just bumps the nonce - both mistakes are
-#! silent.
+#! change the account's commitment. No auth component that rejects a changed account ships yet
+#! (see https://github.com/0xMiden/protocol/pull/3733), so with no_auth - the only auth that
+#! leaves the commitment alone when nothing changed - both mistakes are silent: the nonce is
+#! bumped and the transaction succeeds.
 #!
 #! A successful transaction does not imply the listed assets reached the target. A note script the
 #! transaction consumes can sweep them first (see pass_through::sweep_asset_to_note), after which
