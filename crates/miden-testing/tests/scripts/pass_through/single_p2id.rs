@@ -37,10 +37,11 @@ const SERIAL_NUMBER: Word = Word::new([
 // TESTS
 // ================================================================================================
 
-/// The pass-through script forwards the account's balance of the named asset into one P2ID note
-/// addressed to the payload's target, leaving the account it runs on untouched.
+/// The pass-through script merges the balance several notes deposit into one P2ID note addressed
+/// to the payload's target, leaving the account it runs on untouched. TX_FEE notes carry the
+/// assets because their script places no constraint on who consumes them.
 #[tokio::test]
-async fn forwards_fee_notes_into_a_single_p2id_note() -> anyhow::Result<()> {
+async fn merges_several_notes_into_a_single_p2id_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = pass_through_account()?;
     builder.add_account(account.clone())?;

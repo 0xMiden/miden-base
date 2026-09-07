@@ -91,7 +91,7 @@ impl PassThroughSingleP2idTransactionScript {
     pub const PAYLOAD_HEADER_NUM_ELEMENTS: usize = 8;
 
     /// Element offset of the output note's serial number within the payload header.
-    pub const SERIAL_NUM_OFFSET: usize = 4;
+    const SERIAL_NUM_OFFSET: usize = 4;
 
     /// Maximum number of asset IDs the payload may name: naming more assets than fit into a
     /// single note could never be forwarded into one.
