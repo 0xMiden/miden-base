@@ -44,6 +44,25 @@ pub proc assert_target_account_attachment
     # => []
 end
 
+#! Returns whether the given account is the account allowed to consume the note.
+#!
+#! Use this where the note picks between several accounts it commits to; use
+#! `assert_target_account_id` where a single account is allowed.
+#!
+#! Inputs:  [account_id_suffix, account_id_prefix, target_id_suffix, target_id_prefix]
+#! Outputs: [is_target]
+#!
+#! Where:
+#! - account_id_{suffix,prefix} are the suffix and prefix felts of the account to check.
+#! - target_id_{suffix,prefix} are the suffix and prefix felts of the account ID allowed to consume
+#!   the note.
+#!
+#! Invocation: exec
+pub proc is_target_account_id
+    exec.account_id::eq
+    # => [is_target]
+end
+
 #! Asserts that the active account is the account identified by the given account ID.
 #!
 #! The account ID is expected to come from the active note's storage, so that the note commits to
@@ -64,7 +83,7 @@ pub proc assert_target_account_id
     exec.active_account::get_id
     # => [active_id_suffix, active_id_prefix, target_id_suffix, target_id_prefix]
 
-    exec.account_id::eq
+    exec.is_target_account_id
     # => [is_target]
 
     assert.err=ERR_NOTE_CONSUMER_NOT_STORAGE_TARGET

@@ -181,7 +181,7 @@ A note commits to the accounts allowed to consume it in one of two ways:
 
 Both are enforced through the shared [`miden::standards::note::consumer`](https://github.com/0xMiden/protocol/blob/next/crates/miden-standards/asm/standards/note/consumer.masm) procedures, so a restricted note has exactly one recognizable enforcement site rather than a hand-written comparison per script.
 
-A note that is open to any consumer says so and says why: a SWAP or PSWAP note is filled by whoever provides the requested asset, and a TX_FEE note is claimed by whichever batch builder includes the transaction. A test walks every note script on disk and fails for one that declares no rule, restricts consumption without enforcing it, or declares a rule that differs from the one its Rust type declares.
+A note that is open to any consumer says so and says why: a SWAP or PSWAP note is filled by whoever provides the requested asset, and a TX_FEE note is claimed by whichever batch builder includes the transaction. A test walks every note script on disk and fails for one that neither enforces a rule nor declares itself open, so a missing check is a visible choice rather than an omission.
 
 #### Note nullifier ensuring private consumption
 
