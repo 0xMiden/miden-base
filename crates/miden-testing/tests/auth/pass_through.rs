@@ -73,6 +73,7 @@ async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyh
     let mock_chain = builder.build()?;
 
     let script = PassThroughSingleP2idTransactionScript::new(
+        &account.code_interface(),
         target.id(),
         NoteType::Public,
         SERIAL_NUMBER,

@@ -24,21 +24,19 @@ procedure_root!(
     PassThroughSweep::code()
 );
 
-/// An [`AccountComponent`] moving whole account balances into an output note.
-///
-/// It exposes `sweep_asset_to_note` for the pass-through transaction scripts that forward whole
-/// balances (e.g. [`PassThroughSingleP2idTransactionScript`][single]) to `call`.
+/// An [`AccountComponent`] providing the account procedure a pass-through transaction needs:
+/// `sweep_asset_to_note`, which moves the account's entire balance of an asset into an output
+/// note.
 ///
 /// # Security
 ///
 /// `sweep_asset_to_note` reads the balance itself, unlike
-/// [`BasicWallet`](crate::account::wallets::BasicWallet)'s `move_asset_to_note`, which makes the
-/// caller name the amount, so it needs no prior knowledge of what the vault holds. It asserts the
-/// account did not hold the asset when the transaction started, which bounds it to what the
-/// transaction deposited, but nothing bounds who moves that: any note script the account consumes
-/// can call it and redirect what earlier notes deposited, and on an account whose auth procedure
-/// authenticates nobody - which is what keeps a pass-through account's commitment unchanged - any
-/// third party can execute a transaction as the account and name themselves as the destination.
+/// [`BasicWallet`](crate::account::wallets::BasicWallet)'s `move_asset_to_note`, which takes the
+/// amount to move, so it needs no prior knowledge of what the vault holds. Nothing bounds what it
+/// moves or who moves it: it drains the account's whole balance of the asset, any note script the
+/// account consumes can call it, and on an account whose auth procedure authenticates nobody -
+/// which is what keeps a pass-through account's commitment unchanged - any third party can execute
+/// a transaction as the account and choose the destination.
 ///
 /// Assets passing through are therefore only safe if the input note's own script constrains where
 /// they go, or if they were already unrestricted before they arrived.
@@ -48,14 +46,10 @@ procedure_root!(
 /// since the assets become claimable by whoever executes the next transaction as the account.
 ///
 /// It is an account procedure, so the component must be combined with an authentication
-/// component. For a pass-through account that is
-/// [`AuthPassThrough`](crate::account::auth::AuthPassThrough), which asserts the account's state
-/// is unchanged and so catches an asset the script fails to move out. It must also be combined
-/// with a component exposing `receive_asset` (e.g.
+/// component - for a pass-through account, one that leaves the commitment unchanged - and with one
+/// exposing `receive_asset` (e.g.
 /// [`BasicWallet`](crate::account::wallets::BasicWallet)) so that input notes can deposit into the
 /// account in the first place.
-///
-/// [single]: crate::tx_script::PassThroughSingleP2idTransactionScript
 pub struct PassThroughSweep;
 
 impl PassThroughSweep {
@@ -87,8 +81,10 @@ impl PassThroughSweep {
 
     /// Returns the [`AccountComponentMetadata`] for this component.
     pub fn component_metadata() -> AccountComponentMetadata {
-        AccountComponentMetadata::new(Self::NAME)
-            .with_description("Pass-through component moving whole account balances into a note")
+        AccountComponentMetadata::new(Self::NAME).with_description(
+            "Pass-through component exposing the account procedures a pass-through transaction \
+             needs",
+        )
     }
 }
 
@@ -97,8 +93,7 @@ impl From<PassThroughSweep> for AccountComponent {
         let metadata = PassThroughSweep::component_metadata();
 
         AccountComponent::new(PassThroughSweep::code().clone(), vec![], metadata).expect(
-            "pass through sweep component should satisfy the requirements of a valid account \
-             component",
+            "pass through component should satisfy the requirements of a valid account component",
         )
     }
 }

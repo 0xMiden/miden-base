@@ -10,12 +10,14 @@
 - Added the `pass_through::single_p2id` transaction script with its `PassThroughSingleP2idTransactionScript` type and the `PassThroughSweep` account component, forwarding the account's balance of the named assets into a single P2ID note ([#3709](https://github.com/0xMiden/protocol/issues/3709)).
 - Added the `AuthPassThrough` account component, which rejects any change to the account's state, never increments the nonce and creates no `TX_FEE` note; it authenticates nothing, so anyone can execute a transaction against such an account ([#3709](https://github.com/0xMiden/protocol/issues/3709)).
 - Added the `pass_through::single_p2id` transaction script with its `PassThroughSingleP2idTransactionScript` type and the `PassThrough` account component, forwarding the account's balance of the named assets into a single P2ID note and asserting the vault is left as the transaction found it ([#3709](https://github.com/0xMiden/protocol/issues/3709)).
+- Added the `pass_through::single_p2id` transaction script with its `PassThroughSingleP2idTransactionScript` type and the `PassThroughSweep` account component, forwarding the account's balance of the listed assets into a single P2ID note; keeping the account unchanged additionally requires the `AuthPassThrough` component ([#3709](https://github.com/0xMiden/protocol/issues/3709)).
 - Added the block kernel skeleton, establishing its public input/output contract and the `BlockExecutor` that runs it ([#3703](https://github.com/0xMiden/protocol/pull/3703)).
 - Added the `miden-objects` crate with canonical, `no_std`-compatible Protobuf representations and validated conversions for protocol objects exchanged between clients and nodes ([#3707](https://github.com/0xMiden/protocol/pull/3707)).
 - Added canonical Protobuf representations and validated conversions for `TransactionInputs` ([#3776](https://github.com/0xMiden/protocol/pull/3776)).
 
 ### Changes
 
+- Moved `MAX_ASSETS_PER_NOTE` into `miden::protocol_utils::constants` and re-exported it from `miden::protocol::constants` and `miden::tx_kernel_core::constants`, so standard scripts can import it ([#3821](https://github.com/0xMiden/protocol/pull/3821)).
 - Fixed `RoleBasedAccessControl` role administration becoming permanently unmanageable when a role's admin was delegated to a memberless role ([#3476](https://github.com/0xMiden/protocol/pull/3476)).
 - [BREAKING] Moved the `note_tag` MASM module from `miden::standards::note_tag` to `miden::standards::note::note_tag` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
 - [BREAKING] Moved the `note_creator` account component MASM namespace from `miden::standards::components::wallets::note_creator` to `miden::standards::components::note::note_creator`, and moved the Rust `NoteCreator` type from `account::wallets` to `account::note_creator` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
