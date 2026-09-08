@@ -554,7 +554,6 @@ pub fn create_network_non_fungible_faucet(
     fee_policy_manager: FeePolicyManager,
 ) -> Result<Account, NonFungibleFaucetError> {
     let note_allowlist = [MintNote::script_root(), BurnNote::script_root()].into_iter().collect();
-
     let required_slots = token_policy_manager.required_storage_slots();
 
     let account = NetworkAccount::builder(init_seed, note_allowlist, fee_policy_manager)
