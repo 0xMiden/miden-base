@@ -58,8 +58,10 @@ impl AccountComponentInterfaceExt for AccountComponentInterface {
         // ----------------------------------------------------------------------------------------
 
         // All remaining procedures are put into the custom bucket.
-        component_interface_vec
-            .push(AccountComponentInterface::Custom(procedures.into_iter().collect()));
+        if !procedures.is_empty() {
+            component_interface_vec
+                .push(AccountComponentInterface::Custom(procedures.into_iter().collect()));
+        }
 
         component_interface_vec
     }
