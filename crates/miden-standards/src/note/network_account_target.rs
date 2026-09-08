@@ -20,10 +20,6 @@ use crate::note::{NoteExecutionHint, StandardNoteAttachment};
 /// - 2nd felt: [24 zero bits | exec_hint_payload (32 bits) | exec_hint_tag (8 bits)]
 /// - 3rd felt: [64 zero bits]
 /// ```
-///
-/// Decoding validates only the target ID, matching the on-chain targeting path, which discards
-/// the execution hint felt. An execution hint this version does not recognize decodes as
-/// [`NoteExecutionHint::Unknown`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct NetworkAccountTarget {
     target_id: AccountId,

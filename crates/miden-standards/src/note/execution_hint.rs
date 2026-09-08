@@ -185,9 +185,6 @@ impl From<NoteExecutionHint> for Felt {
 }
 
 /// Converts a [`Felt`] into a [`NoteExecutionHint`] with the layout documented on the type.
-///
-/// A felt that does not encode a recognized hint becomes [`NoteExecutionHint::Unknown`] rather
-/// than an error, so that the felt survives a decode/encode round trip unchanged.
 impl From<Felt> for NoteExecutionHint {
     fn from(value: Felt) -> Self {
         let encoded = value.as_canonical_u64();
