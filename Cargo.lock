@@ -2571,7 +2571,6 @@ dependencies = [
  "miden-protocol",
  "prost",
  "prost-build",
- "prost-types",
  "protox",
 ]
 

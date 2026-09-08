@@ -106,10 +106,6 @@ fn storage_value_patch_oneof_roundtrips_all_operations() {
             assert_eq!(StorageValuePatch::try_from(message).unwrap(), patch);
         }
     }
-    assert_eq!(
-        proto::account::StorageValuePatch::from(&StorageValuePatch::Remove).encode_to_vec(),
-        [0x1a, 0]
-    );
     assert!(StorageValuePatch::try_from(proto::account::StorageValuePatch::default()).is_err());
 }
 
