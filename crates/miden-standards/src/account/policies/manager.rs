@@ -218,7 +218,7 @@ struct PolicyConfig {
 /// switch. A faucet created as
 /// [`AccountType::Private`][miden_protocol::account::AccountType::Private] publishes only its
 /// commitment, so its holders have to obtain the state each of their transactions needs out of
-/// band; the account type is immutable, so that is settled at creation too.
+/// band. The account type is immutable, so that is settled at creation.
 ///
 /// The slots are omitted only when no send or receive policy of any kind is registered, in which
 /// case the faucet's account ID is created with
