@@ -71,9 +71,7 @@ pub proc main
     push.STORAGE_PTR exec.asset::load
     # => [STORED_ASSET_ID, STORED_ASSET_VALUE, NOTE_ASSET_ID, NOTE_ASSET_VALUE, pad(16)]
 
-    # Bind consumption to the faucet that issued the asset. `receive_and_burn` also rejects a
-    # foreign asset, but stating the binding here keeps it a property of the note script rather
-    # than a side effect of how burns happen to be validated.
+    # Bind consumption to the faucet that issued the asset.
     dupw exec.asset::id_into_faucet_id
     # => [faucet_id_suffix, faucet_id_prefix, STORED_ASSET_ID, STORED_ASSET_VALUE, NOTE_ASSET_ID, NOTE_ASSET_VALUE, pad(16)]
 

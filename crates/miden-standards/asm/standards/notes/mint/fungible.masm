@@ -143,8 +143,7 @@ pub proc mint
     end
     # => [ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
 
-    # bind consumption to the faucet the note was written for: the stored asset ID names that
-    # faucet, so a MINT note cannot be consumed by any other faucet
+    # bind consumption to the target faucet, which the stored asset ID identifies
     dupw exec.asset::id_into_faucet_id
     # => [faucet_id_suffix, faucet_id_prefix, ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
 
