@@ -88,14 +88,11 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::AuthNetworkAccount => "Network Account Auth".to_string(),
             AccountComponentInterface::CustomAuth(proc_root) => {
-                format!("Custom Auth({})", &proc_root.mast_root().to_hex()[..9])
+                format!("Custom Auth({})", shortened_mast_root(proc_root))
             },
             AccountComponentInterface::Custom(proc_root_vec) => {
-                let result = proc_root_vec
-                    .iter()
-                    .map(|proc_root| proc_root.mast_root().to_hex()[..9].to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                let result =
+                    proc_root_vec.iter().map(shortened_mast_root).collect::<Vec<_>>().join(", ");
                 format!("Custom([{result}])")
             },
         }
@@ -114,4 +111,13 @@ impl AccountComponentInterface {
                 | AccountComponentInterface::CustomAuth(_)
         )
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Returns a shortened hex representation of the procedure's MAST root: the `0x` prefix followed
+/// by the first seven hex digits, e.g. `0x6d93447`.
+fn shortened_mast_root(proc_root: &AccountProcedureRoot) -> String {
+    proc_root.mast_root().to_hex()[..9].to_string()
 }
