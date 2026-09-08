@@ -58,8 +58,8 @@ pub enum AccountComponentInterface {
     /// Exposes procedures from the
     /// [`AuthPassThrough`][crate::account::auth::AuthPassThrough] module.
     ///
-    /// This authentication scheme provides no cryptographic authentication and rejects any
-    /// transaction that changes the account's state.
+    /// This authentication scheme verifies a signature over the transaction summary and rejects
+    /// any transaction that changes the account's state.
     AuthPassThrough,
     /// Exposes the `sweep_asset_to_note` procedure from the
     /// [`PassThroughSweep`][crate::account::pass_through::PassThroughSweep] component.

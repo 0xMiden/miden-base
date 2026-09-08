@@ -67,9 +67,13 @@ pub enum Auth {
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
 
-    /// Pass-through authentication: rejects any transaction that changes the account's state and
-    /// never increments the nonce.
-    PassThrough,
+    /// Pass-through authentication: verifies a signature over the transaction summary, rejects any
+    /// transaction that changes the account's state and never increments the nonce, except in the
+    /// transaction that creates the account.
+    ///
+    /// Creates a secret key for the account and a [BasicAuthenticator] to sign with, like
+    /// [`Auth::BasicAuth`].
+    PassThrough { auth_scheme: AuthScheme },
 
     /// Creates a mock authentication mechanism for the account that conditionally succeeds and
     /// conditionally increments the nonce based on the authentication arguments.
@@ -125,7 +129,8 @@ impl Auth {
     ///
     /// The authentication component is always the first component of the returned vector; variants
     /// that expand into multiple components (e.g. [`Auth::NetworkAccount`]) yield their companion
-    /// components after it. The authenticator is only `Some` when [`Auth::BasicAuth`] is passed.
+    /// components after it. The authenticator is only `Some` when [`Auth::BasicAuth`] or
+    /// [`Auth::PassThrough`] is passed.
     pub fn build_components(&self) -> (Vec<AccountComponent>, Option<BasicAuthenticator>) {
         match self {
             Auth::BasicAuth { auth_scheme } => {
@@ -175,7 +180,17 @@ impl Auth {
             },
             Auth::IncrNonce => (vec![IncrNonceAuthComponent.into()], None),
             Auth::Noop => (vec![NoopAuthComponent.into()], None),
-            Auth::PassThrough => (vec![AuthPassThrough.into()], None),
+            Auth::PassThrough { auth_scheme } => {
+                let mut rng = ChaCha20Rng::from_seed(Default::default());
+                let sec_key = AuthSecretKey::with_scheme_and_rng(*auth_scheme, &mut rng)
+                    .expect("failed to create secret key");
+                let pub_key = sec_key.public_key().to_commitment();
+
+                let component = AuthPassThrough::new(Approver::new(pub_key, *auth_scheme)).into();
+                let authenticator = BasicAuthenticator::new(&[sec_key]);
+
+                (vec![component], Some(authenticator))
+            },
             Auth::Conditional => (vec![ConditionalAuthComponent.into()], None),
             Auth::NetworkAccount {
                 allowed_script_roots,

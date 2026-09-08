@@ -32,24 +32,26 @@ procedure_root!(
 ///
 /// `sweep_asset_to_note` reads the balance itself, unlike
 /// [`BasicWallet`](crate::account::wallets::BasicWallet)'s `move_asset_to_note`, which takes the
-/// amount to move, so it needs no prior knowledge of what the vault holds. Nothing bounds what it
-/// moves or who moves it: it drains the account's whole balance of the asset, any note script the
-/// account consumes can call it, and on an account whose auth procedure authenticates nobody -
-/// which is what keeps a pass-through account's commitment unchanged - any third party can execute
-/// a transaction as the account and choose the destination.
+/// amount to move, so it needs no prior knowledge of what the vault holds. It moves the account's
+/// entire balance of the asset and bounds nobody who calls it: any note script the account
+/// consumes can call it and redirect what earlier notes deposited.
 ///
-/// Assets passing through are therefore only safe if the input note's own script constrains where
-/// they go, or if they were already unrestricted before they arrived.
-/// [`TxFeeNote`](crate::note::TxFeeNote)s are the latter: any account may consume one, so routing
-/// them through a pass-through account takes nothing away. Routing a destination-restricted note
-/// such as [`P2idNote`](crate::note::P2idNote) through one instead destroys that restriction,
-/// since the assets become claimable by whoever executes the next transaction as the account.
+/// What bounds it is the account it is installed on. Paired with
+/// [`AuthPassThrough`](crate::account::auth::AuthPassThrough), only the holder of the account's
+/// key can execute a transaction against it, and the transaction summary they sign binds both the
+/// notes consumed and the notes created, so every destination the assets reach is covered by that
+/// signature. Installed alongside an auth component that authenticates nobody, such as
+/// [`NoAuth`](crate::account::auth::NoAuth), the same procedure lets any third party execute a
+/// transaction as the account and pick the destination themselves.
+///
+/// The pairing is therefore part of this component's contract rather than a recommendation, and
+/// nothing enforces it: an account procedure cannot ask which auth procedure the account installs.
 ///
 /// It is an account procedure, so the component must be combined with an authentication
-/// component - for a pass-through account, one that leaves the commitment unchanged - and with one
-/// exposing `receive_asset` (e.g.
-/// [`BasicWallet`](crate::account::wallets::BasicWallet)) so that input notes can deposit into the
-/// account in the first place.
+/// component - for a pass-through account,
+/// [`AuthPassThrough`](crate::account::auth::AuthPassThrough) - and with one exposing
+/// `receive_asset` (e.g. [`BasicWallet`](crate::account::wallets::BasicWallet)) so that input notes
+/// can deposit into the account in the first place.
 pub struct PassThroughSweep;
 
 impl PassThroughSweep {

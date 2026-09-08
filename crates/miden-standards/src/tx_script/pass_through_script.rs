@@ -70,11 +70,15 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// procedure, so an account exporting the same body as an ordinary procedure while authenticating
 /// with something else passes the check. Nothing enforces it on-chain either - the script root is
 /// stable and allowlistable, so a caller can build the [`TransactionScript`] without going through
-/// `new` at all.
+/// `new` at all. The check matters more than it looks: with [`AuthPassThrough`] in place the
+/// account's key is what bounds who may move the assets passing through it, so an account that
+/// only appears to install it is not merely error-prone but unguarded.
 ///
 /// A successful transaction does not imply the listed assets reached `target`. A note script the
 /// transaction consumes can sweep them first (see [`PassThroughSweep`]), after which this script's
-/// own sweep is a no-op and the vault ends as it started either way.
+/// own sweep is a no-op and the vault ends as it started either way. Which notes are consumed is
+/// the signer's choice, and [`AuthPassThrough`] binds that choice into the signature, so this is a
+/// matter of not signing for notes whose scripts have not been vetted.
 ///
 /// The payload is embedded into the script's MAST forest and committed to by `TX_SCRIPT_ARGS`, so
 /// a single [`PassThroughSingleP2idTransactionScript::script_root`] covers every target, serial

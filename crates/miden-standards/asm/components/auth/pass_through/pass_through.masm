@@ -2,25 +2,57 @@
 #
 # See the `AuthPassThrough` Rust type's documentation for more details.
 
+use miden::standards::auth::signature
 use miden::protocol::active_account
 use miden::protocol::native_account
+
+# CONSTANTS
+# =================================================================================================
+
+# The slot in this component's storage layout where the public key commitment is stored.
+const PUBLIC_KEY_COMMITMENT_SLOT = word("miden::standards::auth::pass_through::pub_key")
+
+# The slot in this component's storage layout where the corresponding signature scheme id is stored.
+const SCHEME_ID_SLOT = word("miden::standards::auth::pass_through::scheme")
 
 # ERRORS
 # =================================================================================================
 
 const ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED = "a pass-through account's state must be the one it had at the start of the transaction"
 
+const ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS = "a pass-through account must hold no assets when it is created, or they can never be moved out again"
+
 # AUTH PROCEDURE
 # =================================================================================================
 
-#! Asserts that the account's state is the one it had at the start of the transaction.
+#! Authenticates a transaction that leaves the account exactly as it found it, using the signature
+#! scheme specified by scheme_id.
 #!
-#! This authentication procedure provides no authentication. It makes an account stateless: any
-#! transaction that would change its commitment fails, and the nonce is never incremented. Nothing
-#! can therefore alter the account, so transactions against it never conflict with one another and
-#! can be built concurrently. That is what a pass-through transaction runs on: assets enter the
-#! vault through the input notes and leave it again through the output notes within the same
-#! transaction, and anything left behind fails here.
+#! Supported schemes:
+#! - 1 => ecdsa_k256_keccak
+#! - 2 => falcon512_poseidon2
+#!
+#! This makes an account immutable: after the transaction that creates it, any transaction that
+#! would change its commitment fails and the nonce is never incremented. Nothing can therefore
+#! alter the account, so transactions against it never conflict with one another and can be built
+#! concurrently. That is what a pass-through transaction runs on: assets enter the vault through
+#! the input notes and leave it again through the output notes within the same transaction, and
+#! anything left behind fails here.
+#!
+#! The account that creates itself is the exception: a new account's nonce is 0, which the kernel
+#! rejects at the end of the transaction, so the nonce is incremented once during creation and the
+#! state check is skipped. The vault is still checked, since assets left in it by the creating
+#! transaction could never be moved out again. Every later transaction is held to the full
+#! unchanged-state rule.
+#!
+#! Replay protection does not come from the nonce, which is constant, but from the input notes the
+#! signed transaction summary binds; see signature::authenticate_transaction_without_nonce. The
+#! shape that leaves unprotected - a transaction consuming no input notes - cannot reach an
+#! account that already exists: with its state unchanged the account patch is empty too, and the
+#! kernel rejects a transaction that neither changes the account nor consumes a note. The creating
+#! transaction is the one that can consume nothing, and it needs no such guard: it changes the
+#! account, so its delta commitment is non-empty and hashes in the account id, and an account can
+#! only be created once.
 #!
 #! This procedure creates no TX_FEE note, so a transaction using a pass-through script pays no
 #! fee and is only includable by a batch builder that accepts fee-less transactions. Note that
@@ -28,35 +60,92 @@ const ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED = "a pass-through account's st
 #! not the absence of withdrawals, so another script could still route assets an input note
 #! deposited into a fee note of its own.
 #!
-#! Since the nonce is never incremented, an account with this component cannot be created by a
-#! transaction, and any asset it holds is permanently unspendable.
-#!
-#! The account authenticates nothing, so anyone can execute a transaction against it and choose
-#! where the assets passing through it go. Assets are only safe in transit if the input note's own
-#! script constrains its destination; a note that lets its consumer pick the output note, such as
-#! P2ID or TX_FEE, can be redirected by whoever gets there first.
+#! Only the holder of the account's key can execute a transaction against it, which is what keeps
+#! the assets passing through under the signer's control: the summary they sign binds the input
+#! notes consumed and the output notes created, so the destination of everything moved is covered
+#! by the signature.
 #!
 #! Inputs:  [AUTH_ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
 #! Where:
-#! - AUTH_ARGS are the authentication arguments, which this procedure ignores.
+#! - AUTH_ARGS are the authentication arguments, which this procedure ignores: it pays no fee, so
+#!   it has no fee conversion info to decode.
 #!
 #! Panics if:
-#! - the account's commitment differs from the one it had at the start of the transaction.
+#! - the account already exists and its commitment differs from the one it had at the start of the
+#!   transaction.
+#! - the account is being created and the transaction leaves assets in its vault.
+#! - the signature over the transaction summary does not verify against the stored public key.
 #!
 #! Invocation: call
 @auth_script
-pub proc auth_pass_through
+pub proc auth_pass_through(auth_args: word)
     dropw
     # => [pad(16)]
 
-    exec.native_account::get_initial_commitment
-    # => [INITIAL_COMMITMENT, pad(16)]
+    # A new account is created by this transaction, so its nonce has to leave 0 behind; an account
+    # that already exists must be left exactly as the transaction found it. New accounts start out
+    # with a non-empty state, so their initial and current commitments match either way, which is
+    # why the two cases are told apart by the nonce rather than by the state.
+    exec.active_account::get_nonce eq.0
+    # => [is_new_account, pad(16)]
 
-    exec.active_account::compute_commitment
-    # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
+    if.true
+        # The increment has to happen before the transaction summary is built, otherwise
+        # computing the delta commitment aborts on the new account's non-empty delta.
+        exec.native_account::incr_nonce drop
+        # => [pad(16)]
 
-    assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED
+        # The state check below is skipped while the account is created, so the vault is guarded
+        # on its own here. An input note consumed by the creating transaction could otherwise
+        # leave assets behind, and every later transaction has to leave the account unchanged, so
+        # moving them out again would trip that assert - they would be stranded for good. The
+        # kernel already requires a new account's initial vault to be empty, so comparing against
+        # it asserts the account is created holding nothing.
+        exec.native_account::get_initial_vault_root
+        # => [INITIAL_VAULT_ROOT, pad(16)]
+
+        exec.active_account::get_vault_root
+        # => [CURRENT_VAULT_ROOT, INITIAL_VAULT_ROOT, pad(16)]
+
+        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS
+        # => [pad(16)]
+    else
+        exec.native_account::get_initial_commitment
+        # => [INITIAL_COMMITMENT, pad(16)]
+
+        exec.active_account::compute_commitment
+        # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
+
+        # Asserting here rather than leaving it to the kernel means an account changed by mistake
+        # names this component's invariant instead of failing later on the kernel's nonce rule.
+        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED
+        # => [pad(16)]
+    end
+
+    # Fetch the signature scheme id from storage.
+    # ---------------------------------------------------------------------------------------------
+
+    push.SCHEME_ID_SLOT[0..2] exec.native_account::get_initial_item
+    # => [scheme_id, 0, 0, 0, pad(16)]
+
+    movdn.3 drop drop drop
+    # => [scheme_id, pad(16)]
+
+    # Fetch the public key commitment from storage and verify the signature over the summary.
+    # ---------------------------------------------------------------------------------------------
+
+    push.PUBLIC_KEY_COMMITMENT_SLOT[0..2] exec.native_account::get_initial_item
+    # => [PK_COMM, scheme_id, pad(16)]
+
+    # Bind no user params. Neither branch above needs a salt: a transaction against an existing
+    # account must consume input notes, which the summary binds and which are nullified once used,
+    # and the creating transaction instead changes the account, so its delta commitment is
+    # non-empty and hashes in the account id.
+    push.0.0.0.0.0.0
+    # => [user_params(6), PK_COMM, scheme_id, pad(16)]
+
+    exec.signature::authenticate_transaction_without_nonce
     # => [pad(16)]
 end

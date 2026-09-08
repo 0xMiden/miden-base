@@ -20,17 +20,19 @@ use {AssetId} from miden::protocol::types
 #! No-op if the account holds none of the asset.
 #!
 #! Unlike wallets::basic::move_asset_to_note, which takes the amount to move, this procedure reads
-#! the balance itself, so it needs no prior knowledge of what the vault holds. Nothing bounds who
-#! moves it: any note script the account consumes can call this and redirect what earlier notes
-#! deposited, and on an account whose auth procedure authenticates nobody - which is what keeps a
-#! pass-through account's commitment unchanged - any third party can execute a transaction as the
-#! account and choose the destination.
+#! the balance itself, so it needs no prior knowledge of what the vault holds. It moves the entire
+#! balance and bounds nobody who calls it: any note script the account consumes can call it and
+#! redirect what earlier notes deposited.
 #!
-#! Assets passing through are therefore only safe if the input note's own script constrains where
-#! they go, or if they were already unrestricted before they arrived. TX_FEE notes are the latter:
-#! any account may consume one, so routing them through a pass-through account takes nothing away.
-#! Routing a destination-restricted note through one instead destroys that restriction, since the
-#! assets become claimable by whoever executes the next transaction as the account.
+#! What bounds it is the account it is installed on. Paired with auth::pass_through, only the
+#! holder of the account's key can execute a transaction against it, and the summary they sign
+#! binds both the notes consumed and the notes created, so every destination the assets reach is
+#! covered by that signature - which makes it a matter of not signing for notes whose scripts have
+#! not been vetted, rather than of who may transact. Installed alongside an auth procedure that authenticates nobody, the
+#! same procedure lets any third party execute a transaction as the account and pick the
+#! destination themselves. The pairing is therefore part of this component's contract, not a
+#! recommendation - and this procedure cannot check it, since an account procedure has no way to
+#! ask which auth procedure the account installs.
 #!
 #! Inputs:  [ASSET_ID, note_idx, pad(11)]
 #! Outputs: [pad(16)]

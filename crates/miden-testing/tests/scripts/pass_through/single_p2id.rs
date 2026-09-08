@@ -5,7 +5,7 @@ use miden_protocol::note::{NoteAssets, NoteType};
 use miden_protocol::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_SENDER};
 use miden_protocol::transaction::RawOutputNote;
 use miden_protocol::{Felt, Hasher, Word};
-use miden_standards::account::auth::{AuthPassThrough, NoAuth};
+use miden_standards::account::auth::NoAuth;
 use miden_standards::account::pass_through::PassThroughSweep;
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::errors::standards::{
@@ -18,9 +18,14 @@ use miden_standards::tx_script::{
     PassThroughSingleP2idTransactionScript,
     PassThroughTransactionScriptError,
 };
-use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
+use miden_testing::{AccountState, Auth, MockChain, assert_transaction_executor_error};
 
-use super::pass_through_account;
+use super::{
+    AUTH_SCHEME,
+    add_pass_through_account,
+    add_pass_through_account_with,
+    pass_through_account,
+};
 
 // CONSTANTS
 // ================================================================================================
@@ -42,8 +47,7 @@ const SERIAL_NUMBER: Word = Word::new([
 #[tokio::test]
 async fn merges_several_notes_into_a_single_p2id_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -114,8 +118,7 @@ async fn forwards_assets_of_every_faucet_and_composition() -> anyhow::Result<()>
     let non_fungible_asset: Asset = NonFungibleAsset::mock(&[4, 5, 6]);
 
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -162,8 +165,7 @@ async fn forwards_the_maximum_number_of_assets() -> anyhow::Result<()> {
         .collect();
 
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -198,8 +200,7 @@ async fn forwards_the_maximum_number_of_assets() -> anyhow::Result<()> {
 #[tokio::test]
 async fn output_note_is_consumable_by_the_target() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let mut target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -245,8 +246,7 @@ async fn output_note_is_consumable_by_the_target() -> anyhow::Result<()> {
 #[tokio::test]
 async fn tolerates_an_asset_less_input_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -290,8 +290,7 @@ async fn tolerates_a_listed_asset_the_vault_does_not_hold() -> anyhow::Result<()
         FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 20)?.into();
 
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -335,8 +334,7 @@ async fn fails_when_the_payload_does_not_list_a_deposited_asset() -> anyhow::Res
         FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 20)?.into();
 
     let mut builder = MockChain::builder();
-    let account = pass_through_account()?;
-    builder.add_account(account.clone())?;
+    let account = add_pass_through_account(&mut builder)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -372,14 +370,8 @@ async fn fails_when_the_account_already_held_the_asset() -> anyhow::Result<()> {
     let asset = FungibleAsset::mock(10);
 
     let mut builder = MockChain::builder();
-    let account = AccountBuilder::new([47; 32])
-        .with_component(AuthPassThrough)
-        .with_component(BasicWallet)
-        .with_component(PassThroughSweep)
-        .with_assets([asset])
-        .account_type(AccountType::Public)
-        .build_existing()?;
-    builder.add_account(account.clone())?;
+    let account =
+        add_pass_through_account_with(&mut builder, [47; 32], [asset], AccountState::Exists)?;
     let target = builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
     })?;
@@ -413,8 +405,9 @@ async fn fails_when_the_account_already_held_the_asset() -> anyhow::Result<()> {
 #[test]
 fn rejects_an_account_without_the_pass_through_interface() -> anyhow::Result<()> {
     // a plain wallet: it can create notes and receive assets, but cannot sweep a balance
+    let (auth_components, _) = Auth::PassThrough { auth_scheme: AUTH_SCHEME }.build_components();
     let wallet = AccountBuilder::new([46; 32])
-        .with_component(AuthPassThrough)
+        .with_components(auth_components)
         .with_component(BasicWallet)
         .account_type(AccountType::Public)
         .build_existing()?;
@@ -545,8 +538,7 @@ async fn rejects_a_malformed_payload_length() -> anyhow::Result<()> {
 
     for (num_elements, expected_error) in cases {
         let mut builder = MockChain::builder();
-        let account = pass_through_account()?;
-        builder.add_account(account.clone())?;
+        let account = add_pass_through_account(&mut builder)?;
         let fee_note =
             builder.add_tx_fee_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(10)])?;
         let mock_chain = builder.build()?;

@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use miden_protocol::Word;
 use miden_protocol::account::AccountBuilder;
-use miden_protocol::account::auth::{self, PublicKeyCommitment};
+use miden_protocol::account::auth::{self, AuthSecretKey, PublicKeyCommitment};
 use miden_protocol::asset::NonFungibleAsset;
 use miden_protocol::crypto::rand::RandomCoin;
 use miden_protocol::errors::NoteError;
@@ -92,7 +92,9 @@ fn test_account_interface_identifies_no_auth() {
 fn test_account_interface_identifies_pass_through_auth() {
     let mock_seed = Word::from([4, 5, 6, 7u32]).as_bytes();
     let pass_through_account = AccountBuilder::new(mock_seed)
-        .with_component(AuthPassThrough)
+        .with_component(AuthPassThrough::from_public_key(
+            AuthSecretKey::new_ecdsa_k256_keccak().public_key(),
+        ))
         .with_component(BasicWallet)
         .with_component(PassThroughSweep)
         .build_existing()
