@@ -42,8 +42,7 @@ const SERIAL_NUMBER: Word = Word::new([
 // ================================================================================================
 
 /// The pass-through script merges the balance several notes deposit into one P2ID note addressed
-/// to the payload's target, leaving the account it runs on untouched. TX_FEE notes carry the
-/// assets because their script places no constraint on who consumes them.
+/// to the payload's target, leaving the account it runs on untouched.
 #[tokio::test]
 async fn merges_several_notes_into_a_single_p2id_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -283,7 +282,7 @@ async fn tolerates_an_asset_less_input_note() -> anyhow::Result<()> {
 }
 
 /// Listing an asset the vault does not hold is a no-op, so a caller may list a fixed set of
-/// supported assets without knowing which of them the input notes actually deposit.
+/// supported assets.
 #[tokio::test]
 async fn tolerates_a_listed_asset_the_vault_does_not_hold() -> anyhow::Result<()> {
     let absent_asset: Asset =
@@ -401,7 +400,7 @@ async fn fails_when_the_account_already_held_the_asset() -> anyhow::Result<()> {
 }
 
 /// An account that does not expose the procedures the script and its input notes call is rejected
-/// at construction, rather than failing deep inside execution.
+/// at construction.
 #[test]
 fn rejects_an_account_without_the_pass_through_interface() -> anyhow::Result<()> {
     // a plain wallet: it can create notes and receive assets, but cannot sweep a balance
@@ -427,7 +426,7 @@ fn rejects_an_account_without_the_pass_through_interface() -> anyhow::Result<()>
 }
 
 /// An account exposing the right procedures but authenticating with something that accepts a
-/// changed account is rejected too: the script's guarantee would not hold there.
+/// changed account is rejected too.
 #[test]
 fn rejects_an_account_without_the_pass_through_auth() -> anyhow::Result<()> {
     let account = AccountBuilder::new([48; 32])

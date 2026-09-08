@@ -59,7 +59,7 @@ const ERR_INVALID_SCHEME_ID_WORD = "invalid scheme ID word format expected three
 #! `auth::create_tx_summary_with_block`.
 #!
 #! The summary is built and the signature verified by authenticate_transaction_without_nonce below,
-#! which this procedure calls once it has incremented the nonce and bound it as the first user param.
+#! which this procedure calls after incrementing the nonce and binding it as the first user param.
 #!
 #! Inputs:  [PK_COMM, scheme_id]
 #! Outputs: []
@@ -93,35 +93,21 @@ end
 #!  [user_param2, user_param3, user_param4, user_param5], ACCOUNT_DELTA_COMMITMENT,
 #!  INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT]
 #!
-#! This is for accounts whose nonce does not change from one transaction to the next, which makes
-#! authenticate_transaction's replay guard unavailable. That guard is the final nonce it binds as
-#! the first user param; on such an account the same value would appear in every transaction and
-#! tell none of them apart.
+#! This is for accounts whose nonce does not change between transactions, which makes
+#! authenticate_transaction's replay guard unavailable: the final nonce it binds as the first user
+#! param would be identical in every transaction.
 #!
-#! The input notes commitment the summary binds takes over that role. A captured signature only
-#! authorizes a transaction consuming exactly the same input notes, and the transaction that first
-#! used them nullified them, so it cannot be replayed. The block commitment bounds it further, to
-#! the reference block the signer intended.
+#! Replay protection comes from the input notes the summary binds instead. A captured signature
+#! only authorizes a transaction consuming the same input notes, which the transaction that first
+#! used them nullified. A caller whose transactions may consume no input notes must pass a salt
+#! through user_params.
 #!
-#! That leaves one gap: a transaction consuming no input notes is bound by neither. Such a caller
-#! must pass a salt through user_params, which is what they are for - the procedure binds whatever
-#! it is given and reads nothing into it.
+#! A transaction that does not increment the nonce must leave the account's vault and storage
+#! unchanged, or compute_delta_commitment aborts while the summary is built. That also rules out
+#! paying a fee, since fee::pay_fee funds the TX_FEE note out of the vault.
 #!
-#! One precondition, enforced by the kernel rather than here, so a caller that ignores it fails
-#! with the kernel's error instead of its own: a transaction that does not increment the nonce must
-#! leave the account's vault and storage unchanged, or compute_delta_commitment aborts while the
-#! summary is built. That also rules out paying a fee, since fee::pay_fee funds the TX_FEE note out
-#! of the vault.
-#!
-#! A caller that does increment the nonce - the transaction creating the account, typically, whose
-#! final nonce the kernel rejects at 0 - is exempt from that and must answer the replay question
-#! itself. Note what it cannot lean on: with the nonce unbound, a reproducible delta and no input
-#! notes leave nothing in the summary that varies between transactions, and the signature stays
-#! valid for as long as its reference block is accepted. Consume an input note, or pass a salt.
-#!
-#! authenticate_transaction is exactly such a caller, and answers it with the nonce: it increments
-#! it and passes it as the first user param before calling this, which is why the two procedures
-#! share this body rather than each having their own.
+#! authenticate_transaction calls this after incrementing the nonce and binding it as the first
+#! user param, which is why the two share one body.
 #!
 #! Inputs:  [user_params(6), PK_COMM, scheme_id]
 #! Outputs: []

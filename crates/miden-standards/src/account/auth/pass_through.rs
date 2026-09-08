@@ -39,39 +39,21 @@ static SCHEME_ID_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// This component makes an account immutable: after the transaction that creates it, any
 /// transaction that would change its commitment fails and the nonce is never incremented. Nothing
 /// can therefore alter the account, so transactions against it never conflict with one another and
-/// can be built concurrently - which is what a pass-through transaction runs on, since assets
-/// enter the vault through the input notes and leave it again through the output notes within the
-/// same transaction.
+/// can be built concurrently.
 ///
 /// It exports the procedure `auth_pass_through`, which:
 /// - Verifies a signature over the transaction summary against the public key in storage, under the
 ///   signature scheme stored alongside it
 /// - Asserts the account's commitment is the one it had at the start of the transaction
-/// - Never increments the nonce, except once in the transaction that creates the account, whose
-///   nonce would otherwise stay at 0 and be rejected by the kernel. That transaction skips the
-///   state check, so the vault is checked on its own instead: an account created holding assets
-///   could never move them out again, since every later transaction must leave it unchanged
-/// - Creates no TX_FEE note, so a transaction using a pass-through script pays no fee and is only
-///   includable by a batch builder that accepts fee-less transactions. This bounds the procedure,
-///   not the transaction: the assert requires a zero net vault delta, not the absence of
-///   withdrawals, so another script could still route assets an input note deposited into a fee
-///   note of its own
+/// - Never increments the nonce, except once when the account is deployed (the kernel rejects a
+///   final nonce of 0). That transaction is checked against the vault instead of the full
+///   commitment, so it cannot be created holding assets
+/// - Creates no TX_FEE note
 ///
-/// # Replay protection
-///
-/// Unlike [`AuthSingleSig`](crate::account::auth::AuthSingleSig), this component cannot bind the
-/// final nonce into the signed message, because that nonce is the same in every transaction the
-/// account ever executes and so distinguishes none of them. The transaction summary still binds
-/// the input notes, the output notes and the reference block, and the input notes are what carry
-/// replay protection here: a captured signature only authorizes a transaction consuming exactly
-/// the same input notes, which the transaction that first used them has nullified.
-///
-/// The shape the input notes cannot bind - a transaction consuming none of them - cannot reach an
-/// account that already exists. With its state unchanged the account patch is empty too, and the
-/// kernel rejects a transaction that neither changes the account nor consumes a note. The
-/// creating transaction is the one that can consume nothing, and it needs no salt either: it
-/// changes the account, so its delta commitment is non-empty and hashes in the account id, and an
-/// account can only be created once.
+/// Replay protection comes from the input notes the signed transaction summary binds, not from the
+/// nonce; see [`AuthSingleSig`](crate::account::auth::AuthSingleSig) for the usual scheme. Since a
+/// transaction leaving the account unchanged must consume at least one input note to be valid,
+/// this always applies. The deploying transaction is exempt: an account can only be created once.
 ///
 /// When linking against this component, the `miden::standards` library must be available to the
 /// assembler (which also implies availability of `miden::protocol`). This is the case when using

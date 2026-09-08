@@ -29,9 +29,8 @@ const MASM_NUM_LOCALS: usize = 75;
 /// The loop-state locals that follow the payload in that frame.
 const MASM_NUM_LOOP_STATE_LOCALS: usize = 3;
 
-// A tripwire, not a proof: both constants above are hand-copied from the script, so this catches a
-// change to `MAX_ASSETS_PER_NOTE` on the Rust side. The MASM side fails to assemble instead, since
-// the assembler rejects a static local index past the frame.
+// Both constants above are hand-copied from the script, so this catches a change to
+// `MAX_ASSETS_PER_NOTE` on the Rust side. The MASM side fails to assemble instead.
 const _: () = assert!(
     PassThroughSingleP2idTransactionScript::PAYLOAD_HEADER_NUM_ELEMENTS
         + PassThroughSingleP2idTransactionScript::MAX_ASSET_IDS * WORD_SIZE
@@ -53,32 +52,20 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// The state of the account it executes against does not change: it assumes the input notes
 /// already deposited their assets into the account's vault, and moves the whole balance of each
 /// listed asset into one P2ID note addressed to `target`, so the account's vault delta is zero.
-/// Its commitment is unchanged as long as the auth procedure neither bumps the nonce nor funds a
-/// fee note from the vault.
 ///
 /// Listing assets rather than notes is what makes the script's cost depend on how many assets it
 /// lists, not on how many notes the transaction consumes. The account must not hold any of the
-/// listed assets of its own, or it moves more out of the vault than was deposited; and the payload
-/// must list every asset the input notes deposit, or what is left behind stays in the vault. Both
-/// change the account's commitment, which [`AuthPassThrough`] rejects. `new` requires that
-/// component for exactly this reason: under an auth that accepts a changed account, both mistakes
-/// are silent, and [`NoAuth`] additionally funds a fee note out of the vault on a fee-charging
-/// chain, so assets only passing through can be spent.
+/// listed assets of its own (or else it would move more out of the vault than was deposited); and
+/// the payload must list every asset the input notes deposit (or else, the remainder stays in the
+/// vault). Both would change the account's commitment, which [`AuthPassThrough`] rejects. `new`
+/// requires that component for exactly this reason.
 ///
-/// That requirement is a footgun guard, not a vetting step for an untrusted account:
+/// That check is a footgun guard rather than a vetting step for an untrusted account:
 /// [`AccountCodeInterface`] is a set of procedure roots that does not record which one is the auth
-/// procedure, so an account exporting the same body as an ordinary procedure while authenticating
-/// with something else passes the check. Nothing enforces it on-chain either - the script root is
-/// stable and allowlistable, so a caller can build the [`TransactionScript`] without going through
-/// `new` at all. The check matters more than it looks: with [`AuthPassThrough`] in place the
-/// account's key is what bounds who may move the assets passing through it, so an account that
-/// only appears to install it is not merely error-prone but unguarded.
+/// procedure, and nothing enforces the check on-chain either.
 ///
-/// A successful transaction does not imply the listed assets reached `target`. A note script the
-/// transaction consumes can sweep them first (see [`PassThroughSweep`]), after which this script's
-/// own sweep is a no-op and the vault ends as it started either way. Which notes are consumed is
-/// the signer's choice, and [`AuthPassThrough`] binds that choice into the signature, so this is a
-/// matter of not signing for notes whose scripts have not been vetted.
+/// A note script the transaction consumes can sweep the listed assets before this script does, so
+/// a successful transaction does not by itself imply they reached `target`.
 ///
 /// The payload is embedded into the script's MAST forest and committed to by `TX_SCRIPT_ARGS`, so
 /// a single [`PassThroughSingleP2idTransactionScript::script_root`] covers every target, serial
@@ -92,8 +79,6 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// ```
 ///
 /// [`AuthPassThrough`]: crate::account::auth::AuthPassThrough
-/// [`NoAuth`]: crate::account::auth::NoAuth
-/// [`PassThroughSweep`]: crate::account::pass_through::PassThroughSweep
 #[derive(Debug, Clone)]
 pub struct PassThroughSingleP2idTransactionScript {
     script: TransactionScript,
@@ -129,9 +114,7 @@ impl PassThroughSingleP2idTransactionScript {
     /// stays in the vault and changes the account.
     ///
     /// `serial_number` must be unique per transaction, as for any note: two notes sharing a target,
-    /// an asset set and a serial number have the same ID and nullifier. Note that the pass-through
-    /// account's state is constant, so the `(account, nonce)` tuple other standard notes derive a
-    /// serial number from is not available here.
+    /// an asset set and a serial number have the same ID and nullifier.
     ///
     /// The note's tag is derived as [`NoteTag::with_account_target`], matching the tag a
     /// Rust-built [`P2idNote`](crate::note::P2idNote) carries.
@@ -140,8 +123,7 @@ impl PassThroughSingleP2idTransactionScript {
     ///
     /// Returns an error if more than [`Self::MAX_ASSET_IDS`] asset IDs are given, if the account
     /// does not expose the procedures the script and its input notes call, or if it does not
-    /// expose [`AuthPassThrough`]'s procedure - see the type docs for what that does and does not
-    /// prove.
+    /// expose [`AuthPassThrough`]'s procedure.
     pub fn new(
         interface: &AccountCodeInterface,
         target: AccountId,
@@ -150,7 +132,7 @@ impl PassThroughSingleP2idTransactionScript {
         asset_ids: impl IntoIterator<Item = AssetId>,
     ) -> Result<Self, PassThroughTransactionScriptError> {
         // `create_note` and `sweep_asset_to_note` are what the script itself calls; `receive_asset`
-        // is what the input notes deposit through, without which there is nothing to forward.
+        // is what the input notes deposit through.
         let supports_pass_through = interface.contains([
             PassThroughSweep::sweep_asset_to_note_root(),
             BasicWallet::create_note_root(),
@@ -160,10 +142,9 @@ impl PassThroughSingleP2idTransactionScript {
             return Err(PassThroughTransactionScriptError::UnsupportedAccountInterface);
         }
 
-        // The script leaves the account unchanged only if its auth procedure rejects a change; on
-        // any other auth a mislisted asset is absorbed silently instead of failing. The interface
-        // does not record which procedure is the auth one, so this catches a misconfiguration, not
-        // a hostile account that exports the same body as an ordinary procedure.
+        // The script leaves the account unchanged only if its auth procedure rejects a change.
+        // The interface does not record which procedure is the auth one, so this catches a
+        // misconfiguration rather than a hostile account.
         if !interface.contains(AuthPassThrough::code().procedure_roots()) {
             return Err(PassThroughTransactionScriptError::UnsupportedAuthComponent);
         }

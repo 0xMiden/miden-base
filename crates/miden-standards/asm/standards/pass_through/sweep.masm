@@ -15,9 +15,12 @@ use {AssetId} from miden::protocol::types
 #!
 #! No-op if the account holds none of the asset.
 #!
-#! By itself, this procedure does not restrict who can invoke it.
-#! What bounds it is the account it is installed on. For authenticated usage, pair with auth::pass_through
-# so that only the holder of the pubkey stored in the account can execute a transaction against it.
+#! By itself, this procedure does not restrict who can invoke it. What bounds it is the account it
+#! is installed on. For authenticated usage, pair with auth::pass_through so that only the holder
+#! of the pubkey stored in the account can execute a transaction against it.
+#!
+#! That bounds who may start a transaction, not who may call this procedure: a note script the
+#! transaction consumes can call it too, and redirect what earlier notes deposited.
 #!
 #! Inputs:  [ASSET_ID, note_idx, pad(11)]
 #! Outputs: [pad(16)]

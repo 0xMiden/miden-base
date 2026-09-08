@@ -30,7 +30,7 @@ use crate::scripts::pass_through::{
 const SERIAL_NUMBER: Word = Word::new([Felt::new_unchecked(9); 4]);
 
 /// The verification base fee the fee-charging chain in this module is built with. Any non-zero
-/// value works; the tests only care that the chain charges at all.
+/// value works.
 const VERIFICATION_BASE_FEE: u32 = 500;
 
 // HELPERS
@@ -72,7 +72,7 @@ fn single_p2id_script(
 // ================================================================================================
 
 /// A transaction that leaves the account holding what an input note deposited is rejected: the
-/// commitment changed, and the pass-through auth procedure allows no change at all.
+/// commitment changed.
 #[tokio::test]
 async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -99,9 +99,8 @@ async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// On a fee-charging chain the pass-through auth procedure creates no TX_FEE note, so the
-/// transaction's only output is the P2ID note the script created and the account is left as the
-/// transaction found it.
+/// On a fee-charging chain the auth procedure creates no TX_FEE note, so the transaction's only
+/// output is the P2ID note the script created.
 #[tokio::test]
 async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyhow::Result<()> {
     let mut builder = MockChain::builder().verification_base_fee(VERIFICATION_BASE_FEE);
@@ -145,7 +144,7 @@ async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyh
 }
 
 /// The account's key holder can deploy it themselves: the creating transaction is the one case in
-/// which the nonce is incremented, so it leaves the zero the kernel rejects behind.
+/// which the nonce is incremented.
 #[tokio::test]
 async fn pass_through_auth_can_create_an_account() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -164,8 +163,7 @@ async fn pass_through_auth_can_create_an_account() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Without the key nothing can be executed against the account. This is what bounds who may move
-/// the assets passing through it.
+/// Without the key nothing can be executed against the account.
 #[tokio::test]
 async fn pass_through_auth_requires_a_signature() -> anyhow::Result<()> {
     let (account, target, fee_note, mock_chain) = pass_through_setup()?;
@@ -220,9 +218,8 @@ async fn pass_through_auth_rejects_a_foreign_key_signature() -> anyhow::Result<(
     Ok(())
 }
 
-/// Two successive pass-through transactions leave the account byte-identical, nonce included. This
-/// is the property batch builders rely on: nothing about the account orders one against the other,
-/// so they can be built concurrently.
+/// Two successive pass-through transactions leave the account byte-identical, nonce included,
+/// which is what lets batch builders build them concurrently.
 #[tokio::test]
 async fn pass_through_auth_leaves_the_account_untouched_across_transactions() -> anyhow::Result<()>
 {
@@ -261,10 +258,9 @@ async fn pass_through_auth_leaves_the_account_untouched_across_transactions() ->
     Ok(())
 }
 
-/// The one transaction shape whose signature the input notes cannot bind - one consuming no input
-/// notes - cannot be executed against an existing pass-through account at all: its account patch
-/// is empty because the state is unchanged, and the kernel rejects a transaction that neither
-/// changes the account nor consumes a note. That is what leaves the replay argument without a gap.
+/// A transaction consuming no input notes (the one shape the signature's input notes cannot bind)
+/// cannot be executed against an existing pass-through account: its account patch is empty too,
+/// and the kernel rejects a transaction that neither changes the account nor consumes a note.
 #[tokio::test]
 async fn pass_through_auth_rejects_a_transaction_without_input_notes() -> anyhow::Result<()> {
     let (account, target, _fee_note, mock_chain) = pass_through_setup()?;
@@ -302,9 +298,8 @@ async fn pass_through_auth_requires_a_signature_to_create_an_account() -> anyhow
     Ok(())
 }
 
-/// An account created holding assets could never move them out again, since every later
-/// transaction has to leave it unchanged. The creating transaction is rejected instead of
-/// stranding them.
+/// An account created holding assets could never move them out again (every later transaction has
+/// to leave it unchanged), so the creating transaction is rejected instead.
 #[tokio::test]
 async fn pass_through_auth_rejects_an_account_created_holding_assets() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();

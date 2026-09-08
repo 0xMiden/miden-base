@@ -68,11 +68,10 @@ pub enum Auth {
     Noop,
 
     /// Pass-through authentication: verifies a signature over the transaction summary, rejects any
-    /// transaction that changes the account's state and never increments the nonce, except in the
-    /// transaction that creates the account.
+    /// transaction that changes the account's state and never increments the nonce (except when the
+    /// account is deployed).
     ///
-    /// Creates a secret key for the account and a [BasicAuthenticator] to sign with, like
-    /// [`Auth::BasicAuth`].
+    /// Creates a secret key and a [BasicAuthenticator] to sign with, like [`Auth::BasicAuth`].
     PassThrough { auth_scheme: AuthScheme },
 
     /// Creates a mock authentication mechanism for the account that conditionally succeeds and
