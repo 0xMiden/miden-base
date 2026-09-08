@@ -58,8 +58,8 @@ const ERR_INVALID_SCHEME_ID_WORD = "invalid scheme ID word format expected three
 #! commit to the bound block number and the transaction's expiration delta; see
 #! `auth::create_tx_summary_with_block`.
 #!
-#! authenticate_transaction_without_nonce below holds a near-identical copy of this procedure's
-#! summary-and-verify sequence, deliberately not shared with it; keep the two in sync.
+#! The summary is built and the signature verified by authenticate_transaction_without_nonce below,
+#! which this procedure calls once it has incremented the nonce and bound it as the first user param.
 #!
 #! Inputs:  [PK_COMM, scheme_id]
 #! Outputs: []
@@ -76,32 +76,7 @@ pub proc authenticate_transaction
     push.0.0.0.0.0 movup.5
     # => [user_params(6), PK_COMM, scheme_id]
 
-    # Compute the message that is signed. The summary preimage is inserted into the advice map
-    # for extraction by the host.
-    # ---------------------------------------------------------------------------------------------
-    exec.auth::create_tx_summary
-    # => [PARAMS_HEAD, PARAMS_TAIL, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT, PK_COMM, scheme_id]
-
-    exec.auth::hash_and_insert_tx_summary
-    # OS => [MESSAGE, PK_COMM, scheme_id]
-    # AS => []
-
-    # Fetch signature from advice provider and verify.
-    # ---------------------------------------------------------------------------------------------
-    # Emit the authentication request event that pushes a signature for the message to the advice stack
-    emit.AUTH_REQUEST_EVENT
-    swapw
-    # OS => [PK_COMM, MESSAGE, scheme_id]
-    # AS => [SIGNATURE]
-
-    movup.8
-    # OS => [scheme_id, PK_COMM, MESSAGE]
-    # AS => [SIGNATURE]
-
-    # Verify the signature against the public key and the message. The procedure gets as inputs the
-    # hash of the public key and the message via the operand stack. The signature is provided via
-    # the advice stack. The signature is valid if and only if the procedure returns.
-    exec.verify_signature_by_scheme
+    exec.authenticate_transaction_without_nonce
     # OS => []
     # AS => []
 end
@@ -114,8 +89,9 @@ end
 #! - 2 => falcon512_poseidon2
 #!
 #! It computes and signs the following message (in memory order):
-#! [[version, metadata, 0, 0], [0, 0, 0, 0], ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT,
-#!  OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT]
+#! [[version, metadata, user_param0, user_param1],
+#!  [user_param2, user_param3, user_param4, user_param5], ACCOUNT_DELTA_COMMITMENT,
+#!  INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT]
 #!
 #! This is for accounts whose nonce does not change from one transaction to the next, which makes
 #! authenticate_transaction's replay guard unavailable. That guard is the final nonce it binds as
@@ -143,11 +119,9 @@ end
 #! notes leave nothing in the summary that varies between transactions, and the signature stays
 #! valid for as long as its reference block is accepted. Consume an input note, or pass a salt.
 #!
-#! The body below repeats authenticate_transaction's summary-and-verify sequence rather than
-#! sharing it. Factoring the two apart changes authenticate_transaction's MAST root, and with it
-#! the code commitment of every account already deployed with a singlesig component; that root is
-#! guarded against exactly this by scripts/check-masm-export-digests.rs, which compares it against
-#! the previous release. Keep the two bodies in sync.
+#! authenticate_transaction is exactly such a caller, and answers it with the nonce: it increments
+#! it and passes it as the first user param before calling this, which is why the two procedures
+#! share this body rather than each having their own.
 #!
 #! Inputs:  [user_params(6), PK_COMM, scheme_id]
 #! Outputs: []
