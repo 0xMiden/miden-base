@@ -8,6 +8,7 @@ use miden_protocol::note::Note;
 use miden_protocol::transaction::{InputNotes, TransactionHeader};
 
 use crate::decoded::account::test_utils::private_account_id;
+use crate::test_utils::error_source;
 use crate::{BuildUnchecked, ConversionError, DecodeMessage, Verify, proto};
 
 #[test]
@@ -51,8 +52,10 @@ fn transaction_header_unchecked_build_still_checks_id_and_duplicates() {
     .decode_fields()
     .unwrap();
     assert!(matches!(
-        invalid.build_unchecked(),
-        Err(crate::decoded::transaction::TransactionHeaderBuildError::IdMismatch { .. })
+        error_source::<crate::decoded::transaction::TransactionHeaderBuildError>(
+            &invalid.build_unchecked().unwrap_err()
+        ),
+        Some(crate::decoded::transaction::TransactionHeaderBuildError::IdMismatch { .. })
     ));
     let input = proto::transaction::InputNoteCommitment {
         nullifier: Some(Word::empty().into()),
@@ -65,8 +68,10 @@ fn transaction_header_unchecked_build_still_checks_id_and_duplicates() {
     .decode_fields()
     .unwrap();
     assert!(matches!(
-        duplicate.build_unchecked(),
-        Err(crate::decoded::transaction::TransactionHeaderBuildError::Input(_))
+        error_source::<miden_protocol::errors::TransactionInputError>(
+            &duplicate.build_unchecked().unwrap_err()
+        ),
+        Some(miden_protocol::errors::TransactionInputError::DuplicateInputNote(_))
     ));
 }
 

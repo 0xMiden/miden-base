@@ -10,7 +10,8 @@ use prost::Message;
 
 use crate::decoded::account::test_utils::{account_header, private_account_id};
 use crate::decoded::primitives::test_utils::corrupt_node_hash;
-use crate::{ConversionError, DecodeMessage, Verify, decoded, proto};
+use crate::test_utils::error_source;
+use crate::{ConversionError, DecodeMessage, Verify, proto};
 
 #[test]
 fn account_id_v1_verification_is_deferred() {
@@ -190,10 +191,7 @@ fn account_header_protobuf_preserves_invalid_nonce_source() {
 
     assert!(error.to_string().starts_with("invalid account nonce: "));
     assert_matches!(
-        error
-            .source()
-            .and_then(Error::source)
-            .and_then(|source| source.downcast_ref::<<Felt as TryFrom<u64>>::Error>()),
+        error_source::<<Felt as TryFrom<u64>>::Error>(&error),
         Some(source) if source.as_u64() == Felt::ORDER
     );
 }
@@ -205,7 +203,7 @@ fn account_code_validates_its_forest() {
     let mut wire = proto::account::AccountCode::from(&code);
     wire.mast = Some(mast);
     assert!(matches!(
-        wire.decode_fields().unwrap().verify(),
-        Err(decoded::account::AccountCodeError::Mast(MastForestError::HashMismatch { .. }))
+        error_source::<MastForestError>(&wire.decode_fields().unwrap().verify().unwrap_err()),
+        Some(MastForestError::HashMismatch { .. })
     ));
 }

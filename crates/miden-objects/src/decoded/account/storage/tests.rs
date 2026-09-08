@@ -37,7 +37,7 @@ fn storage_slot_defers_name_validation() {
     let decoded = wire.decode_fields().unwrap();
     assert!(matches!(
         decoded.verify(),
-        Err(crate::decoded::account::StorageHeaderError::Name(_))
+        Err(miden_protocol::errors::StorageSlotNameError::TooShort)
     ));
 }
 

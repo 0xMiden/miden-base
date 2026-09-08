@@ -1,5 +1,6 @@
 pub use proto::account::{DecodedAccountId as AccountId, DecodedAccountIdV1 as AccountIdV1};
 
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -31,7 +32,7 @@ pub use proto::account::DecodedAccountCode as AccountCode;
 
 impl Verify for AccountCode {
     type Verified = miden_protocol::account::AccountCode;
-    type Error = AccountCodeError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let roots = self
             .procedure_roots
@@ -42,19 +43,11 @@ impl Verify for AccountCode {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum AccountCodeError {
-    #[error("{0}")]
-    Mast(#[from] miden_protocol::assembly::mast::MastForestError),
-    #[error("{0}")]
-    Code(#[from] miden_protocol::errors::AccountError),
-}
-
 pub use proto::account::DecodedAccountWitness as AccountWitness;
 
 impl Verify for AccountWitness {
     type Verified = miden_protocol::block::account_tree::AccountWitness;
-    type Error = AccountWitnessError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
             self.witness_id.verify()?,
@@ -64,26 +57,16 @@ impl Verify for AccountWitness {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum AccountWitnessError {
-    #[error("{0}")]
-    AccountId(#[from] miden_protocol::errors::AccountIdError),
-    #[error("invalid witness path: {0}")]
-    Path(#[from] miden_protocol::crypto::merkle::MerkleError),
-    #[error("invalid account witness: {0}")]
-    Witness(#[from] miden_protocol::errors::AccountTreeError),
-}
-
 pub use proto::account::DecodedAccountHeader as AccountHeader;
 
 impl Verify for AccountHeader {
     type Verified = miden_protocol::account::AccountHeader;
-    type Error = AccountHeaderError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         match self.version {
             proto::account::AccountVersion::V1 => {},
             proto::account::AccountVersion::Unspecified => {
-                return Err(AccountHeaderError::UnspecifiedVersion);
+                return Err(AccountHeaderError::UnspecifiedVersion.into());
             },
         }
         Ok(Self::Verified::new(
@@ -98,8 +81,6 @@ impl Verify for AccountHeader {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccountHeaderError {
-    #[error("{0}")]
-    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("account header version is unspecified")]
     UnspecifiedVersion,
     #[error("invalid account nonce: {0}")]

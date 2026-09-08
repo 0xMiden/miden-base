@@ -1,5 +1,6 @@
 pub use proto::account::DecodedStorageSlotId as StorageSlotId;
 
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -27,7 +28,7 @@ pub use proto::account::account_storage_header::DecodedStorageSlot as AccountSto
 
 impl Verify for AccountStorageHeaderStorageSlot {
     type Verified = miden_protocol::account::StorageSlotHeader;
-    type Error = StorageHeaderError;
+    type Error = miden_protocol::errors::StorageSlotNameError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         use miden_protocol::account::StorageSlotType;
         use proto::account::account_storage_header::storage_slot::DecodedContent;
@@ -41,19 +42,11 @@ impl Verify for AccountStorageHeaderStorageSlot {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum StorageHeaderError {
-    #[error("invalid storage header: {0}")]
-    Header(#[from] miden_protocol::errors::AccountError),
-    #[error("invalid storage slot name: {0}")]
-    Name(#[from] miden_protocol::errors::StorageSlotNameError),
-}
-
 pub use proto::account::DecodedAccountStorageHeader as AccountStorageHeader;
 
 impl Verify for AccountStorageHeader {
     type Verified = miden_protocol::account::AccountStorageHeader;
-    type Error = StorageHeaderError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let slots = self.slots.into_iter().map(Verify::verify).collect::<Result<_, _>>()?;
         Ok(Self::Verified::new(slots)?)

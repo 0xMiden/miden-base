@@ -2,6 +2,7 @@
 use miden_protobuf::unwrap_infallible;
 pub use proto::blockchain::DecodedTrackedMmrLeaf as TrackedMmrLeaf;
 
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -53,19 +54,11 @@ pub use proto::blockchain::DecodedValidatorConfig as ValidatorConfig;
 
 impl Verify for ValidatorConfig {
     type Verified = miden_protocol::block::ValidatorConfig;
-    type Error = ValidatorConfigError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let keys = self.keys.into_iter().map(|key| unwrap_infallible(key.verify())).collect();
         Ok(Self::Verified::new(keys, self.quorum.try_into()?)?)
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum ValidatorConfigError {
-    #[error("quorum is out of range: {0}")]
-    Quorum(#[from] core::num::TryFromIntError),
-    #[error("{0}")]
-    Config(#[from] miden_protocol::errors::ValidatorConfigError),
 }
 
 pub use proto::blockchain::DecodedBlockHeader as BlockHeader;
@@ -73,10 +66,10 @@ pub use proto::blockchain::DecodedBlockHeader as BlockHeader;
 /// Builds a header without validating its parent linkage, signatures, or protocol transition.
 impl crate::BuildUnchecked for BlockHeader {
     type Output = miden_protocol::block::BlockHeader;
-    type Error = BlockHeaderError;
+    type Error = VerificationError;
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
         if self.version != proto::blockchain::BlockVersion::V1 {
-            return Err(BlockHeaderError::UnspecifiedVersion);
+            return Err(BlockHeaderError::UnspecifiedVersion.into());
         }
         Ok(Self::Output::new(
             self.prev_block_commitment,
@@ -99,10 +92,6 @@ impl crate::BuildUnchecked for BlockHeader {
 pub enum BlockHeaderError {
     #[error("block header version is unspecified")]
     UnspecifiedVersion,
-    #[error("{0}")]
-    Validators(#[from] ValidatorConfigError),
-    #[error("{0}")]
-    Upgrade(#[from] miden_protocol::errors::ProtocolConfigError),
 }
 
 pub use proto::blockchain::DecodedPartialBlockchain as PartialBlockchain;
@@ -111,7 +100,7 @@ pub use proto::blockchain::DecodedPartialBlockchain as PartialBlockchain;
 /// root.
 impl crate::BuildUnchecked for PartialBlockchain {
     type Output = miden_protocol::transaction::PartialBlockchain;
-    type Error = PartialBlockchainError;
+    type Error = VerificationError;
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
         use miden_protocol::crypto::merkle::MerklePath;
         use miden_protocol::crypto::merkle::mmr::{Forest, MmrPeaks, PartialMmr};
@@ -123,10 +112,10 @@ impl crate::BuildUnchecked for PartialBlockchain {
         for tracked in self.tracked_leaves {
             let position = usize::try_from(tracked.position)?;
             if position >= size {
-                return Err(PartialBlockchainError::Position { position, size });
+                return Err(PartialBlockchainError::Position { position, size }.into());
             }
             if previous.is_some_and(|previous| position <= previous) {
-                return Err(PartialBlockchainError::LeafOrder);
+                return Err(PartialBlockchainError::LeafOrder.into());
             }
             previous = Some(position);
             mmr.track(position, tracked.leaf, &MerklePath::new(tracked.path))?;
@@ -136,7 +125,7 @@ impl crate::BuildUnchecked for PartialBlockchain {
         for header in self.block_headers {
             let header = header.build_unchecked()?;
             if previous.is_some_and(|previous| header.block_num() <= previous) {
-                return Err(PartialBlockchainError::HeaderOrder);
+                return Err(PartialBlockchainError::HeaderOrder.into());
             }
             previous = Some(header.block_num());
             headers.push(header);
@@ -147,16 +136,6 @@ impl crate::BuildUnchecked for PartialBlockchain {
 
 #[derive(Debug, thiserror::Error)]
 pub enum PartialBlockchainError {
-    #[error("{0}")]
-    Size(#[from] core::num::TryFromIntError),
-    #[error("{0}")]
-    Forest(#[from] miden_protocol::utils::serde::DeserializationError),
-    #[error("{0}")]
-    Mmr(#[from] miden_protocol::crypto::merkle::mmr::MmrError),
-    #[error("{0}")]
-    Header(#[from] BlockHeaderError),
-    #[error("{0}")]
-    Chain(#[from] miden_protocol::errors::PartialBlockchainError),
     #[error("tracked leaf position {position} is outside forest of size {size}")]
     Position { position: usize, size: usize },
     #[error("tracked leaf positions must be unique and strictly increasing")]
@@ -169,7 +148,7 @@ pub use proto::blockchain::DecodedBlockAccountUpdate as BlockAccountUpdate;
 
 impl Verify for BlockAccountUpdate {
     type Verified = miden_protocol::block::BlockAccountUpdate;
-    type Error = BlockAccountUpdateError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
             self.account_id.verify()?,
@@ -179,39 +158,21 @@ impl Verify for BlockAccountUpdate {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum BlockAccountUpdateError {
-    #[error("{0}")]
-    AccountId(#[from] miden_protocol::errors::AccountIdError),
-    #[error("{0}")]
-    Details(#[from] super::account::AccountPatchError),
-    #[error("{0}")]
-    Update(#[from] miden_protocol::errors::BlockAccountUpdateError),
-}
-
 pub use proto::blockchain::DecodedIndexedOutputNote as IndexedOutputNote;
 
 impl Verify for IndexedOutputNote {
     type Verified = (usize, miden_protocol::transaction::OutputNote);
-    type Error = IndexedOutputNoteError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((self.note_index_in_batch.try_into()?, self.note.verify()?))
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum IndexedOutputNoteError {
-    #[error("{0}")]
-    Index(#[from] core::num::TryFromIntError),
-    #[error("{0}")]
-    Note(#[from] super::transaction::OutputNoteError),
 }
 
 pub use proto::blockchain::DecodedOutputNoteBatch as OutputNoteBatch;
 
 impl Verify for OutputNoteBatch {
     type Verified = miden_protocol::block::OutputNoteBatch;
-    type Error = IndexedOutputNoteError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         self.notes.into_iter().map(Verify::verify).collect()
     }
@@ -222,7 +183,7 @@ pub use proto::blockchain::DecodedBlockBody as BlockBody;
 /// Checks body invariants, but trusts transaction ordering and unchecked input-note commitments.
 impl crate::BuildUnchecked for BlockBody {
     type Output = miden_protocol::block::BlockBody;
-    type Error = BlockBodyError;
+    type Error = VerificationError;
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
         let updates = self
             .updated_accounts
@@ -253,24 +214,12 @@ impl crate::BuildUnchecked for BlockBody {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum BlockBodyError {
-    #[error("{0}")]
-    Update(#[from] BlockAccountUpdateError),
-    #[error("{0}")]
-    Note(#[from] IndexedOutputNoteError),
-    #[error("{0}")]
-    Transaction(#[from] super::transaction::TransactionHeaderBuildError),
-    #[error("{0}")]
-    Body(#[from] miden_protocol::errors::BlockBodyError),
-}
-
 pub use proto::blockchain::DecodedSignedBlock as SignedBlock;
 
 /// Checks header/body consistency but does not authenticate against a trusted parent.
 impl crate::BuildUnchecked for SignedBlock {
     type Output = miden_protocol::block::SignedBlock;
-    type Error = SignedBlockError;
+    type Error = VerificationError;
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
         self.build(None)
     }
@@ -280,7 +229,7 @@ impl SignedBlock {
     fn build(
         self,
         parent: Option<&miden_protocol::block::BlockHeader>,
-    ) -> Result<miden_protocol::block::SignedBlock, SignedBlockError> {
+    ) -> Result<miden_protocol::block::SignedBlock, VerificationError> {
         use crate::BuildUnchecked;
 
         let header = self.header.build_unchecked()?;
@@ -291,33 +240,18 @@ impl SignedBlock {
             .map(|signature| unwrap_infallible(signature.verify()))
             .collect();
         let signatures = miden_protocol::block::BlockSignatures::new(signatures)
-            .map_err(|error| SignedBlockError::Signatures(alloc::boxed::Box::new(error)))?;
+            .map_err(VerificationError::new)?;
         let block = miden_protocol::block::SignedBlock::new_unchecked(header, body, signatures);
-        block
-            .validate(parent)
-            .map_err(|error| SignedBlockError::Block(alloc::boxed::Box::new(error)))?;
+        block.validate(parent)?;
         Ok(block)
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum SignedBlockError {
-    #[error("{0}")]
-    Header(#[from] BlockHeaderError),
-    #[error("{0}")]
-    Body(#[from] BlockBodyError),
-    #[error("{0}")]
-    // These constructor errors are defined in private protocol modules.
-    Signatures(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
-    #[error("{0}")]
-    Block(#[source] alloc::boxed::Box<dyn core::error::Error + Send + Sync>),
 }
 
 /// Authenticates the block against an already-trusted parent, in addition to self-consistency.
 /// This does not re-execute transactions or validate the account/nullifier state transition.
 impl crate::VerifyWith<&miden_protocol::block::BlockHeader> for SignedBlock {
     type Verified = miden_protocol::block::SignedBlock;
-    type Error = SignedBlockError;
+    type Error = VerificationError;
     fn verify_with(
         self,
         parent: &miden_protocol::block::BlockHeader,

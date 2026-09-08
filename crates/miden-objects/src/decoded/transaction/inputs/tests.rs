@@ -1,3 +1,4 @@
+use crate::test_utils::error_source;
 use crate::{DecodeMessage, Verify, proto};
 
 mod common;
@@ -22,7 +23,9 @@ fn foreign_account_slot_name_defers_name_and_id_validation() {
         ..wire
     };
     assert!(matches!(
-        mismatched.decode_fields().unwrap().verify(),
-        Err(crate::decoded::transaction::ForeignAccountSlotNameError::IdMismatch { .. })
+        error_source::<crate::decoded::transaction::ForeignAccountSlotNameError>(
+            &mismatched.decode_fields().unwrap().verify().unwrap_err()
+        ),
+        Some(crate::decoded::transaction::ForeignAccountSlotNameError::IdMismatch { .. })
     ));
 }

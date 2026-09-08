@@ -24,6 +24,7 @@ use miden_protocol::transaction::{
 };
 use prost::Message;
 
+use crate::test_utils::error_source;
 use crate::{BuildUnchecked, DecodeMessage, VerifyWith, proto};
 
 fn proposal() -> ProposedBatch {
@@ -86,8 +87,8 @@ fn proposal_proofs_are_only_checked_by_explicit_verification() {
     let error = decoded.verify_with(96).unwrap_err();
     assert!(
         matches!(
-            error,
-            crate::decoded::transaction::ProposedBatchError::Batch(
+            error_source::<miden_protocol::errors::ProposedBatchError>(&error),
+            Some(
                 miden_protocol::errors::ProposedBatchError::TransactionVerificationFailed { .. }
                     | miden_protocol::errors::ProposedBatchError::IncompleteTransactionProof { .. }
             )
@@ -122,7 +123,10 @@ fn proven_batch_rejects_changed_proposal_fields() {
         }
         let error = wire.decode_fields().unwrap().verify_with(&proposal).unwrap_err();
         assert!(
-            matches!(error, crate::decoded::transaction::ProvenBatchError::ProposalMismatch(actual) if actual == field),
+            matches!(
+                error_source::<crate::decoded::transaction::ProvenBatchError>(&error),
+                Some(crate::decoded::transaction::ProvenBatchError::ProposalMismatch(actual)) if *actual == field
+            ),
             "{error}"
         );
     }

@@ -6,20 +6,17 @@ pub(crate) mod test_utils;
 mod core;
 pub use core::{
     AccountCode,
-    AccountCodeError,
     AccountHeader,
     AccountHeaderError,
     AccountId,
     AccountIdV1,
     AccountWitness,
-    AccountWitnessError,
 };
 
 mod storage;
 pub use storage::{
     AccountStorageHeader,
     AccountStorageHeaderStorageSlot,
-    StorageHeaderError,
     StorageMapEntry,
     StorageSlotId,
 };
@@ -36,7 +33,6 @@ pub use patch::{
     StorageMapPatch,
     StorageMapPatchEntries,
     StorageMapPatchError,
-    StoragePatchError,
     StorageSlotPatch,
     StorageValuePatch,
     VaultPatchError,
@@ -45,11 +41,8 @@ pub use patch::{
 mod partial;
 pub use partial::{
     PartialAccount,
-    PartialAccountError,
     PartialStorage,
     PartialStorageError,
     PartialStorageMap,
-    PartialStorageMapError,
     PartialVault,
-    PartialVaultError,
 };

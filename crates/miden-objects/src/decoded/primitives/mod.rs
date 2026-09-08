@@ -4,7 +4,7 @@
 pub(crate) mod test_utils;
 
 mod merkle;
-pub use merkle::{MerklePath, MmrDelta, MmrDeltaError, SparseMerklePath};
+pub use merkle::{MerklePath, MmrDelta, SparseMerklePath};
 
 mod smt;
 pub use smt::{
@@ -18,7 +18,6 @@ pub use smt::{
     SmtLeafEntry,
     SmtLeafEntryList,
     SmtOpening,
-    SmtOpeningError,
 };
 
 mod advice;

@@ -6,7 +6,8 @@ use miden_protocol::assembly::mast::MastForestError;
 use miden_protocol::note::Note;
 
 use crate::decoded::primitives::test_utils::corrupt_node_hash;
-use crate::{ConversionError, DecodeMessage, Verify, decoded, proto};
+use crate::test_utils::error_source;
+use crate::{ConversionError, DecodeMessage, Verify, proto};
 
 #[test]
 fn account_id_verification_is_deferred_in_parents() {
@@ -22,10 +23,8 @@ fn account_id_verification_is_deferred_in_parents() {
     assert!(matches!(decoded.verify(), Err(AccountIdError::UnknownAccountIdVersion(0))));
     let decoded = wire.decode_fields().unwrap();
     assert!(matches!(
-        decoded.verify(),
-        Err(crate::decoded::note::VerificationError::AccountId(
-            AccountIdError::UnknownAccountIdVersion(0)
-        ))
+        error_source::<AccountIdError>(&decoded.verify().unwrap_err()),
+        Some(AccountIdError::UnknownAccountIdVersion(0))
     ));
 }
 
@@ -173,7 +172,7 @@ fn note_script_validates_its_forest() {
         entrypoint: script.entrypoint().into(),
     };
     assert!(matches!(
-        wire.decode_fields().unwrap().verify(),
-        Err(decoded::note::VerificationError::Mast(MastForestError::HashMismatch { .. }))
+        error_source::<MastForestError>(&wire.decode_fields().unwrap().verify().unwrap_err()),
+        Some(MastForestError::HashMismatch { .. })
     ));
 }

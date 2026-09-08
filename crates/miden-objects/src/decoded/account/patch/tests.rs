@@ -4,6 +4,7 @@ use alloc::vec;
 use miden_protocol::Word;
 
 use crate::decoded::account::test_utils::account_patch;
+use crate::test_utils::error_source;
 use crate::{ConversionError, DecodeMessage, Verify, proto};
 
 #[test]
@@ -43,9 +44,10 @@ fn vault_patch_verifies_duplicate_ids_and_asset_values() {
     }
     .decode_fields()
     .unwrap();
-    assert!(
-        matches!(decoded.verify(), Err(crate::decoded::account::VaultPatchError::DuplicateAssetId(actual)) if actual == id)
-    );
+    assert!(matches!(
+        error_source::<crate::decoded::account::VaultPatchError>(&decoded.verify().unwrap_err()),
+        Some(crate::decoded::account::VaultPatchError::DuplicateAssetId(actual)) if *actual == id
+    ));
     let invalid = proto::account::AccountVaultPatchEntry {
         value: Some(Word::from([1_u32, 2, 0, 0]).into()),
         ..entry

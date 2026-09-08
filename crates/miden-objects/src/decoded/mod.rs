@@ -60,6 +60,9 @@
 //! let _: MastForest = (&message).try_into().unwrap();
 //! ```
 
+mod error;
+pub use error::VerificationError;
+
 pub mod protocol_config;
 
 pub mod primitives;

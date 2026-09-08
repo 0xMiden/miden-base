@@ -1,6 +1,7 @@
 //! Domain construction for decoded protocol_config messages.
 pub use proto::protocol_config::DecodedKernelConfig as KernelConfig;
 
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -28,16 +29,6 @@ impl Verify for ProofSecurityPolicy {
             self.minimum_bits.try_into()?,
         )?)
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum VerificationError {
-    #[error("invalid fee asset ID: {0}")]
-    FeeAssetId(#[from] miden_protocol::errors::AssetError),
-    #[error("{0}")]
-    Config(#[from] miden_protocol::errors::ProtocolConfigError),
-    #[error("minimum security bits do not fit in a u8: {0}")]
-    MinimumBits(#[from] core::num::TryFromIntError),
 }
 
 pub use proto::protocol_config::DecodedProofVerificationConfig as ProofVerificationConfig;

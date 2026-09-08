@@ -10,8 +10,8 @@ use miden_protocol::utils::serde::DeserializationError;
 
 use crate::decoded::primitives::test_utils::corrupt_node_hash;
 use crate::decoded::transaction::test_utils::note_id;
-use crate::test_utils::dummy_word;
-use crate::{ConversionError, DecodeMessage, Verify, decoded, proto};
+use crate::test_utils::{dummy_word, error_source};
+use crate::{ConversionError, DecodeMessage, Verify, proto};
 
 #[test]
 fn transaction_script_defers_entrypoint_validation() {
@@ -146,7 +146,6 @@ fn transaction_script_rejects_invalid_entrypoint_and_malformed_mast() {
         .verify()
         .map_err(ConversionError::new)
         .unwrap_err();
-    assert!(error.to_string().starts_with("invalid script entrypoint: "));
     assert_matches!(
         error
             .source()
@@ -176,7 +175,7 @@ fn transaction_script_validates_its_forest() {
         entrypoint: script.entrypoint().into(),
     };
     assert!(matches!(
-        wire.decode_fields().unwrap().verify(),
-        Err(decoded::transaction::ScriptError::Mast(MastForestError::HashMismatch { .. }))
+        error_source::<MastForestError>(&wire.decode_fields().unwrap().verify().unwrap_err()),
+        Some(MastForestError::HashMismatch { .. })
     ));
 }

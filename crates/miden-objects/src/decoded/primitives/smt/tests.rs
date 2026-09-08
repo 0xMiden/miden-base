@@ -234,7 +234,7 @@ fn partial_smt_rejects_embedded_leaf_index_mismatch() {
     }];
     assert_partial_smt_decode_error(
         encoded,
-        "failed to deserialize PartialSmt: invalid value: Node index 0 did not match the embedded leaf index 1",
+        "invalid value: Node index 0 did not match the embedded leaf index 1",
     );
 }
 
@@ -250,6 +250,6 @@ fn partial_smt_rejects_reconstruction_missing_node() {
     }];
     assert_partial_smt_decode_error(
         encoded,
-        "failed to deserialize PartialSmt: invalid value: inner node hash is inconsistent with parent",
+        "invalid value: inner node hash is inconsistent with parent",
     );
 }

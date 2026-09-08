@@ -2,6 +2,7 @@
 use miden_protobuf::unwrap_infallible;
 pub use proto::asset::DecodedAssetClass as AssetClass;
 
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -27,7 +28,7 @@ impl Verify for AssetId {
         match self.version {
             proto::asset::AssetVersion::V1 => {},
             proto::asset::AssetVersion::Unspecified => {
-                return Err(VerificationError::UnspecifiedVersion);
+                return Err(AssetIdError::UnspecifiedVersion.into());
             },
         }
         let faucet_id = self.faucet_id.verify()?;
@@ -47,13 +48,9 @@ impl Verify for AssetId {
     }
 }
 #[derive(Debug, thiserror::Error)]
-pub enum VerificationError {
-    #[error("{0}")]
-    AccountId(#[from] miden_protocol::errors::AccountIdError),
+pub enum AssetIdError {
     #[error("asset id version is unspecified")]
     UnspecifiedVersion,
-    #[error("invalid asset: {0}")]
-    Asset(#[from] miden_protocol::errors::AssetError),
 }
 
 pub use proto::asset::DecodedAsset as Asset;

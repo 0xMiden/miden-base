@@ -2,6 +2,7 @@
 use miden_protobuf::unwrap_infallible;
 pub use proto::note::DecodedNoteId as NoteId;
 
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -37,27 +38,13 @@ impl Verify for NoteAttachment {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum VerificationError {
-    #[error("{0}")]
-    Mast(#[from] miden_protocol::assembly::mast::MastForestError),
-    #[error("{0}")]
-    AccountId(#[from] miden_protocol::errors::AccountIdError),
-    #[error("invalid note asset: {0}")]
-    Asset(#[from] super::asset::VerificationError),
+pub enum NoteMetadataError {
     #[error("note metadata version is unspecified")]
     UnspecifiedVersion,
     #[error("note type is unspecified")]
     UnspecifiedNoteType,
     #[error("too many attachment schemes")]
     TooManyAttachmentSchemes,
-    #[error("invalid inclusion path: {0}")]
-    Path(#[from] miden_protocol::crypto::merkle::MerkleError),
-    #[error("invalid script entrypoint: {0}")]
-    Entrypoint(#[from] miden_protocol::utils::serde::DeserializationError),
-    #[error("{0}")]
-    Note(#[from] miden_protocol::errors::NoteError),
-    #[error("numeric value is out of range: {0}")]
-    Number(#[from] core::num::TryFromIntError),
 }
 
 pub use proto::note::DecodedNoteAttachments as NoteAttachments;
@@ -132,20 +119,20 @@ impl Verify for NoteMetadata {
         match self.version {
             proto::note::NoteVersion::V1 => {},
             proto::note::NoteVersion::Unspecified => {
-                return Err(VerificationError::UnspecifiedVersion);
+                return Err(NoteMetadataError::UnspecifiedVersion.into());
             },
         }
         let note_type = match self.note_type {
             proto::note::NoteType::Private => NoteType::Private,
             proto::note::NoteType::Public => NoteType::Public,
             proto::note::NoteType::Unspecified => {
-                return Err(VerificationError::UnspecifiedNoteType);
+                return Err(NoteMetadataError::UnspecifiedNoteType.into());
             },
         };
         let partial = PartialNoteMetadata::new(self.sender.verify()?, note_type)
             .with_tag(NoteTag::new(self.tag));
         if self.attachment_schemes.len() > NoteAttachments::MAX_COUNT {
-            return Err(VerificationError::TooManyAttachmentSchemes);
+            return Err(NoteMetadataError::TooManyAttachmentSchemes.into());
         }
         let mut headers = [NoteAttachmentHeader::absent(); NoteAttachments::MAX_COUNT];
         for (header, raw) in headers.iter_mut().zip(self.attachment_schemes) {
@@ -191,13 +178,13 @@ impl Verify for PartialNoteMetadata {
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         use miden_protocol::note::{NoteTag, NoteType};
         if self.version != proto::note::NoteVersion::V1 {
-            return Err(VerificationError::UnspecifiedVersion);
+            return Err(NoteMetadataError::UnspecifiedVersion.into());
         }
         let note_type = match self.note_type {
             proto::note::NoteType::Private => NoteType::Private,
             proto::note::NoteType::Public => NoteType::Public,
             proto::note::NoteType::Unspecified => {
-                return Err(VerificationError::UnspecifiedNoteType);
+                return Err(NoteMetadataError::UnspecifiedNoteType.into());
             },
         };
         Ok(Self::Verified::new(self.sender.verify()?, note_type).with_tag(NoteTag::new(self.tag)))

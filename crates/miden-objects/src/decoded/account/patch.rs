@@ -1,7 +1,7 @@
 use miden_protobuf::unwrap_infallible;
 pub use proto::account::DecodedAccountVaultPatchEntry as AccountVaultPatchEntry;
 
-use super::AccountCodeError;
+use crate::decoded::VerificationError;
 use crate::{Verify, proto};
 
 #[cfg(test)]
@@ -19,13 +19,13 @@ pub use proto::account::DecodedAccountVaultPatch as AccountVaultPatch;
 
 impl Verify for AccountVaultPatch {
     type Verified = miden_protocol::account::AccountVaultPatch;
-    type Error = VaultPatchError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let mut entries = alloc::collections::BTreeMap::new();
         for entry in self.entries {
             let (id, value) = entry.verify()?;
             if entries.insert(id, value).is_some() {
-                return Err(VaultPatchError::DuplicateAssetId(id));
+                return Err(VaultPatchError::DuplicateAssetId(id).into());
             }
         }
         Ok(Self::Verified::new(entries)?)
@@ -34,8 +34,6 @@ impl Verify for AccountVaultPatch {
 
 #[derive(Debug, thiserror::Error)]
 pub enum VaultPatchError {
-    #[error("invalid vault asset: {0}")]
-    Asset(#[from] miden_protocol::errors::AssetError),
     #[error("duplicate vault asset ID {0}")]
     DuplicateAssetId(miden_protocol::asset::AssetId),
 }
@@ -120,7 +118,7 @@ impl Verify for StorageSlotPatch {
         miden_protocol::account::StorageSlotName,
         miden_protocol::account::StorageSlotPatch,
     );
-    type Error = StoragePatchError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         use miden_protocol::account::{StorageSlotName, StorageSlotPatch};
         use proto::account::storage_slot_patch::DecodedPatch;
@@ -135,21 +133,11 @@ impl Verify for StorageSlotPatch {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum StoragePatchError {
-    #[error("invalid storage slot name: {0}")]
-    Name(#[from] miden_protocol::errors::StorageSlotNameError),
-    #[error("invalid storage map patch: {0}")]
-    Map(#[from] StorageMapPatchError),
-    #[error("invalid storage patch: {0}")]
-    Storage(#[from] miden_protocol::errors::AccountPatchError),
-}
-
 pub use proto::account::DecodedAccountStoragePatch as AccountStoragePatch;
 
 impl Verify for AccountStoragePatch {
     type Verified = miden_protocol::account::AccountStoragePatch;
-    type Error = StoragePatchError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let slots = self
             .slots
@@ -164,10 +152,10 @@ pub use proto::account::DecodedAccountPatch as AccountPatch;
 
 impl Verify for AccountPatch {
     type Verified = miden_protocol::account::AccountPatch;
-    type Error = AccountPatchError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         if self.version != proto::account::AccountPatchVersion::V1 {
-            return Err(AccountPatchError::UnspecifiedVersion);
+            return Err(AccountPatchError::UnspecifiedVersion.into());
         }
         Ok(Self::Verified::new(
             self.account_id.verify()?,
@@ -181,25 +169,15 @@ impl Verify for AccountPatch {
 
 #[derive(Debug, thiserror::Error)]
 pub enum AccountPatchError {
-    #[error("{0}")]
-    AccountId(#[from] miden_protocol::errors::AccountIdError),
     #[error("account patch version is unspecified")]
     UnspecifiedVersion,
-    #[error("{0}")]
-    Storage(#[from] StoragePatchError),
-    #[error("{0}")]
-    Vault(#[from] VaultPatchError),
-    #[error("{0}")]
-    Code(#[from] AccountCodeError),
-    #[error("{0}")]
-    Patch(#[from] miden_protocol::errors::AccountPatchError),
 }
 
 pub use proto::account::DecodedAccountUpdateDetails as AccountUpdateDetails;
 
 impl Verify for AccountUpdateDetails {
     type Verified = miden_protocol::account::AccountUpdateDetails;
-    type Error = AccountPatchError;
+    type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         use proto::account::account_update_details::DecodedUpdate;
         match self.update {
