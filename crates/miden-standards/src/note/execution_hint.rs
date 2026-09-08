@@ -128,7 +128,7 @@ impl NoteExecutionHint {
     pub fn can_be_consumed(&self, block_num: BlockNumber) -> Option<bool> {
         let block_num = block_num.as_u32();
         match self {
-            NoteExecutionHint::None => None,
+            NoteExecutionHint::None | NoteExecutionHint::Unknown(_) => None,
             NoteExecutionHint::Always => Some(true),
             NoteExecutionHint::AfterBlock { block_num: hint_block_num } => {
                 Some(block_num >= hint_block_num.as_u32())
@@ -146,7 +146,6 @@ impl NoteExecutionHint {
                 let can_be_consumed = block_num >= slot_start_block && block_num < slot_end_block;
                 Some(can_be_consumed)
             },
-            NoteExecutionHint::Unknown(_) => None,
         }
     }
 
