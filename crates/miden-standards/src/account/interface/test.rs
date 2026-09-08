@@ -19,7 +19,7 @@ use crate::account::auth::{
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
 use crate::account::wallets::BasicWallet;
 use crate::note::SwapNote;
-use crate::testing::account_component::MockAccountComponent;
+use crate::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use crate::testing::account_interface::get_public_keys_from_account;
 
 /// Checks that building a SWAP note should fail if the requested asset is the same as the
@@ -139,6 +139,33 @@ fn test_account_interface_identifies_no_auth() {
         no_auth_account_interface.auth_component(),
         AccountComponentInterface::AuthNoAuth
     ));
+}
+
+#[test]
+fn test_account_interface_identifies_custom_auth() {
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let custom_auth_account = AccountBuilder::new(mock_seed)
+        .with_component(IncrNonceAuthComponent)
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create custom-auth account");
+
+    // `AccountCode` places the authentication procedure at index 0.
+    let auth_procedure = custom_auth_account.code().procedures()[0];
+
+    let custom_auth_account_interface = AccountInterface::from_account(&custom_auth_account);
+
+    assert_matches!(
+        custom_auth_account_interface.auth_component(),
+        AccountComponentInterface::CustomAuth(proc_root) if *proc_root == auth_procedure
+    );
+
+    // The authentication procedure must not also be reported as a plain custom procedure.
+    for component in custom_auth_account_interface.components() {
+        if let AccountComponentInterface::Custom(proc_roots) = component {
+            assert!(!proc_roots.contains(&auth_procedure));
+        }
+    }
 }
 
 #[test]
