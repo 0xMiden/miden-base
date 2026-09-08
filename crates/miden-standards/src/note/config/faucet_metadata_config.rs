@@ -23,8 +23,8 @@ use miden_protocol::{Felt, Word};
 
 use crate::StandardsLib;
 use crate::account::faucets::{Description, ExternalLink, LogoURI};
-use crate::note::NetworkAccountTarget;
 use crate::note::costs::{FAUCET_METADATA_CONFIG_CONSUMPTION_CYCLES, NoteConsumptionCost};
+use crate::note::{NetworkAccountTarget, NumStorageItems};
 
 // NOTE SCRIPT
 // ================================================================================================
@@ -228,6 +228,16 @@ impl FaucetMetadataConfigNote {
     /// The layout is variable: `SetMaxSupply` uses 2 items (`[selector, new_max_supply]`), while
     /// the three string actions use 32 (`[selector, 0, 0, 0, value(28)]`).
     pub const MAX_NUM_STORAGE_ITEMS: usize = 4 + STRING_NUM_ELEMENTS;
+
+    /// The numbers of storage items the FaucetMetadataConfig note script accepts.
+    ///
+    /// `SetMaxSupply` uses 2 items, the three string actions use
+    /// [`Self::MAX_NUM_STORAGE_ITEMS`], and no size in between is valid. Keep in sync with the
+    /// `NUM_ITEMS_*` constants in `faucet_metadata_config.masm`.
+    pub const NUM_STORAGE_ITEMS: NumStorageItems = NumStorageItems::AnyOf(&[
+        NumStorageItems::Exact(2),
+        NumStorageItems::Exact(Self::MAX_NUM_STORAGE_ITEMS),
+    ]);
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------

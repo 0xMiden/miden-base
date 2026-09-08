@@ -13,6 +13,7 @@
 
 ### Changes
 
+- [BREAKING] Replaced `StandardNote::expected_num_storage_items` with `StandardNote::num_storage_items`, which returns the `NumStorageItems` a note kind accepts instead of a single value that was neither exact nor a bound for MINT and the config notes, whose storage size constants are now typed as `NumStorageItems` ([#3810](https://github.com/0xMiden/protocol/pull/3810)).
 - Fixed `RoleBasedAccessControl` role administration becoming permanently unmanageable when a role's admin was delegated to a memberless role ([#3476](https://github.com/0xMiden/protocol/pull/3476)).
 - [BREAKING] Moved the `note_tag` MASM module from `miden::standards::note_tag` to `miden::standards::note::note_tag` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
 - [BREAKING] Moved the `note_creator` account component MASM namespace from `miden::standards::components::wallets::note_creator` to `miden::standards::components::note::note_creator`, and moved the Rust `NoteCreator` type from `account::wallets` to `account::note_creator` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
