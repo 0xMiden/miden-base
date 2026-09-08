@@ -32,7 +32,7 @@ const ERR_MINT_UNSUPPORTED_FAUCET = "the consuming account exposes neither a fun
 #! - either `miden::standards::faucets::fungible::mint_and_send` or
 #!   `miden::standards::faucets::non_fungible::mint_and_send`.
 #!
-#! Consumers: target account (storage)
+#! Consumers: target account (enforced by the faucet's `mint_and_send`)
 #!
 #! Inputs:  [ARGS, pad(12)]
 #! Outputs: [pad(16)]

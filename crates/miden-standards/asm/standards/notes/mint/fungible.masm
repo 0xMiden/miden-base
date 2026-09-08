@@ -1,8 +1,6 @@
 use miden::protocol::active_note
-use miden::protocol::asset
 use miden::protocol::note
 use miden::standards::faucets::fungible as fungible
-use miden::standards::note::consumer
 
 # CONSTANTS
 # =================================================================================================
@@ -121,7 +119,6 @@ end
 #! Panics if:
 #! - the number of storage items is not exactly 13 for private or less than 20 for public output
 #!   notes.
-#! - the consuming account is not the faucet named by the stored asset ID.
 #! - the asset stored in the note does not belong to the consuming faucet.
 #!
 #! Invocation: exec
@@ -141,13 +138,6 @@ pub proc mint
     else
         exec.mint_private
     end
-    # => [ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
-
-    # bind consumption to the target faucet, which the stored asset ID identifies
-    dupw exec.asset::id_into_faucet_id
-    # => [faucet_id_suffix, faucet_id_prefix, ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
-
-    exec.consumer::assert_target_account_storage
     # => [ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
 
     call.fungible::mint_and_send

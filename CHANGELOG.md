@@ -17,7 +17,6 @@
 
 - [BREAKING] Replaced the per-note target-account error constants with the shared `ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET` and `ERR_NOTE_CONSUMER_NOT_STORAGE_TARGET` ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
 - [BREAKING] Replaced the per-note reclaim error constants of the P2IDE and FEE_SPONSORSHIP notes with the shared `ERR_RECLAIM_DISABLED`, `ERR_RECLAIM_HEIGHT_NOT_REACHED` and `ERR_RECLAIM_ACCOUNT_IS_NOT_RECLAIMER` ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
-- The `MINT` and `BURN` note scripts now assert the consuming account against the faucet named by the stored asset ID, instead of relying on the faucet component to reject a foreign asset ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
 - [BREAKING] Incremented the MSRV to 1.98.
 - [BREAKING] Removed the `BlockProof` placeholder in favor of `ExecutionProof` on `ProvenBlock`, matching `ProvenTransaction` and `ProvenBatch`, and `LocalBlockProver::prove` now takes an `ExecutedBlock` ([#3703](https://github.com/0xMiden/protocol/pull/3703)).
 - Added the `miden::protocol::tx::before_block_witness_load` kernel event, emitted before a block other than the reference block is read from the partial blockchain ([#3699](https://github.com/0xMiden/protocol/pull/3699)).

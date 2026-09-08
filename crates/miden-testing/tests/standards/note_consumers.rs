@@ -1,8 +1,8 @@
 //! Requires every note script to state who may consume it.
 //!
 //! An open note and a forgotten check look identical in a script's body, so a script either
-//! enforces its rule through `miden::standards::note::consumer` or declares itself open to any
-//! consumer. This fails for one that does neither.
+//! enforces its rule itself, declares itself open to any consumer, or names the account procedure
+//! that enforces the rule on its behalf. This fails for one that does none of those.
 
 use std::path::{Path, PathBuf};
 
@@ -12,6 +12,11 @@ const ENFORCEMENT_PREFIXES: [&str; 2] = ["exec.consumer::", "exec.reclaim::"];
 
 /// What a note script open to any consumer declares instead.
 const UNRESTRICTED_DECLARATION: &str = "#! Consumers: unrestricted";
+
+/// What a note script whose rule is enforced by the account procedure it calls declares instead.
+/// The declaration has to name where the rule is enforced, so the delegation is stated rather than
+/// left to the reader of the called component.
+const DELEGATED_DECLARATION: &str = "#! Consumers: target account (enforced by";
 
 // TESTS
 // ================================================================================================
@@ -28,10 +33,13 @@ fn every_note_script_states_who_may_consume_it() {
         for path in scripts {
             let source = module_source(&path);
             let enforces = ENFORCEMENT_PREFIXES.iter().any(|prefix| source.contains(prefix));
+            let declares =
+                source.contains(UNRESTRICTED_DECLARATION) || source.contains(DELEGATED_DECLARATION);
             assert!(
-                enforces || source.contains(UNRESTRICTED_DECLARATION),
+                enforces || declares,
                 "the note script at {} neither enforces who may consume it through one of \
-                 {ENFORCEMENT_PREFIXES:?} nor declares `{UNRESTRICTED_DECLARATION}`",
+                 {ENFORCEMENT_PREFIXES:?} nor declares `{UNRESTRICTED_DECLARATION}` or \
+                 `{DELEGATED_DECLARATION} ...)`",
                 path.display(),
             );
         }
