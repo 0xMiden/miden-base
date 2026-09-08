@@ -512,11 +512,6 @@ impl TryFrom<&Account> for NonFungibleFaucet {
 /// The caller passes a fully-configured [`AuthSingleSig`]. Every authority-gated setter
 /// (`mint_and_send`, the metadata setters, the policy setters, and `pause` / `unpause`) requires a
 /// signature.
-///
-/// # Errors
-///
-/// Returns an error if `account_type` is [`AccountType::Private`] while `token_policy_manager`
-/// registers a transfer policy, since such a policy enables asset callbacks.
 pub fn create_user_non_fungible_faucet(
     init_seed: [u8; 32],
     faucet: NonFungibleFaucet,

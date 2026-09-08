@@ -48,7 +48,13 @@ use crate::{Felt, Word};
 /// installing a callback slot, so that the account retains the ability to add a callback slot via
 /// an account upgrade later. This is particularly useful if new types of callbacks are introduced.
 ///
-/// An account with an enabled flag must be of type [`AccountType::Public`].
+/// Enabling the flag has a cost for every holder of the account's assets: dispatching a callback
+/// starts a foreign context against the issuing account, so that account's state becomes a required
+/// input of every transaction that moves one of its assets, and the foreign state is loaded before
+/// the callback slot is looked up, so the load happens even when no callback procedure root is
+/// registered. An [`AccountType::Private`] account publishes only its commitment, so its holders
+/// have to obtain its state out of band. Both the account type and the flag are immutable parts of
+/// the [`AccountId`], so this trade-off is fixed at creation.
 ///
 /// [`AccountBuilder::with_component`] (or [`AccountBuilder::with_components`]) must be called at
 /// least once, and exactly one of the added components must be an authentication component (i.e. a
@@ -199,20 +205,6 @@ impl AccountBuilder {
         AssetCallbackFlag::from(self.asset_callbacks.is_enabled() || storage.has_callback_slots())
     }
 
-    /// Derives the account's [`AssetCallbackFlag`] and rejects enabling it on a private account.
-    fn validated_asset_callbacks(
-        &self,
-        storage: &AccountStorage,
-    ) -> Result<AssetCallbackFlag, AccountError> {
-        let asset_callbacks = self.derive_asset_callbacks(storage);
-
-        if asset_callbacks.is_enabled() && self.account_type.is_private() {
-            return Err(AccountError::AssetCallbacksOnPrivateAccount);
-        }
-
-        Ok(asset_callbacks)
-    }
-
     /// Grinds a new [`AccountId`] using the `init_seed` as a starting point.
     fn grind_account_id(
         &self,
@@ -251,8 +243,6 @@ impl AccountBuilder {
     /// - The number of [`StorageSlot`](crate::account::StorageSlot)s of all components exceeds 255.
     /// - [`MastForest::merge`](miden_processor::mast::MastForest::merge) fails on the given
     ///   components.
-    /// - The account's asset callback flag is enabled while its account type is
-    ///   [`AccountType::Private`].
     /// - If duplicate assets were added to the builder (only under the `testing` feature).
     /// - If the vault is not empty on new accounts (only under the `testing` feature).
     pub fn build(mut self) -> Result<Account, AccountError> {
@@ -266,7 +256,7 @@ impl AccountBuilder {
             ));
         }
 
-        let asset_callbacks = self.validated_asset_callbacks(&storage)?;
+        let asset_callbacks = self.derive_asset_callbacks(&storage);
 
         let seed = self.grind_account_id(
             self.init_seed,
@@ -331,7 +321,7 @@ impl AccountBuilder {
                 bytes,
                 AccountIdVersion::Version1,
                 self.account_type,
-                self.validated_asset_callbacks(&storage)?,
+                self.derive_asset_callbacks(&storage),
             )
         };
 
@@ -630,7 +620,6 @@ mod tests {
                 .into_storage_slots(),
         ] {
             let account = Account::builder([7; 32])
-                .account_type(AccountType::Public)
                 .with_component(NoopAuthComponent)
                 .with_component(callback_component(slots))
                 .build()
@@ -638,36 +627,6 @@ mod tests {
 
             assert_eq!(account.id().asset_callback_flag(), AssetCallbackFlag::Enabled);
         }
-    }
-
-    /// An enabled [`AssetCallbackFlag`] on a private account is rejected at build time.
-    #[test]
-    fn account_builder_rejects_asset_callbacks_on_private_account() {
-        let callback_component = AccountComponent::new(
-            CUSTOM_PACKAGE1.clone(),
-            AssetCallbacks::new()
-                .on_before_asset_added_to_account(Word::from([1u32, 2, 3, 4]))
-                .into_storage_slots(),
-            AccountComponentMetadata::new("test::callback_component"),
-        )
-        .expect("component should be valid");
-
-        let error = Account::builder([7; 32])
-            .account_type(AccountType::Private)
-            .with_component(NoopAuthComponent)
-            .with_component(callback_component)
-            .build()
-            .expect_err("private account with a callback slot should be rejected");
-        assert_matches!(error, AccountError::AssetCallbacksOnPrivateAccount);
-
-        let error = Account::builder([7; 32])
-            .account_type(AccountType::Private)
-            .with_component(NoopAuthComponent)
-            .with_component(CustomComponent1 { slot0: 25 })
-            .enable_asset_callbacks()
-            .build()
-            .expect_err("private account with enabled callbacks should be rejected");
-        assert_matches!(error, AccountError::AssetCallbacksOnPrivateAccount);
     }
 
     /// Without an installed callback slot the flag is disabled, unless callbacks are explicitly
@@ -681,11 +640,7 @@ mod tests {
         let account = builder.clone().build().unwrap();
         assert_eq!(account.id().asset_callback_flag(), AssetCallbackFlag::Disabled);
 
-        let account = builder
-            .account_type(AccountType::Public)
-            .enable_asset_callbacks()
-            .build()
-            .unwrap();
+        let account = builder.enable_asset_callbacks().build().unwrap();
         assert_eq!(account.id().asset_callback_flag(), AssetCallbackFlag::Enabled);
     }
 

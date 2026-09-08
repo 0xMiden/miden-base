@@ -58,10 +58,6 @@ fn build_nft_faucet(
 }
 
 /// [`build_nft_faucet`] with an explicit account type, so tests can cover a private faucet.
-///
-/// A private faucet gets mint and burn policies only. Send / receive policies enable asset
-/// callbacks, whose dispatch would make the faucet's state a required input of every holder's
-/// transaction, which is why the account builder rejects them on a private account.
 fn build_nft_faucet_with_type(
     builder: &mut MockChainBuilder,
     symbol: &str,
@@ -74,20 +70,12 @@ fn build_nft_faucet_with_type(
         .symbol(TokenSymbol::new(symbol)?)
         .build();
 
-    let token_policy_manager = {
-        let manager = TokenPolicyManager::builder()
-            .active_mint_policy(mint_policy)
-            .active_burn_policy(BurnPolicy::allow_all());
-
-        if account_type.is_public() {
-            manager
-                .active_send_policy(TransferPolicy::allow_all())
-                .active_receive_policy(TransferPolicy::allow_all())
-                .build()
-        } else {
-            manager.build()
-        }
-    };
+    let token_policy_manager = TokenPolicyManager::builder()
+        .active_mint_policy(mint_policy)
+        .active_burn_policy(BurnPolicy::allow_all())
+        .active_send_policy(TransferPolicy::allow_all())
+        .active_receive_policy(TransferPolicy::allow_all())
+        .build();
 
     let account_builder = AccountBuilder::new(builder.rng_mut().random())
         .account_type(account_type)
