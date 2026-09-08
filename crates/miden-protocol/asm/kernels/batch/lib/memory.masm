@@ -280,14 +280,6 @@ pub proc get_input_note_entry_ptr
     mul.NOTE_ENTRY_FELT_LEN add.INPUT_NOTES_PTR
 end
 
-#! Returns a pointer to output-note entry index in OUTPUT_NOTES_PTR.
-#!
-#! Inputs:  [output_note_idx]
-#! Outputs: [output_note_ptr]
-pub proc get_output_note_entry_ptr
-    mul.NOTE_ENTRY_FELT_LEN add.OUTPUT_NOTES_PTR
-end
-
 #! Returns a pointer to input-note flag word index in INPUT_NOTE_FLAGS_PTR.
 #!
 #! Inputs:  [input_note_idx]
