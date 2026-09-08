@@ -204,7 +204,7 @@ impl StandardNote {
             // A MINT note creating a private output note holds exactly 13 items, while one
             // creating a public output note holds at least 20 and grows with the storage of the
             // output note recipient.
-            Self::MINT => NumStorageItems::OneOf(&[
+            Self::MINT => NumStorageItems::AnyOf(&[
                 NumStorageItems::Exact(MintNote::NUM_STORAGE_ITEMS_PRIVATE),
                 NumStorageItems::Range {
                     min: MintNote::MIN_NUM_STORAGE_ITEMS_PUBLIC,
@@ -220,7 +220,7 @@ impl StandardNote {
             },
             // FaucetMetadataConfig storage is variable per action: `SetMaxSupply` uses the
             // minimum, the string-setting actions use the maximum.
-            Self::FAUCET_METADATA_CONFIG => NumStorageItems::OneOf(&[
+            Self::FAUCET_METADATA_CONFIG => NumStorageItems::AnyOf(&[
                 NumStorageItems::Exact(FaucetMetadataConfigNote::MIN_NUM_STORAGE_ITEMS),
                 NumStorageItems::Exact(FaucetMetadataConfigNote::MAX_NUM_STORAGE_ITEMS),
             ]),
@@ -236,7 +236,7 @@ impl StandardNote {
             Self::PAUSE_CONFIG => NumStorageItems::Exact(PauseConfigNote::NUM_STORAGE_ITEMS),
             // OwnerConfig storage is variable per action: `TransferOwnership` uses the maximum,
             // `AcceptOwnership` / `RenounceOwnership` the minimum. No size in between is valid.
-            Self::OWNER_CONFIG => NumStorageItems::OneOf(&[
+            Self::OWNER_CONFIG => NumStorageItems::AnyOf(&[
                 NumStorageItems::Exact(OwnerConfigNote::MIN_NUM_STORAGE_ITEMS),
                 NumStorageItems::Exact(OwnerConfigNote::MAX_NUM_STORAGE_ITEMS),
             ]),
@@ -439,9 +439,9 @@ pub enum NumStorageItems {
     Exact(usize),
     /// The note holds any number of storage items in this inclusive range.
     Range { min: usize, max: usize },
-    /// The note holds a number of storage items accepted by one of these, and by none of the
+    /// The note holds a number of storage items accepted by any of these, and by none of the
     /// sizes in between them.
-    OneOf(&'static [NumStorageItems]),
+    AnyOf(&'static [NumStorageItems]),
 }
 
 impl NumStorageItems {
@@ -450,7 +450,7 @@ impl NumStorageItems {
         match self {
             Self::Exact(expected) => num_items == *expected,
             Self::Range { min, max } => (*min..=*max).contains(&num_items),
-            Self::OneOf(accepted) => accepted.iter().any(|accepted| accepted.accepts(num_items)),
+            Self::AnyOf(accepted) => accepted.iter().any(|accepted| accepted.accepts(num_items)),
         }
     }
 }
