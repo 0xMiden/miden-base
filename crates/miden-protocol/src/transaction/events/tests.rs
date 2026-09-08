@@ -80,13 +80,30 @@ fn construction_and_appends_preserve_records_and_commitments() {
 
     assert_eq!(events.num_events(), records.len());
     assert_eq!(events.num_payload_words(), 3);
-    assert_eq!(events.iter().collect::<Vec<_>>(), records.iter().collect::<Vec<_>>());
-    assert_eq!((&events).into_iter().collect::<Vec<_>>(), records.iter().collect::<Vec<_>>());
-    assert_eq!(events.clone().into_iter().collect::<Vec<_>>(), records);
     assert_eq!(events.into_vec(), records);
+}
 
+#[test]
+fn collection_iterators_preserve_order() {
+    let records = vector_events();
+    let events = TransactionEvents::new(records.clone()).unwrap();
+    assert_eq!(events.iter().len(), records.len());
+    assert!(events.iter().eq(&records));
+    assert!((&events).into_iter().eq(&records));
+    assert!(events.clone().into_iter().eq(records.clone()));
+    assert_eq!(events.into_vec(), records);
+}
+
+#[test]
+fn event_accessors_preserve_fields() {
     let record = event(1);
-    assert_eq!(record.clone().into_parts(), (record.emitter(), record.topic(), record.payload));
+    assert_eq!(record.emitter(), emitter(256, 1));
+    assert_eq!(record.topic(), Word::from([1u32, 2, 3, 4]));
+    assert_eq!(record.payload(), &[Word::from([9u32, 10, 11, 12])]);
+    assert_eq!(
+        record.clone().into_parts(),
+        (record.emitter(), record.topic(), record.payload().to_vec())
+    );
 }
 
 #[test]
@@ -116,43 +133,21 @@ fn commitment_vectors() {
     }
 }
 
-#[test]
-fn commitment_binds_every_field_count_and_order() {
+#[rstest]
+#[case::emitter_suffix(|events: &mut Vec<TransactionEvent>| events[1].emitter = emitter(768, 17))]
+#[case::emitter_prefix(|events: &mut Vec<TransactionEvent>| events[1].emitter = emitter(512, 1))]
+#[case::topic(|events: &mut Vec<TransactionEvent>| events[1].topic = Word::empty())]
+#[case::payload_contents(|events: &mut Vec<TransactionEvent>| events[1].payload[0] = Word::empty())]
+#[case::payload_length(|events: &mut Vec<TransactionEvent>| events[1].payload.push(Word::empty()))]
+#[case::order(|events: &mut Vec<TransactionEvent>| events.swap(0, 1))]
+#[case::removed_event(|events: &mut Vec<TransactionEvent>| events.truncate(3))]
+#[case::added_event(|events: &mut Vec<TransactionEvent>| events.push(event(0)))]
+fn commitment_binds_every_field_count_and_order(#[case] mutate: fn(&mut Vec<TransactionEvent>)) {
     let records = vector_events();
     let commitment = TransactionEvents::new(records.clone()).unwrap().commitment();
-    let assert_changed = |records| {
-        assert_ne!(commitment, TransactionEvents::new(records).unwrap().commitment());
-    };
-
-    let mut changed = records.clone();
-    changed[1].emitter = emitter(768, 17);
-    assert_changed(changed);
-
-    let mut changed = records.clone();
-    changed[1].emitter = emitter(512, 1);
-    assert_changed(changed);
-
-    let mut changed = records.clone();
-    changed[1].topic = Word::empty();
-    assert_changed(changed);
-
-    let mut changed = records.clone();
-    changed[1].payload[0] = Word::empty();
-    assert_changed(changed);
-
-    let mut changed = records.clone();
-    changed[1].payload.push(Word::empty());
-    assert_changed(changed);
-
-    let mut changed = records.clone();
-    changed.swap(0, 1);
-    assert_changed(changed);
-
-    assert_changed(records[..3].to_vec());
-
     let mut changed = records;
-    changed.push(event(0));
-    assert_changed(changed);
+    mutate(&mut changed);
+    assert_ne!(commitment, TransactionEvents::new(changed).unwrap().commitment());
 }
 
 #[test]

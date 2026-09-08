@@ -43,10 +43,10 @@ pub enum TransactionEventDataError {
 // TRANSACTION EVENT
 // ================================================================================================
 
-/// An event emitted by an account procedure during a transaction.
+/// An event emitted by an account during a transaction.
 ///
 /// The emitter, topic, and payload are public, including for private accounts. Construction
-/// validates the payload size, not the origin of the event. Emitter attribution must be enforced
+/// validates the payload size, not the origin of the event. Emitter attribution will be enforced
 /// by the transaction kernel and bound to the transaction proof.
 ///
 /// Empty payloads are allowed. An empty payload still represents an event with an emitter and
@@ -54,11 +54,13 @@ pub enum TransactionEventDataError {
 ///
 /// # Topics
 ///
-/// Topics are opaque words. Applications can derive a topic with
+/// Topics identify event types. The kernel does not interpret their meaning.
+/// Applications can derive a topic with
 /// `Hasher::hash(signature.as_bytes())`, using a case-sensitive, namespaced signature such as
 /// `example::Transfer(account_id,u64)`. Signatures contain ordered parameter types, without
 /// whitespace or parameter names. Applications must agree on the type names and payload schema;
 /// this type does not interpret either.
+// TODO(#3831): Change "will be enforced" to "is enforced" once kernel integration is implemented.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionEvent {
     emitter: AccountId,
@@ -182,8 +184,9 @@ impl Deserializable for TransactionEvent {
 /// commitment = C_n
 /// ```
 ///
-/// Each append hashes exactly four words (two Poseidon2 rate blocks). The position is derived
-/// from the list, binding its count and order without serializing another field. An empty list
+/// Each hash chain update hashes four words (two Poseidon2 rate blocks), in addition to hashing
+/// the payload. The position is derived from the list, binding its count and order without
+/// serializing another field. An empty list
 /// has commitment [`Word::empty`]. Payload hashing uses the ordinary field element hash so its
 /// commitment can also serve as an advice map key.
 ///
