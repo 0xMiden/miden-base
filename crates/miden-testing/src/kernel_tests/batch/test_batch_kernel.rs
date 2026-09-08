@@ -76,16 +76,42 @@ pub(super) fn two_tx_batch(setup: &mut TestSetup) -> anyhow::Result<ProposedBatc
 /// Builds an advice-inputs override that corrupts the advice-map entry stored under `key`, so the
 /// kernel's hash check against `key` fails.
 fn tampered_advice_for(batch: &ProposedBatch, key: Word) -> AdviceInputs {
-    let (_, advice_inputs) = BatchKernel::prepare_inputs(batch);
-    let mut tampered: Vec<Felt> = advice_inputs
-        .map()
-        .get(&key)
-        .expect("advice-map entry for key")
-        .iter()
-        .copied()
-        .collect();
+    let mut tampered = advice_blob_for(batch, key);
     tampered[0] += Felt::from(1u32);
     AdviceInputs::default().with_map([(key, tampered)])
+}
+
+/// Returns the advice-map blob the kernel expects under `key`, read back out of the production
+/// advice builder so these tests cannot drift from the serialization they are corrupting.
+fn advice_blob_for(batch: &ProposedBatch, key: Word) -> Vec<Felt> {
+    let (_, advice_inputs) = BatchKernel::prepare_inputs(batch);
+    advice_inputs.map().get(&key).expect("advice-map entry for key").to_vec()
+}
+
+/// Splits a note-list blob into its `(KEY, VALUE)` word pairs.
+fn note_list_entries(blob: &[Felt]) -> Vec<(Word, Word)> {
+    blob.as_chunks::<FELTS_PER_NOTE_ENTRY>()
+        .0
+        .iter()
+        .map(|entry| {
+            (
+                Word::new([entry[0], entry[1], entry[2], entry[3]]),
+                Word::new([entry[4], entry[5], entry[6], entry[7]]),
+            )
+        })
+        .collect()
+}
+
+/// Serializes `(KEY, VALUE)` word pairs back into a note-list blob, sorted by KEY as the kernel
+/// requires.
+fn note_list_blob_from(mut entries: Vec<(Word, Word)>) -> Vec<Felt> {
+    entries.sort_by_key(|entry| entry.0);
+    let mut blob = Vec::with_capacity(entries.len() * FELTS_PER_NOTE_ENTRY);
+    for (key, value) in &entries {
+        blob.extend_from_slice(key.as_elements());
+        blob.extend_from_slice(value.as_elements());
+    }
+    blob
 }
 
 /// Asserts that batch execution failed with the kernel raising the expected MASM assertion error.
@@ -276,34 +302,13 @@ fn batch_executor_rejects_too_many_transactions() -> anyhow::Result<()> {
 //
 // These corrupt the host-provided global note lists and assert the kernel's binding rejects them.
 
-/// Builds the global input-note list blob the kernel expects: `(nullifier, note_id_or_empty)` per
-/// note across all transactions, sorted by nullifier.
-fn input_note_list_blob(batch: &ProposedBatch) -> Vec<Felt> {
-    let mut notes: Vec<(Word, Word)> = Vec::new();
-    for tx in batch.transactions() {
-        for commit in tx.input_notes().iter() {
-            let nullifier = commit.nullifier().as_word();
-            let note_id_or_empty =
-                commit.header().map_or(Word::empty(), |header| header.id().as_word());
-            notes.push((nullifier, note_id_or_empty));
-        }
-    }
-    notes.sort_by_key(|entry| entry.0);
-    let mut blob = Vec::with_capacity(notes.len() * FELTS_PER_NOTE_ENTRY);
-    for (nullifier, note_id_or_empty) in &notes {
-        blob.extend_from_slice(nullifier.as_elements());
-        blob.extend_from_slice(note_id_or_empty.as_elements());
-    }
-    blob
-}
-
 /// Omitting an input note from the global list makes its per-transaction lookup fail.
 #[test]
 fn batch_kernel_rejects_input_note_missing_from_list() -> anyhow::Result<()> {
     let mut setup = setup_chain();
     let batch = two_tx_batch(&mut setup)?;
 
-    let mut blob = input_note_list_blob(&batch);
+    let mut blob = advice_blob_for(&batch, *INPUT_NOTE_LIST_KEY);
     blob.truncate(blob.len() - FELTS_PER_NOTE_ENTRY); // drop the last (highest-nullifier) note
     let override_advice = AdviceInputs::default().with_map([(*INPUT_NOTE_LIST_KEY, blob)]);
 
@@ -319,7 +324,7 @@ fn batch_kernel_rejects_duplicated_input_note_list_entry() -> anyhow::Result<()>
     let mut setup = setup_chain();
     let batch = two_tx_batch(&mut setup)?;
 
-    let blob = input_note_list_blob(&batch);
+    let blob = advice_blob_for(&batch, *INPUT_NOTE_LIST_KEY);
     // Prepend a copy of the first entry, so two equal nullifiers are adjacent.
     let mut duplicated: Vec<Felt> = blob[0..FELTS_PER_NOTE_ENTRY].to_vec();
     duplicated.extend_from_slice(&blob);
@@ -338,7 +343,7 @@ fn batch_kernel_rejects_descending_input_note_list() -> anyhow::Result<()> {
     let mut setup = setup_chain();
     let batch = two_tx_batch(&mut setup)?;
 
-    let blob = input_note_list_blob(&batch);
+    let blob = advice_blob_for(&batch, *INPUT_NOTE_LIST_KEY);
     assert!(
         blob.len() >= 2 * FELTS_PER_NOTE_ENTRY,
         "the batch should have at least two notes"
@@ -362,7 +367,7 @@ fn batch_kernel_rejects_input_note_list_id_mismatch() -> anyhow::Result<()> {
     let mut setup = setup_chain();
     let batch = two_tx_batch(&mut setup)?;
 
-    let mut blob = input_note_list_blob(&batch);
+    let mut blob = advice_blob_for(&batch, *INPUT_NOTE_LIST_KEY);
     // Corrupt the first entry's note-id word only, so the entry is still found by nullifier.
     blob[4] += Felt::from(1u32);
     let override_advice = AdviceInputs::default().with_map([(*INPUT_NOTE_LIST_KEY, blob)]);
@@ -373,31 +378,13 @@ fn batch_kernel_rejects_input_note_list_id_mismatch() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Builds the global output-note list blob the kernel expects: `(note_id, 0, 0, 0, 0)` per output
-/// note across all transactions, sorted by note id.
-fn output_note_list_blob(batch: &ProposedBatch) -> Vec<Felt> {
-    let mut ids: Vec<Word> = Vec::new();
-    for tx in batch.transactions() {
-        for note in tx.output_notes().iter() {
-            ids.push(note.id().as_word());
-        }
-    }
-    ids.sort_unstable();
-    let mut blob = Vec::with_capacity(ids.len() * FELTS_PER_NOTE_ENTRY);
-    for note_id in &ids {
-        blob.extend_from_slice(note_id.as_elements());
-        blob.extend_from_slice(Word::empty().as_elements());
-    }
-    blob
-}
-
 /// Omitting an output note from the global list makes its per-transaction lookup fail.
 #[test]
 fn batch_kernel_rejects_output_note_missing_from_list() -> anyhow::Result<()> {
     let mut setup = setup_chain();
     let batch = two_tx_batch(&mut setup)?;
 
-    let mut blob = output_note_list_blob(&batch);
+    let mut blob = advice_blob_for(&batch, *OUTPUT_NOTE_LIST_KEY);
     blob.truncate(blob.len() - FELTS_PER_NOTE_ENTRY); // drop the last (highest-note-id) output note
     let override_advice = AdviceInputs::default().with_map([(*OUTPUT_NOTE_LIST_KEY, blob)]);
 
@@ -416,19 +403,9 @@ fn batch_kernel_rejects_consume_before_create() -> anyhow::Result<()> {
 
     // Add tx2's unauthenticated input note id to the output list as a phantom creation.
     let phantom_created_id = mock_note(81).id().as_word();
-    let mut ids: Vec<Word> = Vec::new();
-    for tx in batch.transactions() {
-        for note in tx.output_notes().iter() {
-            ids.push(note.id().as_word());
-        }
-    }
-    ids.push(phantom_created_id);
-    ids.sort_unstable();
-    let mut blob = Vec::with_capacity(ids.len() * FELTS_PER_NOTE_ENTRY);
-    for note_id in &ids {
-        blob.extend_from_slice(note_id.as_elements());
-        blob.extend_from_slice(Word::empty().as_elements());
-    }
+    let mut entries = note_list_entries(&advice_blob_for(&batch, *OUTPUT_NOTE_LIST_KEY));
+    entries.push((phantom_created_id, Word::empty()));
+    let blob = note_list_blob_from(entries);
     let override_advice = AdviceInputs::default().with_map([(*OUTPUT_NOTE_LIST_KEY, blob)]);
 
     let result = BatchExecutor::new().execute_with_advice(batch, override_advice);
@@ -445,22 +422,9 @@ fn batch_kernel_rejects_unconsumed_input_note() -> anyhow::Result<()> {
     let batch = two_tx_batch(&mut setup)?;
 
     // Append an entry whose nullifier no transaction consumes, keeping the list strictly sorted.
-    let mut notes: Vec<(Word, Word)> = Vec::new();
-    for tx in batch.transactions() {
-        for commit in tx.input_notes().iter() {
-            let nullifier = commit.nullifier().as_word();
-            let note_id_or_empty =
-                commit.header().map_or(Word::empty(), |header| header.id().as_word());
-            notes.push((nullifier, note_id_or_empty));
-        }
-    }
-    notes.push((Word::from([u32::MAX; 4]), Word::empty()));
-    notes.sort_by_key(|entry| entry.0);
-    let mut blob = Vec::with_capacity(notes.len() * FELTS_PER_NOTE_ENTRY);
-    for (nullifier, note_id_or_empty) in &notes {
-        blob.extend_from_slice(nullifier.as_elements());
-        blob.extend_from_slice(note_id_or_empty.as_elements());
-    }
+    let mut entries = note_list_entries(&advice_blob_for(&batch, *INPUT_NOTE_LIST_KEY));
+    entries.push((Word::from([u32::MAX; 4]), Word::empty()));
+    let blob = note_list_blob_from(entries);
     let override_advice = AdviceInputs::default().with_map([(*INPUT_NOTE_LIST_KEY, blob)]);
 
     let result = BatchExecutor::new().execute_with_advice(batch, override_advice);
@@ -477,19 +441,9 @@ fn batch_kernel_rejects_uncreated_output_note() -> anyhow::Result<()> {
     let mut setup = setup_chain();
     let batch = two_tx_batch(&mut setup)?;
 
-    let mut ids: Vec<Word> = Vec::new();
-    for tx in batch.transactions() {
-        for note in tx.output_notes().iter() {
-            ids.push(note.id().as_word());
-        }
-    }
-    ids.push(Word::from([u32::MAX; 4]));
-    ids.sort_unstable();
-    let mut blob = Vec::with_capacity(ids.len() * FELTS_PER_NOTE_ENTRY);
-    for note_id in &ids {
-        blob.extend_from_slice(note_id.as_elements());
-        blob.extend_from_slice(Word::empty().as_elements());
-    }
+    let mut entries = note_list_entries(&advice_blob_for(&batch, *OUTPUT_NOTE_LIST_KEY));
+    entries.push((Word::from([u32::MAX; 4]), Word::empty()));
+    let blob = note_list_blob_from(entries);
     let override_advice = AdviceInputs::default().with_map([(*OUTPUT_NOTE_LIST_KEY, blob)]);
 
     let result = BatchExecutor::new().execute_with_advice(batch, override_advice);
