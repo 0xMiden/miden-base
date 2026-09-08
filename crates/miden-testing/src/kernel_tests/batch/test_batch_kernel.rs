@@ -6,13 +6,14 @@ use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_protocol::batch::{
     BatchKernel,
+    FELTS_PER_NOTE_ENTRY,
     INPUT_NOTE_LIST_KEY,
     OUTPUT_NOTE_LIST_KEY,
     ProposedBatch,
 };
 use miden_protocol::block::BlockNumber;
 use miden_protocol::errors::{MasmError, ProvenBatchError, batch_kernel};
-use miden_protocol::transaction::RawOutputNote;
+use miden_protocol::transaction::{RawOutputNote, TransactionCommitments};
 use miden_protocol::vm::AdviceInputs;
 use miden_protocol::{
     Felt,
@@ -27,13 +28,6 @@ use rstest::rstest;
 
 use super::proposed_batch::{TestSetup, mock_note, mock_output_note, setup_chain};
 use super::proven_tx_builder::MockProvenTxBuilder;
-
-/// Felts per global note-list entry: a KEY word plus a VALUE word.
-const FELTS_PER_NOTE_ENTRY: usize = 2 * WORD_SIZE;
-
-/// Felts per transaction header: INIT, FINAL, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT.
-/// Must match `TX_HEADER_FELT_LEN` in `asm/kernels/batch/lib/memory.masm`.
-const FELTS_PER_TX_HEADER: usize = 4 * WORD_SIZE;
 
 // SETUP HELPERS
 // ================================================================================================
@@ -227,7 +221,7 @@ fn batch_kernel_rejects_invalid_tx_header_length() -> anyhow::Result<()> {
     let batch = two_tx_batch(&mut setup)?;
 
     let tx_id = batch.transactions()[0].id().as_word();
-    let blob = vec![Felt::from(0u32); 2 * FELTS_PER_TX_HEADER];
+    let blob = vec![Felt::from(0u32); 2 * TransactionCommitments::ELEMENTS_LEN];
     let override_advice = AdviceInputs::default().with_map([(tx_id, blob)]);
 
     let result = BatchExecutor::new().execute_with_advice(batch, override_advice);

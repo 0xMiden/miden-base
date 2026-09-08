@@ -16,6 +16,7 @@ use crate::{
     MAX_INPUT_NOTES_PER_BATCH,
     MAX_OUTPUT_NOTES_PER_BATCH,
     MAX_TRANSACTIONS_PER_BATCH,
+    WORD_SIZE,
     Word,
 };
 
@@ -32,6 +33,12 @@ static KERNEL_MAIN: LazyLock<Program> = LazyLock::new(|| {
         .try_into_program()
         .expect("batch kernel package should contain a program")
 });
+
+/// Number of felts a sorted note-list entry occupies: a KEY word plus a VALUE word.
+///
+/// Must match `NOTE_ENTRY_FELT_LEN` in `asm/kernels/batch/lib/memory.masm`, which sizes the
+/// kernel's note-list memory regions.
+pub const FELTS_PER_NOTE_ENTRY: usize = 2 * WORD_SIZE;
 
 // Advice-map keys under which the sorted (pre-erasure) note lists are provided to the kernel.
 pub static INPUT_NOTE_LIST_KEY: LazyLock<Word> =
@@ -205,8 +212,9 @@ impl BatchKernel {
             // This must reproduce `build_input_note_commitment` exactly.
             let input_notes_commitment = tx.input_notes().commitment();
             if input_notes_commitment != Word::empty() {
-                let mut preimage_data =
-                    Vec::with_capacity(usize::from(tx.input_notes().num_notes()) * 8);
+                let mut preimage_data = Vec::with_capacity(
+                    usize::from(tx.input_notes().num_notes()) * FELTS_PER_NOTE_ENTRY,
+                );
                 for note_commit in tx.input_notes().iter() {
                     let nullifier = note_commit.nullifier();
                     let note_id_or_empty =
@@ -223,7 +231,8 @@ impl BatchKernel {
             // each output NoteId as `merge(details_commitment, metadata_commitment)`.
             let output_notes_commitment = tx.output_notes().commitment();
             if output_notes_commitment != Word::empty() {
-                let mut preimage_data = Vec::with_capacity(tx.output_notes().num_notes() * 8);
+                let mut preimage_data =
+                    Vec::with_capacity(tx.output_notes().num_notes() * FELTS_PER_NOTE_ENTRY);
                 for note in tx.output_notes().iter() {
                     preimage_data
                         .extend_from_slice(note.details_commitment().as_word().as_elements());
@@ -241,17 +250,17 @@ impl BatchKernel {
         input_list.sort_by_key(|entry| entry.0);
         output_list.sort_unstable();
 
-        // INPUT_NOTE_LIST_KEY -> [NULLIFIER, NOTE_ID_OR_EMPTY] (8 felts per note).
-        let mut input_blob = Vec::with_capacity(input_list.len() * 8);
+        // INPUT_NOTE_LIST_KEY -> [NULLIFIER, NOTE_ID_OR_EMPTY] per note.
+        let mut input_blob = Vec::with_capacity(input_list.len() * FELTS_PER_NOTE_ENTRY);
         for (nullifier, note_id_or_empty) in &input_list {
             input_blob.extend_from_slice(nullifier.as_word().as_elements());
             input_blob.extend_from_slice(note_id_or_empty.as_elements());
         }
         map_entries.push((*INPUT_NOTE_LIST_KEY, input_blob));
 
-        // OUTPUT_NOTE_LIST_KEY -> [NOTE_ID, 0, 0, 0, 0] (8 felts per note; the VALUE word
-        // is unused, present only so the entries fit `sorted_array`'s KEY+VALUE layout).
-        let mut output_blob = Vec::with_capacity(output_list.len() * 8);
+        // OUTPUT_NOTE_LIST_KEY -> [NOTE_ID, 0, 0, 0, 0] per note; the VALUE word is unused,
+        // present only so the entries fit `sorted_array`'s KEY+VALUE layout.
+        let mut output_blob = Vec::with_capacity(output_list.len() * FELTS_PER_NOTE_ENTRY);
         for note_id in &output_list {
             output_blob.extend_from_slice(note_id.as_word().as_elements());
             output_blob.extend_from_slice(Word::empty().as_elements());
