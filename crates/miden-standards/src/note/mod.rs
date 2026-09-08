@@ -2,10 +2,10 @@ use alloc::boxed::Box;
 use alloc::string::ToString;
 use core::error::Error;
 
+use miden_protocol::Felt;
 use miden_protocol::account::AccountId;
 use miden_protocol::block::BlockNumber;
 use miden_protocol::note::{Note, NoteScript, NoteScriptRoot};
-use miden_protocol::{Felt, MAX_NOTE_STORAGE_ITEMS};
 
 use self::config::{
     AllowlistConfigNote,
@@ -187,30 +187,14 @@ impl StandardNote {
         }
     }
 
-    /// Returns the number of storage items this kind of note accepts.
-    ///
-    /// Several note kinds accept more than one storage size, so no single expected size can be
-    /// derived from the script root alone: a MINT note holds exactly
-    /// [`MintNote::NUM_STORAGE_ITEMS_PRIVATE`] items when it creates a private output note and at
-    /// least [`MintNote::MIN_NUM_STORAGE_ITEMS_PUBLIC`] when it creates a public one, and the
-    /// config notes size their storage per action. The returned value mirrors the sizes each note
-    /// script accepts; use [`NumStorageItems::accepts`] to check one against it.
+    /// Returns the [`NumStorageItems`] items this kind of note accepts.
     pub fn num_storage_items(&self) -> NumStorageItems {
         match self {
             Self::P2ID => NumStorageItems::Exact(P2idNote::NUM_STORAGE_ITEMS),
             Self::P2IDE => NumStorageItems::Exact(P2ideNote::NUM_STORAGE_ITEMS),
             Self::SWAP => NumStorageItems::Exact(SwapNote::NUM_STORAGE_ITEMS),
             Self::PSWAP => NumStorageItems::Exact(PswapNote::NUM_STORAGE_ITEMS),
-            // A MINT note creating a private output note holds exactly 13 items, while one
-            // creating a public output note holds at least 20 and grows with the storage of the
-            // output note recipient.
-            Self::MINT => NumStorageItems::AnyOf(&[
-                NumStorageItems::Exact(MintNote::NUM_STORAGE_ITEMS_PRIVATE),
-                NumStorageItems::Range {
-                    min: MintNote::MIN_NUM_STORAGE_ITEMS_PUBLIC,
-                    max: MAX_NOTE_STORAGE_ITEMS,
-                },
-            ]),
+            Self::MINT => MintNote::NUM_STORAGE_ITEMS,
             Self::BURN => NumStorageItems::Exact(BurnNote::NUM_STORAGE_ITEMS),
             Self::CONSTANT_FEE_POLICY_CONFIG => {
                 NumStorageItems::Exact(ConstantFeePolicyConfigNote::NUM_STORAGE_ITEMS)
@@ -218,12 +202,7 @@ impl StandardNote {
             Self::FAUCET_POLICY_CONFIG => {
                 NumStorageItems::Exact(FaucetPolicyConfigNote::NUM_STORAGE_ITEMS)
             },
-            // FaucetMetadataConfig storage is variable per action: `SetMaxSupply` uses the
-            // minimum, the string-setting actions use the maximum.
-            Self::FAUCET_METADATA_CONFIG => NumStorageItems::AnyOf(&[
-                NumStorageItems::Exact(FaucetMetadataConfigNote::MIN_NUM_STORAGE_ITEMS),
-                NumStorageItems::Exact(FaucetMetadataConfigNote::MAX_NUM_STORAGE_ITEMS),
-            ]),
+            Self::FAUCET_METADATA_CONFIG => FaucetMetadataConfigNote::NUM_STORAGE_ITEMS,
             Self::MIN_BURN_AMOUNT_CONFIG => {
                 NumStorageItems::Exact(MinBurnAmountConfigNote::NUM_STORAGE_ITEMS)
             },
@@ -234,18 +213,8 @@ impl StandardNote {
                 NumStorageItems::Exact(BlocklistConfigNote::NUM_STORAGE_ITEMS)
             },
             Self::PAUSE_CONFIG => NumStorageItems::Exact(PauseConfigNote::NUM_STORAGE_ITEMS),
-            // OwnerConfig storage is variable per action: `TransferOwnership` uses the maximum,
-            // `AcceptOwnership` / `RenounceOwnership` the minimum. No size in between is valid.
-            Self::OWNER_CONFIG => NumStorageItems::AnyOf(&[
-                NumStorageItems::Exact(OwnerConfigNote::MIN_NUM_STORAGE_ITEMS),
-                NumStorageItems::Exact(OwnerConfigNote::MAX_NUM_STORAGE_ITEMS),
-            ]),
-            // RbacConfig storage is variable per action, and every size between its bounds is
-            // used by one of them.
-            Self::RBAC_CONFIG => NumStorageItems::Range {
-                min: RbacConfigNote::MIN_NUM_STORAGE_ITEMS,
-                max: RbacConfigNote::MAX_NUM_STORAGE_ITEMS,
-            },
+            Self::OWNER_CONFIG => OwnerConfigNote::NUM_STORAGE_ITEMS,
+            Self::RBAC_CONFIG => RbacConfigNote::NUM_STORAGE_ITEMS,
             Self::NETWORK_ACCOUNT_CONFIG => {
                 NumStorageItems::Exact(NetworkAccountConfigNote::NUM_STORAGE_ITEMS)
             },
@@ -526,6 +495,8 @@ impl Clone for NoteConsumptionStatus {
 
 #[cfg(test)]
 mod tests {
+    use miden_protocol::MAX_NOTE_STORAGE_ITEMS;
+
     use super::*;
 
     /// A MINT note holds exactly 13 items when it creates a private output note, and 20 or more
