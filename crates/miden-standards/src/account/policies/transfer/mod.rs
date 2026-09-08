@@ -12,7 +12,7 @@
 
 use alloc::vec::Vec;
 
-use miden_protocol::account::{AccountComponent, AccountId, AccountProcedureRoot, StorageSlotName};
+use miden_protocol::account::{AccountComponent, AccountId, AccountProcedureRoot};
 use thiserror::Error;
 
 mod allow_all;
@@ -69,13 +69,11 @@ pub enum TransferPolicyError {
 /// `tx::update_expiration_block_delta` directly with a custom expiration delta.
 ///
 /// The companion components carried by the descriptor are inlined into the account by the
-/// [`super::TokenPolicyManager`] when it is converted into account components. Storage slots the
-/// policy procedure reads but does not own are declared separately (see [`Self::required_slots`]).
+/// [`super::TokenPolicyManager`] when it is converted into account components.
 #[derive(Debug, Clone)]
 pub struct TransferPolicy {
     root: AccountProcedureRoot,
     components: Vec<AccountComponent>,
-    required_slots: Vec<StorageSlotName>,
 }
 
 impl TransferPolicy {
@@ -87,7 +85,6 @@ impl TransferPolicy {
         Self {
             root: TransferAllowAll::root(),
             components: vec![TransferAllowAll.into()],
-            required_slots: Vec::new(),
         }
     }
 
@@ -98,7 +95,6 @@ impl TransferPolicy {
         Self {
             root: BasicBlocklist::root(),
             components: vec![BasicBlocklist::default().into()],
-            required_slots: Vec::new(),
         }
     }
 
@@ -110,7 +106,6 @@ impl TransferPolicy {
         Self {
             root: BasicBlocklist::root(),
             components: vec![BasicBlocklist::with_blocked_accounts(blocked_accounts).into()],
-            required_slots: Vec::new(),
         }
     }
 
@@ -121,7 +116,6 @@ impl TransferPolicy {
         Self {
             root: BasicAllowlist::root(),
             components: vec![BasicAllowlist::default().into()],
-            required_slots: Vec::new(),
         }
     }
 
@@ -132,7 +126,6 @@ impl TransferPolicy {
         Self {
             root: BasicAllowlist::root(),
             components: vec![BasicAllowlist::from(allow_list).into()],
-            required_slots: Vec::new(),
         }
     }
 
@@ -152,28 +145,12 @@ impl TransferPolicy {
         if !components.iter().any(|component| component.has_procedure(root)) {
             return Err(TransferPolicyError::RootNotInComponents);
         }
-        Ok(Self {
-            root,
-            components,
-            required_slots: Vec::new(),
-        })
-    }
-
-    /// Declares a storage slot the policy procedure reads but does not own, so it must be
-    /// provided by another component installed on the same account.
-    pub fn with_required_slot(mut self, slot_name: StorageSlotName) -> Self {
-        self.required_slots.push(slot_name);
-        self
+        Ok(Self { root, components })
     }
 
     /// Returns the procedure root of the policy this descriptor resolves to.
     pub fn root(&self) -> AccountProcedureRoot {
         self.root
-    }
-
-    /// Returns the storage slots the policy procedure reads but does not own.
-    pub fn required_slots(&self) -> &[StorageSlotName] {
-        &self.required_slots
     }
 }
 

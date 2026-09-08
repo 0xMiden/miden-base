@@ -38,8 +38,9 @@ use super::{
 use crate::account::access::{AccessControl, Authority, Pausable, PausableManager};
 use crate::account::account_component_code;
 use crate::account::auth::{AuthSingleSig, NetworkAccount};
+use crate::account::faucets::registers_owner_only_policy;
 use crate::account::fees::FeePolicyManager;
-use crate::account::policies::{TokenPolicyManager, verify_policy_dependencies};
+use crate::account::policies::TokenPolicyManager;
 use crate::note::{BurnNote, MintNote};
 use crate::procedure_root;
 
@@ -512,6 +513,12 @@ impl TryFrom<&Account> for NonFungibleFaucet {
 /// The caller passes a fully-configured [`AuthSingleSig`]. Every authority-gated setter
 /// (`mint_and_send`, the metadata setters, the policy setters, and `pause` / `unpause`) requires a
 /// signature.
+///
+/// # Errors
+///
+/// Returns [`NonFungibleFaucetError::OwnerOnlyPolicyWithoutOwnable2Step`] if
+/// `token_policy_manager` registers an owner-gated mint or burn policy: this factory installs no
+/// `Ownable2Step` component, so such a policy would abort on every dispatch.
 pub fn create_user_non_fungible_faucet(
     init_seed: [u8; 32],
     faucet: NonFungibleFaucet,
@@ -519,9 +526,13 @@ pub fn create_user_non_fungible_faucet(
     token_policy_manager: TokenPolicyManager,
     account_type: AccountType,
 ) -> Result<Account, NonFungibleFaucetError> {
-    let required_slots = token_policy_manager.required_storage_slots();
+    // TODO: remove with the general component dependency mechanism, see
+    // `super::registers_owner_only_policy`.
+    if registers_owner_only_policy(&token_policy_manager) {
+        return Err(NonFungibleFaucetError::OwnerOnlyPolicyWithoutOwnable2Step);
+    }
 
-    let account = AccountBuilder::new(init_seed)
+    AccountBuilder::new(init_seed)
         .account_type(account_type)
         .with_component(auth_component)
         .with_component(faucet)
@@ -530,11 +541,7 @@ pub fn create_user_non_fungible_faucet(
         .with_component(Pausable::unpaused())
         .with_component(PausableManager)
         .build()
-        .map_err(NonFungibleFaucetError::AccountCreationFailed)?;
-
-    verify_policy_dependencies(&required_slots, account.storage())?;
-
-    Ok(account)
+        .map_err(NonFungibleFaucetError::AccountCreationFailed)
 }
 
 /// Creates a new **network-style** non-fungible faucet. The account is always
@@ -546,6 +553,13 @@ pub fn create_user_non_fungible_faucet(
 /// canonical expiration setter
 /// ([`ExpirationTransactionScript`](crate::tx_script::ExpirationTransactionScript)) so the
 /// network can bound its own transactions' expiry.
+///
+/// # Errors
+///
+/// Returns [`NonFungibleFaucetError::OwnerOnlyPolicyWithoutOwnable2Step`] if
+/// `token_policy_manager` registers an owner-gated mint or burn policy while `access_control` is
+/// [`AccessControl::Rbac`], which installs no `Ownable2Step` component for the policy to read the
+/// owner from.
 pub fn create_network_non_fungible_faucet(
     init_seed: [u8; 32],
     faucet: NonFungibleFaucet,
@@ -553,10 +567,17 @@ pub fn create_network_non_fungible_faucet(
     token_policy_manager: TokenPolicyManager,
     fee_policy_manager: FeePolicyManager,
 ) -> Result<Account, NonFungibleFaucetError> {
-    let note_allowlist = [MintNote::script_root(), BurnNote::script_root()].into_iter().collect();
-    let required_slots = token_policy_manager.required_storage_slots();
+    // TODO: remove with the general component dependency mechanism, see
+    // `super::registers_owner_only_policy`.
+    if registers_owner_only_policy(&token_policy_manager)
+        && !matches!(access_control, AccessControl::Ownable2Step { .. })
+    {
+        return Err(NonFungibleFaucetError::OwnerOnlyPolicyWithoutOwnable2Step);
+    }
 
-    let account = NetworkAccount::builder(init_seed, note_allowlist, fee_policy_manager)
+    let note_allowlist = [MintNote::script_root(), BurnNote::script_root()].into_iter().collect();
+
+    NetworkAccount::builder(init_seed, note_allowlist, fee_policy_manager)
         .expect("MintNote + BurnNote allowlist is non-empty")
         .with_component(faucet)
         .with_components(access_control)
@@ -564,9 +585,5 @@ pub fn create_network_non_fungible_faucet(
         .with_component(Pausable::unpaused())
         .with_component(PausableManager)
         .build()
-        .map_err(NonFungibleFaucetError::AccountCreationFailed)?;
-
-    verify_policy_dependencies(&required_slots, account.storage())?;
-
-    Ok(account)
+        .map_err(NonFungibleFaucetError::AccountCreationFailed)
 }
