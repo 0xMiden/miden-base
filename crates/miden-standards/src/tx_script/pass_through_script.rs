@@ -59,26 +59,6 @@ static PASS_THROUGH_SINGLE_P2ID_TX_SCRIPT: LazyLock<TransactionScript> =
 /// the payload must list every asset the input notes deposit (or else, the remainder stays in the
 /// vault). Both would change the account's commitment, which [`AuthPassThrough`] rejects. `new`
 /// requires that component for exactly this reason.
-///
-/// That check is a footgun guard rather than a vetting step for an untrusted account:
-/// [`AccountCodeInterface`] is a set of procedure roots that does not record which one is the auth
-/// procedure, and nothing enforces the check on-chain either.
-///
-/// A note script the transaction consumes can sweep the listed assets before this script does, so
-/// a successful transaction does not by itself imply they reached `target`.
-///
-/// The payload is embedded into the script's MAST forest and committed to by `TX_SCRIPT_ARGS`, so
-/// a single [`PassThroughSingleP2idTransactionScript::script_root`] covers every target, serial
-/// number and asset set, and callers only have to set the script and its arguments:
-///
-/// ```ignore
-/// let script =
-///     PassThroughSingleP2idTransactionScript::new(&interface, target, note_type, serial, ids)?;
-/// let tx_args = TransactionArgs::new(AdviceMap::default())
-///     .with_tx_script_and_args(script.tx_script().clone(), script.tx_script_args());
-/// ```
-///
-/// [`AuthPassThrough`]: crate::account::auth::AuthPassThrough
 #[derive(Debug, Clone)]
 pub struct PassThroughSingleP2idTransactionScript {
     script: TransactionScript,
@@ -109,15 +89,6 @@ impl PassThroughSingleP2idTransactionScript {
     /// Builds a pass-through script forwarding the balance of every asset in `asset_ids` out of the
     /// account described by `interface`, into a P2ID note of type `note_type` addressed to
     /// `target`, carrying `serial_number`.
-    ///
-    /// `asset_ids` must list every asset the transaction's input notes deposit; an unlisted asset
-    /// stays in the vault and changes the account.
-    ///
-    /// `serial_number` must be unique per transaction, as for any note: two notes sharing a target,
-    /// an asset set and a serial number have the same ID and nullifier.
-    ///
-    /// The note's tag is derived as [`NoteTag::with_account_target`], matching the tag a
-    /// Rust-built [`P2idNote`](crate::note::P2idNote) carries.
     ///
     /// # Errors
     ///

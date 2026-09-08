@@ -38,10 +38,6 @@ procedure_root!(
 /// [`AuthPassThrough`](crate::account::auth::AuthPassThrough) so that only the holder of the
 /// pubkey stored in the account can execute a transaction against it.
 ///
-/// That bounds who may start a transaction, not who may call this procedure: a note script the
-/// transaction consumes can call it too, and redirect what earlier notes deposited into a note of
-/// its own. Signers must vet the note scripts they sign for.
-///
 /// It is an account procedure, so the component must also be combined with one exposing
 /// `receive_asset` (e.g. [`BasicWallet`](crate::account::wallets::BasicWallet)) so that input notes
 /// can deposit into the account in the first place.

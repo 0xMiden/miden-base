@@ -106,9 +106,6 @@ end
 #! unchanged, or compute_delta_commitment aborts while the summary is built. That also rules out
 #! paying a fee, since fee::pay_fee funds the TX_FEE note out of the vault.
 #!
-#! authenticate_transaction calls this after incrementing the nonce and binding it as the first
-#! user param, which is why the two share one body.
-#!
 #! Inputs:  [user_params(6), PK_COMM, scheme_id]
 #! Outputs: []
 #!
@@ -188,9 +185,6 @@ end
 #! Intended to be passed as the num_extra_cycles input of fee::pay_fee when fee payment happens
 #! right before authenticate_transaction. Unknown scheme ids return the largest bound; the
 #! authentication itself aborts on them later.
-#!
-#! The bound covers authenticate_transaction_without_nonce too, which is strictly cheaper, though
-#! an account authenticating that way cannot pay a fee out of its vault in the first place.
 #!
 #! Inputs:  [scheme_id]
 #! Outputs: [num_cycles]
