@@ -6,7 +6,7 @@
 #! committed to by the note and therefore fixed at creation time:
 #!
 #! - as a `NetworkAccountTarget` attachment, enforced with `assert_target_account_attachment`.
-#! - as an account ID in the note storage, enforced with `assert_target_account_id`.
+#! - as an account ID in the note storage, enforced with `assert_target_account_storage`.
 #!
 #! Every standard note script declares which of these it uses, or that it is open to any consumer,
 #! on a `Consumers:` line in the doc comment of its `@note_script` procedure.
@@ -47,7 +47,7 @@ end
 #! Returns whether the given account is the account allowed to consume the note.
 #!
 #! Use this where the note picks between several accounts it commits to; use
-#! `assert_target_account_id` where a single account is allowed.
+#! `assert_target_account_storage` where a single account is allowed.
 #!
 #! Inputs:  [account_id_suffix, account_id_prefix, target_id_suffix, target_id_prefix]
 #! Outputs: [is_target]
@@ -79,7 +79,7 @@ end
 #! - the active account is not the target account.
 #!
 #! Invocation: exec
-pub proc assert_target_account_id
+pub proc assert_target_account_storage
     exec.active_account::get_id
     # => [active_id_suffix, active_id_prefix, target_id_suffix, target_id_prefix]
 

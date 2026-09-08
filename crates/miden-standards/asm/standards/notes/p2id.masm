@@ -57,7 +57,7 @@ pub proc main
     # => [target_account_id_suffix, target_account_id_prefix]
 
     # ensure the consuming account is the target account, fails otherwise
-    exec.consumer::assert_target_account_id
+    exec.consumer::assert_target_account_storage
     # => []
 
     exec.basic_wallet::move_note_assets_to_account

@@ -75,7 +75,7 @@ pub proc main
     dupw exec.asset::id_into_faucet_id
     # => [faucet_id_suffix, faucet_id_prefix, STORED_ASSET_ID, STORED_ASSET_VALUE, NOTE_ASSET_ID, NOTE_ASSET_VALUE, pad(16)]
 
-    exec.consumer::assert_target_account_id
+    exec.consumer::assert_target_account_storage
     # => [STORED_ASSET_ID, STORED_ASSET_VALUE, NOTE_ASSET_ID, NOTE_ASSET_VALUE, pad(16)]
 
     movupw.2 assert_eqw.err=ERR_BURN_ASSET_MISMATCH

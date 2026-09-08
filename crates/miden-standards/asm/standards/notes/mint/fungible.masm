@@ -147,7 +147,7 @@ pub proc mint
     dupw exec.asset::id_into_faucet_id
     # => [faucet_id_suffix, faucet_id_prefix, ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
 
-    exec.consumer::assert_target_account_id
+    exec.consumer::assert_target_account_storage
     # => [ASSET_ID, ASSET_VALUE, tag, note_type, RECIPIENT, pad(2)]
 
     call.fungible::mint_and_send
