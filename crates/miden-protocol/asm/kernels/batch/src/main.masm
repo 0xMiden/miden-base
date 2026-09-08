@@ -60,10 +60,10 @@ proc main
     # => [pad(16)]
 
     exec.epilogue::finalize
-    # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, pad(16)]
+    # => [INPUT_NOTES_COMMITMENT, BATCH_NOTE_TREE_ROOT, pad(16)]
 
     swapdw dropw dropw
-    # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, pad(8)]
+    # => [INPUT_NOTES_COMMITMENT, BATCH_NOTE_TREE_ROOT, batch_expiration_block_num, pad(7)]
 end
 
 begin

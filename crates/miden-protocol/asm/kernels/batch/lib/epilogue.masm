@@ -228,18 +228,18 @@ proc compute_input_notes_commitment
     # => [INPUT_NOTES_COMMITMENT]
 end
 
-# OUTPUT NOTES COMMITMENT
+# BATCH NOTE TREE ROOT
 # =================================================================================================
 
-#! Computes the batch's output-notes commitment (the batch note tree root).
+#! Computes the batch note tree root.
 #!
 #! Placeholder: returns the empty word until the batch note tree is wired up.
 #!
 #! Inputs:  []
-#! Outputs: [OUTPUT_NOTES_COMMITMENT]
+#! Outputs: [BATCH_NOTE_TREE_ROOT]
 #!
 #! TODO: hash the batch's output notes into the batch note tree (SMT) root.
-proc compute_output_notes_commitment
+proc compute_batch_note_tree_root
     padw
 end
 
@@ -248,12 +248,12 @@ end
 
 #! Verifies the note-tracking results and computes the batch's note commitments.
 #!
-#! Asserts every output-note list entry was created, then computes the input- and output-notes
-#! commitments. The per-input-entry invariant (consumed exactly once) is enforced inside the
-#! input-commitment pass.
+#! Asserts every output-note list entry was created, then computes the input-notes commitment and
+#! the batch note tree root. The per-input-entry invariant (consumed exactly once) is enforced
+#! inside the input-commitment pass.
 #!
 #! Inputs:  []
-#! Outputs: [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT]
+#! Outputs: [INPUT_NOTES_COMMITMENT, BATCH_NOTE_TREE_ROOT]
 #!
 #! Panics if:
 #! - [`assert_all_output_notes_created`] or [`compute_input_notes_commitment`] fails to verify.
@@ -261,9 +261,9 @@ end
 #! TODO: authenticate unauthenticated, non-erased input notes against BLOCK_COMMITMENT's chain MMR.
 pub proc finalize
     exec.assert_all_output_notes_created
-    exec.compute_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT]
+    exec.compute_batch_note_tree_root
+    # => [BATCH_NOTE_TREE_ROOT]
 
     exec.compute_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT]
+    # => [INPUT_NOTES_COMMITMENT, BATCH_NOTE_TREE_ROOT]
 end
