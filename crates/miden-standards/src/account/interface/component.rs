@@ -88,7 +88,7 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::AuthNetworkAccount => "Network Account Auth".to_string(),
             AccountComponentInterface::CustomAuth(proc_root) => {
-                format!("CustomAuth({})", &proc_root.mast_root().to_hex()[..9])
+                format!("Custom Auth({})", &proc_root.mast_root().to_hex()[..9])
             },
             AccountComponentInterface::Custom(proc_root_vec) => {
                 let result = proc_root_vec
