@@ -6,8 +6,9 @@
 
 use std::path::{Path, PathBuf};
 
-/// The procedure prefix a note script uses to enforce who may consume it.
-const ENFORCEMENT_PREFIX: &str = "exec.consumer::";
+/// The procedure prefixes a note script uses to enforce who may consume it: the target account it
+/// commits to, or the reclaimer it lets take the assets back.
+const ENFORCEMENT_PREFIXES: [&str; 2] = ["exec.consumer::", "exec.reclaim::"];
 
 /// What a note script open to any consumer declares instead.
 const UNRESTRICTED_DECLARATION: &str = "#! Consumers: unrestricted";
@@ -26,10 +27,11 @@ fn every_note_script_states_who_may_consume_it() {
 
         for path in scripts {
             let source = module_source(&path);
+            let enforces = ENFORCEMENT_PREFIXES.iter().any(|prefix| source.contains(prefix));
             assert!(
-                source.contains(ENFORCEMENT_PREFIX) || source.contains(UNRESTRICTED_DECLARATION),
-                "the note script at {} neither enforces who may consume it through \
-                 `{ENFORCEMENT_PREFIX}*` nor declares `{UNRESTRICTED_DECLARATION}`",
+                enforces || source.contains(UNRESTRICTED_DECLARATION),
+                "the note script at {} neither enforces who may consume it through one of \
+                 {ENFORCEMENT_PREFIXES:?} nor declares `{UNRESTRICTED_DECLARATION}`",
                 path.display(),
             );
         }

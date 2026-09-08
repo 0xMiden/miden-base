@@ -9,12 +9,14 @@
 - [BREAKING] AggLayer bridge accounts now map emergency pause to an initial `PAUSER` role, while unpause remains restricted to `ADMIN` ([#3572](https://github.com/0xMiden/protocol/issues/3572)).
 - Added the block kernel skeleton, establishing its public input/output contract and the `BlockExecutor` that runs it ([#3703](https://github.com/0xMiden/protocol/pull/3703)).
 - Added the `miden::standards::note::consumer` module and a `Consumers:` declaration on every note script, so each note states who may consume it and enforces that through shared procedures ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
+- Added the `miden::standards::note::reclaim` module, so a note that lets its creator take its assets back enforces that through one shared procedure ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
 - Added the `miden-objects` crate with canonical, `no_std`-compatible Protobuf representations and validated conversions for protocol objects exchanged between clients and nodes ([#3707](https://github.com/0xMiden/protocol/pull/3707)).
 - Added canonical Protobuf representations and validated conversions for `TransactionInputs` ([#3776](https://github.com/0xMiden/protocol/pull/3776)).
 
 ### Changes
 
 - [BREAKING] Replaced the per-note target-account error constants with the shared `ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET` and `ERR_NOTE_CONSUMER_NOT_STORAGE_TARGET` ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
+- [BREAKING] Replaced the per-note reclaim error constants of the P2IDE and FEE_SPONSORSHIP notes with the shared `ERR_RECLAIM_DISABLED`, `ERR_RECLAIM_HEIGHT_NOT_REACHED` and `ERR_RECLAIM_ACCOUNT_IS_NOT_RECLAIMER` ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
 - The `MINT` and `BURN` note scripts now assert the consuming account against the faucet named by the stored asset ID, instead of relying on the faucet component to reject a foreign asset ([#3820](https://github.com/0xMiden/protocol/pull/3820)).
 - [BREAKING] Incremented the MSRV to 1.98.
 - [BREAKING] Removed the `BlockProof` placeholder in favor of `ExecutionProof` on `ProvenBlock`, matching `ProvenTransaction` and `ProvenBatch`, and `LocalBlockProver::prove` now takes an `ExecutedBlock` ([#3703](https://github.com/0xMiden/protocol/pull/3703)).

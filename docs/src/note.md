@@ -179,7 +179,7 @@ A note commits to the accounts allowed to consume it in one of two ways:
 - as a `NetworkAccountTarget` [attachment](#attachments), which the [config notes](https://github.com/0xMiden/protocol/blob/next/crates/miden-standards/asm/standards/notes) and the agglayer note scripts use.
 - as an account ID in the note's [storage](#storage), which P2ID, P2IDE, MINT and BURN use.
 
-Both are enforced through the shared [`miden::standards::note::consumer`](https://github.com/0xMiden/protocol/blob/next/crates/miden-standards/asm/standards/note/consumer.masm) procedures, so a restricted note has exactly one recognizable enforcement site rather than a hand-written comparison per script.
+Both are enforced through the shared [`miden::standards::note::consumer`](https://github.com/0xMiden/protocol/blob/next/crates/miden-standards/asm/standards/note/consumer.masm) procedures, so a restricted note has exactly one recognizable enforcement site rather than a hand-written comparison per script. A note that lets its creator take its assets back enforces that separately, through [`miden::standards::note::reclaim`](https://github.com/0xMiden/protocol/blob/next/crates/miden-standards/asm/standards/note/reclaim.masm), which checks the reclaimer alongside the block height from which reclaim is allowed.
 
 A note that is open to any consumer says so and says why: a SWAP or PSWAP note is filled by whoever provides the requested asset, and a TX_FEE note is claimed by whichever batch builder includes the transaction. A test walks every note script on disk and fails for one that neither enforces a rule nor declares itself open, so a missing check is a visible choice rather than an omission.
 
