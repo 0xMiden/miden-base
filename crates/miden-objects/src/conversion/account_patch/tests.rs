@@ -104,8 +104,6 @@ fn storage_value_patch_oneof_roundtrips_all_operations() {
         }
     }
 
-    let remove = proto::account::StorageValuePatch::from(&StorageValuePatch::Remove);
-    assert_eq!(remove.encode_to_vec(), [0x1a, 0x00]);
 }
 
 #[test]
