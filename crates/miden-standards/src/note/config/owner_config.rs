@@ -22,7 +22,7 @@ use miden_protocol::{Felt, Word};
 
 use crate::StandardsLib;
 use crate::note::costs::{NoteConsumptionCost, OWNER_CONFIG_CONSUMPTION_CYCLES};
-use crate::note::{AccountTargetNetworkNote, NetworkAccountTarget};
+use crate::note::{AccountTargetNetworkNote, NetworkAccountTarget, NumStorageItems};
 
 // NOTE SCRIPT
 // ================================================================================================
@@ -183,11 +183,13 @@ impl OwnerConfigNote {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// Upper bound on the number of storage items of an OwnerConfig note.
+    /// The numbers of storage items the OwnerConfig note script accepts.
     ///
     /// The layout is variable: `TransferOwnership` uses 3 items (`[selector, new_owner_suffix,
     /// new_owner_prefix]`), while `AcceptOwnership` / `RenounceOwnership` use 1 (`[selector]`).
-    pub const MAX_NUM_STORAGE_ITEMS: usize = 3;
+    /// Keep in sync with the `NUM_ITEMS_*` constants in `owner_config.masm`.
+    pub const NUM_STORAGE_ITEMS: NumStorageItems =
+        NumStorageItems::AnyOf(&[NumStorageItems::Exact(1), NumStorageItems::Exact(3)]);
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
