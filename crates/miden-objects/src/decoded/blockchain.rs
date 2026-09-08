@@ -272,6 +272,17 @@ impl crate::BuildUnchecked for SignedBlock {
     type Output = miden_protocol::block::SignedBlock;
     type Error = SignedBlockError;
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
+        self.build(None)
+    }
+}
+
+impl SignedBlock {
+    fn build(
+        self,
+        parent: Option<&miden_protocol::block::BlockHeader>,
+    ) -> Result<miden_protocol::block::SignedBlock, SignedBlockError> {
+        use crate::BuildUnchecked;
+
         let header = self.header.build_unchecked()?;
         let body = self.body.build_unchecked()?;
         let signatures = self
@@ -281,8 +292,11 @@ impl crate::BuildUnchecked for SignedBlock {
             .collect();
         let signatures = miden_protocol::block::BlockSignatures::new(signatures)
             .map_err(|error| SignedBlockError::Signatures(alloc::boxed::Box::new(error)))?;
-        Self::Output::new(header, body, signatures)
-            .map_err(|error| SignedBlockError::Block(alloc::boxed::Box::new(error)))
+        let block = miden_protocol::block::SignedBlock::new_unchecked(header, body, signatures);
+        block
+            .validate(parent)
+            .map_err(|error| SignedBlockError::Block(alloc::boxed::Box::new(error)))?;
+        Ok(block)
     }
 }
 
@@ -308,10 +322,6 @@ impl crate::VerifyWith<&miden_protocol::block::BlockHeader> for SignedBlock {
         self,
         parent: &miden_protocol::block::BlockHeader,
     ) -> Result<Self::Verified, Self::Error> {
-        let block = crate::BuildUnchecked::build_unchecked(self)?;
-        block
-            .validate(Some(parent))
-            .map_err(|error| SignedBlockError::Block(alloc::boxed::Box::new(error)))?;
-        Ok(block)
+        self.build(Some(parent))
     }
 }
