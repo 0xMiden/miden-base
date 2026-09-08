@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 use miden_protocol::account::{
     AccountHeader,
     AccountId,
+    AccountIdV1,
     AccountStorageHeader,
     PartialAccount,
     PartialStorage,
@@ -27,17 +28,47 @@ impl TryFrom<proto::account::AccountId> for AccountId {
     type Error = ConversionError;
 
     fn try_from(message: proto::account::AccountId) -> Result<Self, Self::Error> {
-        let bytes: [u8; AccountId::SERIALIZED_SIZE] =
-            message.id.as_slice().try_into().map_err(ConversionError::new)?;
+        match message.version {
+            Some(proto::account::account_id::Version::V1(id)) => {
+                id.try_into().map(Self::V1).context("version.v1")
+            },
+            None => Err(ConversionError::missing_field::<proto::account::AccountId>("version")),
+        }
+    }
+}
 
-        AccountId::try_from(bytes).map_err(ConversionError::new)
+impl TryFrom<proto::account::AccountIdV1> for AccountIdV1 {
+    type Error = ConversionError;
+
+    fn try_from(message: proto::account::AccountIdV1) -> Result<Self, Self::Error> {
+        let decoder = message.decoder();
+        let suffix = required!(decoder, message.suffix)?;
+        let prefix = required!(decoder, message.prefix)?;
+        Self::try_from_elements(suffix, prefix).map_err(ConversionError::new)
+    }
+}
+
+impl From<&AccountIdV1> for proto::account::AccountIdV1 {
+    fn from(account_id: &AccountIdV1) -> Self {
+        Self {
+            suffix: Some(account_id.suffix().into()),
+            prefix: Some(account_id.prefix().as_felt().into()),
+        }
+    }
+}
+
+impl From<AccountIdV1> for proto::account::AccountIdV1 {
+    fn from(account_id: AccountIdV1) -> Self {
+        (&account_id).into()
     }
 }
 
 impl From<&AccountId> for proto::account::AccountId {
     fn from(account_id: &AccountId) -> Self {
-        let id: [u8; AccountId::SERIALIZED_SIZE] = (*account_id).into();
-        Self { id: id.into() }
+        let version = match account_id {
+            AccountId::V1(id) => proto::account::account_id::Version::V1(id.into()),
+        };
+        Self { version: Some(version) }
     }
 }
 
@@ -76,32 +107,6 @@ impl From<&StorageSlotId> for proto::account::StorageSlotId {
     }
 }
 
-/// Decodes a protobuf storage slot type into its domain representation.
-///
-/// Protobuf reserves discriminant 0 for an unspecified value, while the domain
-/// enum uses discriminants 0 and 1 for `Value` and `Map`, respectively.
-fn decode_storage_slot_type(slot_type: i32) -> Result<StorageSlotType, ConversionError> {
-    match proto::account::StorageSlotType::try_from(slot_type) {
-        Ok(proto::account::StorageSlotType::Value) => Ok(StorageSlotType::Value),
-        Ok(proto::account::StorageSlotType::Map) => Ok(StorageSlotType::Map),
-        Ok(proto::account::StorageSlotType::Unspecified) => {
-            Err(ConversionError::message("storage slot type is unspecified"))
-        },
-        Err(error) => Err(ConversionError::with_source(
-            format!("unknown storage slot type {slot_type}"),
-            error,
-        )),
-    }
-}
-
-/// Encodes a domain storage slot type using its protobuf representation.
-fn encode_storage_slot_type(slot_type: StorageSlotType) -> i32 {
-    match slot_type {
-        StorageSlotType::Value => proto::account::StorageSlotType::Value as i32,
-        StorageSlotType::Map => proto::account::StorageSlotType::Map as i32,
-    }
-}
-
 impl TryFrom<proto::account::AccountStorageHeader> for AccountStorageHeader {
     type Error = ConversionError;
 
@@ -110,10 +115,22 @@ impl TryFrom<proto::account::AccountStorageHeader> for AccountStorageHeader {
             .slots
             .into_iter()
             .map(|slot| {
-                let decoder = slot.decoder();
+                use proto::account::account_storage_header::storage_slot::Content;
+
                 let name = StorageSlotName::new(slot.slot_name)?;
-                let slot_type = decode_storage_slot_type(slot.slot_type).context("slot_type")?;
-                let commitment = required!(decoder, slot.commitment)?;
+                let (slot_type, commitment) = match slot.content {
+                    Some(Content::Value(value)) => {
+                        (StorageSlotType::Value, value.try_into().context("content.value")?)
+                    },
+                    Some(Content::MapRoot(root)) => {
+                        (StorageSlotType::Map, root.try_into().context("content.map_root")?)
+                    },
+                    None => {
+                        return Err(ConversionError::missing_field::<
+                            proto::account::account_storage_header::StorageSlot,
+                        >("content"));
+                    },
+                };
                 Ok(StorageSlotHeader::new(name, slot_type, commitment))
             })
             .collect::<Result<Vec<_>, ConversionError>>()
@@ -124,13 +141,20 @@ impl TryFrom<proto::account::AccountStorageHeader> for AccountStorageHeader {
 
 impl From<&AccountStorageHeader> for proto::account::AccountStorageHeader {
     fn from(account_storage_header: &AccountStorageHeader) -> Self {
+        use proto::account::account_storage_header::storage_slot::Content;
+
         Self {
             slots: account_storage_header
                 .slots()
-                .map(|slot| proto::account::account_storage_header::StorageSlot {
-                    slot_name: slot.name().to_string(),
-                    slot_type: encode_storage_slot_type(slot.slot_type()),
-                    commitment: Some(slot.value().into()),
+                .map(|slot| {
+                    let content = match slot.slot_type() {
+                        StorageSlotType::Value => Content::Value(slot.value().into()),
+                        StorageSlotType::Map => Content::MapRoot(slot.value().into()),
+                    };
+                    proto::account::account_storage_header::StorageSlot {
+                        slot_name: slot.name().to_string(),
+                        content: Some(content),
+                    }
                 })
                 .collect(),
         }

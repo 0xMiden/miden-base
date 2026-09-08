@@ -15,7 +15,6 @@ use miden_protocol::account::{
     StorageMapKey,
     StorageMapPatch,
     StorageMapPatchEntries,
-    StoragePatchOperation,
     StorageSlotName,
     StorageSlotPatch,
     StorageValuePatch,
@@ -67,34 +66,16 @@ impl TryFrom<proto::account::AccountCode> for AccountCode {
 // STORAGE PATCHES
 // ================================================================================================
 
-const fn encode_storage_operation(operation: StoragePatchOperation) -> i32 {
-    match operation {
-        StoragePatchOperation::Create => proto::account::StoragePatchOperation::Create as i32,
-        StoragePatchOperation::Update => proto::account::StoragePatchOperation::Update as i32,
-        StoragePatchOperation::Remove => proto::account::StoragePatchOperation::Remove as i32,
-    }
-}
-
-fn decode_storage_operation(operation: i32) -> Result<StoragePatchOperation, ConversionError> {
-    match proto::account::StoragePatchOperation::try_from(operation) {
-        Ok(proto::account::StoragePatchOperation::Create) => Ok(StoragePatchOperation::Create),
-        Ok(proto::account::StoragePatchOperation::Update) => Ok(StoragePatchOperation::Update),
-        Ok(proto::account::StoragePatchOperation::Remove) => Ok(StoragePatchOperation::Remove),
-        Ok(proto::account::StoragePatchOperation::Unspecified) => {
-            Err(ConversionError::message("storage patch operation is unspecified"))
-        },
-        Err(_) => {
-            Err(ConversionError::message(format!("unknown storage patch operation {operation}")))
-        },
-    }
-}
-
 impl From<&StorageValuePatch> for proto::account::StorageValuePatch {
     fn from(patch: &StorageValuePatch) -> Self {
-        Self {
-            operation: encode_storage_operation(patch.patch_op()),
-            value: patch.value().map(Into::into),
-        }
+        use proto::account::storage_value_patch::Operation;
+
+        let operation = match patch {
+            StorageValuePatch::Create { value } => Operation::Create(value.into()),
+            StorageValuePatch::Update { value } => Operation::Update(value.into()),
+            StorageValuePatch::Remove => Operation::Remove(()),
+        };
+        Self { operation: Some(operation) }
     }
 }
 
@@ -102,46 +83,33 @@ impl TryFrom<proto::account::StorageValuePatch> for StorageValuePatch {
     type Error = ConversionError;
 
     fn try_from(patch: proto::account::StorageValuePatch) -> Result<Self, Self::Error> {
-        let operation = decode_storage_operation(patch.operation).context("operation")?;
-        match operation {
-            StoragePatchOperation::Create | StoragePatchOperation::Update => {
-                let decoder = patch.decoder();
-                let value = required!(decoder, patch.value)?;
-                Ok(if operation.is_create() {
-                    StorageValuePatch::Create { value }
-                } else {
-                    StorageValuePatch::Update { value }
-                })
-            },
-            StoragePatchOperation::Remove => {
-                if patch.value.is_some() {
-                    return Err(ConversionError::message(
-                        "value must be absent for a remove operation",
-                    )
-                    .context("value"));
-                }
-                Ok(StorageValuePatch::Remove)
-            },
+        use proto::account::storage_value_patch::Operation;
+
+        match patch.operation {
+            Some(Operation::Create(value)) => Ok(Self::Create {
+                value: value.try_into().context("operation.create")?,
+            }),
+            Some(Operation::Update(value)) => Ok(Self::Update {
+                value: value.try_into().context("operation.update")?,
+            }),
+            Some(Operation::Remove(())) => Ok(Self::Remove),
+            None => Err(ConversionError::missing_field::<proto::account::StorageValuePatch>(
+                "operation",
+            )),
         }
     }
 }
 
 impl From<&StorageMapPatch> for proto::account::StorageMapPatch {
     fn from(patch: &StorageMapPatch) -> Self {
-        let entries = patch
-            .entries()
-            .into_iter()
-            .flat_map(StorageMapPatchEntries::as_map)
-            .map(|(key, value)| proto::account::StorageMapEntry {
-                key: Some(Word::from(*key).into()),
-                value: Some((*value).into()),
-            })
-            .collect();
+        use proto::account::storage_map_patch::Operation;
 
-        Self {
-            operation: encode_storage_operation(patch.patch_op()),
-            entries,
-        }
+        let operation = match patch {
+            StorageMapPatch::Create { entries } => Operation::Create(entries.into()),
+            StorageMapPatch::Update { entries } => Operation::Update(entries.into()),
+            StorageMapPatch::Remove => Operation::Remove(()),
+        };
+        Self { operation: Some(operation) }
     }
 }
 
@@ -149,17 +117,50 @@ impl TryFrom<proto::account::StorageMapPatch> for StorageMapPatch {
     type Error = ConversionError;
 
     fn try_from(patch: proto::account::StorageMapPatch) -> Result<Self, Self::Error> {
-        let operation = decode_storage_operation(patch.operation).context("operation")?;
-        if operation.is_remove() {
-            if !patch.entries.is_empty() {
-                return Err(ConversionError::message(
-                    "entries must be empty for a remove operation",
-                )
-                .context("entries"));
-            }
-            return Ok(StorageMapPatch::Remove);
-        }
+        use proto::account::storage_map_patch::Operation;
 
+        match patch.operation {
+            Some(Operation::Create(entries)) => Ok(Self::Create {
+                entries: entries.try_into().context("operation.create")?,
+            }),
+            Some(Operation::Update(entries)) => {
+                let entries: StorageMapPatchEntries =
+                    entries.try_into().context("operation.update")?;
+                if entries.is_empty() {
+                    return Err(ConversionError::message(
+                        "entries must be non-empty for an update operation",
+                    )
+                    .context("operation.update.entries"));
+                }
+                Ok(Self::Update { entries })
+            },
+            Some(Operation::Remove(())) => Ok(Self::Remove),
+            None => {
+                Err(ConversionError::missing_field::<proto::account::StorageMapPatch>("operation"))
+            },
+        }
+    }
+}
+
+impl From<&StorageMapPatchEntries> for proto::account::StorageMapPatchEntries {
+    fn from(entries: &StorageMapPatchEntries) -> Self {
+        Self {
+            entries: entries
+                .as_map()
+                .iter()
+                .map(|(key, value)| proto::account::StorageMapEntry {
+                    key: Some(Word::from(*key).into()),
+                    value: Some(value.into()),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl TryFrom<proto::account::StorageMapPatchEntries> for StorageMapPatchEntries {
+    type Error = ConversionError;
+
+    fn try_from(patch: proto::account::StorageMapPatchEntries) -> Result<Self, Self::Error> {
         let mut entries = BTreeMap::new();
         for (index, entry) in patch.entries.into_iter().enumerate() {
             let decoder = entry.decoder();
@@ -174,16 +175,7 @@ impl TryFrom<proto::account::StorageMapPatch> for StorageMapPatch {
             }
         }
 
-        let entries = StorageMapPatchEntries::from_raw(entries);
-        match operation {
-            StoragePatchOperation::Create => Ok(StorageMapPatch::Create { entries }),
-            StoragePatchOperation::Update if entries.is_empty() => {
-                Err(ConversionError::message("entries must be non-empty for an update operation")
-                    .context("entries"))
-            },
-            StoragePatchOperation::Update => Ok(StorageMapPatch::Update { entries }),
-            StoragePatchOperation::Remove => unreachable!("remove handled above"),
-        }
+        Ok(Self::from_raw(entries))
     }
 }
 

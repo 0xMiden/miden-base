@@ -32,21 +32,6 @@ impl TryFrom<proto::asset::AssetClass> for AssetClass {
     }
 }
 
-fn decode_asset_composition(composition: i32) -> Result<AssetComposition, ConversionError> {
-    match proto::asset::AssetComposition::try_from(composition) {
-        Ok(proto::asset::AssetComposition::None) => Ok(AssetComposition::None),
-        Ok(proto::asset::AssetComposition::Fungible) => Ok(AssetComposition::Fungible),
-        Ok(proto::asset::AssetComposition::Custom) => Ok(AssetComposition::Custom),
-        Ok(proto::asset::AssetComposition::Unspecified) => {
-            Err(ConversionError::message("asset composition is unspecified"))
-        },
-        Err(error) => Err(ConversionError::with_source(
-            format!("unknown asset composition {composition}"),
-            error,
-        )),
-    }
-}
-
 fn decode_asset_version(version: i32) -> Result<(), ConversionError> {
     match proto::asset::AssetVersion::try_from(version) {
         Ok(proto::asset::AssetVersion::V1) => Ok(()),
@@ -60,21 +45,19 @@ fn decode_asset_version(version: i32) -> Result<(), ConversionError> {
     }
 }
 
-fn encode_asset_composition(composition: AssetComposition) -> i32 {
-    match composition {
-        AssetComposition::None => proto::asset::AssetComposition::None as i32,
-        AssetComposition::Fungible => proto::asset::AssetComposition::Fungible as i32,
-        AssetComposition::Custom => proto::asset::AssetComposition::Custom as i32,
-    }
-}
-
 impl From<&AssetId> for proto::asset::AssetId {
     fn from(asset_id: &AssetId) -> Self {
+        use proto::asset::asset_id::Composition;
+
+        let composition = match asset_id.composition() {
+            AssetComposition::None => Composition::NonFungible(asset_id.asset_class().into()),
+            AssetComposition::Fungible => Composition::Fungible(()),
+            AssetComposition::Custom => Composition::Custom(asset_id.asset_class().into()),
+        };
         Self {
             version: proto::asset::AssetVersion::V1 as i32,
-            asset_class: Some(asset_id.asset_class().into()),
-            composition: encode_asset_composition(asset_id.composition()),
             faucet_id: Some(asset_id.faucet_id().into()),
+            composition: Some(composition),
         }
     }
 }
@@ -89,14 +72,28 @@ impl TryFrom<proto::asset::AssetId> for AssetId {
     type Error = ConversionError;
 
     fn try_from(message: proto::asset::AssetId) -> Result<Self, Self::Error> {
+        use proto::asset::asset_id::Composition;
+
         decode_asset_version(message.version).context("version")?;
 
         let decoder = message.decoder();
-        let asset_class = required!(decoder, message.asset_class)?;
-        let composition = decode_asset_composition(message.composition).context("composition")?;
         let faucet_id = required!(decoder, message.faucet_id)?;
-
-        Self::new(asset_class, faucet_id, composition).map_err(ConversionError::new)
+        match message.composition {
+            Some(Composition::Fungible(())) => Ok(Self::new_fungible(faucet_id)),
+            Some(Composition::NonFungible(class)) => Self::new(
+                class.try_into().context("composition.non_fungible")?,
+                faucet_id,
+                AssetComposition::None,
+            )
+            .map_err(ConversionError::new),
+            Some(Composition::Custom(class)) => Self::new(
+                class.try_into().context("composition.custom")?,
+                faucet_id,
+                AssetComposition::Custom,
+            )
+            .map_err(ConversionError::new),
+            None => Err(ConversionError::missing_field::<proto::asset::AssetId>("composition")),
+        }
     }
 }
 

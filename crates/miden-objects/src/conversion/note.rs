@@ -83,6 +83,30 @@ impl TryFrom<proto::note::NoteMetadata> for NoteMetadata {
     }
 }
 
+impl From<PartialNoteMetadata> for proto::note::PartialNoteMetadata {
+    fn from(metadata: PartialNoteMetadata) -> Self {
+        Self {
+            version: proto::note::NoteVersion::V1 as i32,
+            sender: Some(metadata.sender().into()),
+            note_type: proto::note::NoteType::from(metadata.note_type()) as i32,
+            tag: metadata.tag().as_u32(),
+        }
+    }
+}
+
+impl TryFrom<proto::note::PartialNoteMetadata> for PartialNoteMetadata {
+    type Error = ConversionError;
+
+    fn try_from(metadata: proto::note::PartialNoteMetadata) -> Result<Self, Self::Error> {
+        decode_note_version(metadata.version).context("version")?;
+        decode_partial_note_metadata::<proto::note::PartialNoteMetadata>(
+            metadata.sender,
+            metadata.note_type,
+            metadata.tag,
+        )
+    }
+}
+
 // NOTE ATTACHMENTS
 // ================================================================================================
 
@@ -248,7 +272,7 @@ impl From<Note> for proto::note::Note {
     fn from(note: Note) -> Self {
         let (assets, metadata, recipient, attachments) = note.into_parts();
         Self {
-            metadata: Some(metadata.into()),
+            metadata: Some(metadata.into_partial_metadata().into()),
             note_details: Some(NoteDetails::new(assets, recipient).into()),
             note_attachments: Some(attachments.into()),
         }
@@ -262,8 +286,7 @@ impl TryFrom<proto::note::Note> for Note {
         let decoder = proto_note.decoder();
         let proto::note::Note { metadata, note_details, note_attachments } = proto_note;
 
-        let metadata = required!(decoder, metadata)?;
-        let partial_metadata = partial_note_metadata_from_proto(metadata)?;
+        let partial_metadata = required!(decoder, metadata)?;
 
         let note_details: NoteDetails = required!(decoder, note_details)?;
         let (assets, recipient) = note_details.into_parts();
@@ -393,17 +416,6 @@ impl TryFrom<proto::note::NoteScript> for NoteScript {
 // HELPERS
 // ================================================================================================
 
-/// Decodes the `(sender, note_type, tag)` triple from a proto `NoteMetadata` into a
-/// [`PartialNoteMetadata`]. The attachment-related fields on the proto are ignored — when full
-/// attachments are also transmitted, the receiver derives the canonical headers and commitment from
-/// those instead.
-fn partial_note_metadata_from_proto(
-    value: proto::note::NoteMetadata,
-) -> Result<PartialNoteMetadata, ConversionError> {
-    decode_note_version(value.version).context("version")?;
-    decode_partial_note_metadata(value.sender, value.note_type, value.tag)
-}
-
 fn decode_note_version(version: i32) -> Result<(), ConversionError> {
     match proto::note::NoteVersion::try_from(version) {
         Ok(proto::note::NoteVersion::V1) => Ok(()),
@@ -429,7 +441,8 @@ fn decode_note_metadata(
         ..
     } = metadata;
 
-    let partial = decode_partial_note_metadata(sender, note_type, tag)?;
+    let partial =
+        decode_partial_note_metadata::<proto::note::NoteMetadata>(sender, note_type, tag)?;
     let decoder = MessageDecoder::<proto::note::NoteMetadata>::default();
     let attachments_commitment = required!(decoder, attachments_commitment)?;
 
@@ -450,12 +463,12 @@ fn decode_note_metadata(
     Ok(NoteMetadata::from_parts(partial, attachment_headers, attachments_commitment))
 }
 
-fn decode_partial_note_metadata(
+fn decode_partial_note_metadata<M: prost::Message>(
     sender: Option<proto::account::AccountId>,
     note_type: i32,
     tag: u32,
 ) -> Result<PartialNoteMetadata, ConversionError> {
-    let decoder = MessageDecoder::<proto::note::NoteMetadata>::default();
+    let decoder = MessageDecoder::<M>::default();
     let sender = required!(decoder, sender)?;
     let note_type = proto::note::NoteType::try_from(note_type)
         .map_err(|_| ConversionError::message("enum variant discriminant out of range"))?

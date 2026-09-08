@@ -302,24 +302,10 @@ impl TryFrom<proto::primitives::AdviceInputs> for AdviceInputs {
 // PUBLIC KEY
 // ================================================================================================
 
-fn decode_public_key_variant(variant: i32) -> Result<(), ConversionError> {
-    match proto::primitives::PublicKeyVariant::try_from(variant) {
-        Ok(proto::primitives::PublicKeyVariant::EcdsaK256Keccak) => Ok(()),
-        Ok(proto::primitives::PublicKeyVariant::Unspecified) => {
-            Err(ConversionError::message("public key variant is unspecified"))
-        },
-        Err(error) => Err(ConversionError::with_source(
-            format!("unknown public key variant {variant}"),
-            error,
-        )),
-    }
-}
-
 impl From<&PublicKey> for proto::primitives::PublicKey {
     fn from(value: &PublicKey) -> Self {
         Self {
-            variant: proto::primitives::PublicKeyVariant::EcdsaK256Keccak as i32,
-            encoded: value.to_bytes(),
+            key: Some(proto::primitives::public_key::Key::EcdsaK256Keccak(value.to_bytes())),
         }
     }
 }
@@ -342,34 +328,26 @@ impl TryFrom<&proto::primitives::PublicKey> for PublicKey {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::PublicKey) -> Result<Self, Self::Error> {
-        decode_public_key_variant(value.variant).context("variant")?;
-        Self::read_from_bytes(&value.encoded)
-            .map_err(|error| ConversionError::deserialization("PublicKey", error))
-            .map_err(|error| error.context("encoded"))
+        match &value.key {
+            Some(proto::primitives::public_key::Key::EcdsaK256Keccak(encoded)) => {
+                Self::read_from_bytes(encoded)
+                    .map_err(|error| ConversionError::deserialization("PublicKey", error))
+                    .context("key.ecdsa_k256_keccak")
+            },
+            None => Err(ConversionError::missing_field::<proto::primitives::PublicKey>("key")),
+        }
     }
 }
 
 // SIGNATURE
 // ================================================================================================
 
-fn decode_signature_variant(variant: i32) -> Result<(), ConversionError> {
-    match proto::primitives::SignatureVariant::try_from(variant) {
-        Ok(proto::primitives::SignatureVariant::EcdsaK256Keccak) => Ok(()),
-        Ok(proto::primitives::SignatureVariant::Unspecified) => {
-            Err(ConversionError::message("signature variant is unspecified"))
-        },
-        Err(error) => Err(ConversionError::with_source(
-            format!("unknown signature variant {variant}"),
-            error,
-        )),
-    }
-}
-
 impl From<&Signature> for proto::primitives::Signature {
     fn from(value: &Signature) -> Self {
         Self {
-            variant: proto::primitives::SignatureVariant::EcdsaK256Keccak as i32,
-            encoded: value.to_bytes(),
+            signature: Some(proto::primitives::signature::Signature::EcdsaK256Keccak(
+                value.to_bytes(),
+            )),
         }
     }
 }
@@ -392,10 +370,16 @@ impl TryFrom<&proto::primitives::Signature> for Signature {
     type Error = ConversionError;
 
     fn try_from(value: &proto::primitives::Signature) -> Result<Self, Self::Error> {
-        decode_signature_variant(value.variant).context("variant")?;
-        Self::read_from_bytes(&value.encoded)
-            .map_err(|error| ConversionError::deserialization("Signature", error))
-            .map_err(|error| error.context("encoded"))
+        match &value.signature {
+            Some(proto::primitives::signature::Signature::EcdsaK256Keccak(encoded)) => {
+                Self::read_from_bytes(encoded)
+                    .map_err(|error| ConversionError::deserialization("Signature", error))
+                    .context("signature.ecdsa_k256_keccak")
+            },
+            None => {
+                Err(ConversionError::missing_field::<proto::primitives::Signature>("signature"))
+            },
+        }
     }
 }
 
@@ -442,32 +426,34 @@ mod tests {
 
     #[test]
     fn public_key_and_signature_roundtrip_with_ecdsa_k256_keccak_variants() {
+        use prost::Message;
         let signing_key = random_secret_key();
         let public_key = signing_key.public_key();
         let signature = signing_key.sign(Word::empty());
 
-        let encoded_public_key = proto::primitives::PublicKey::from(&public_key);
-        assert_eq!(
-            encoded_public_key.variant,
-            proto::primitives::PublicKeyVariant::EcdsaK256Keccak as i32
-        );
-        assert_eq!(PublicKey::try_from(encoded_public_key).unwrap(), public_key);
+        let encoded = proto::primitives::PublicKey::from(&public_key);
+        assert_matches!(encoded.key, Some(proto::primitives::public_key::Key::EcdsaK256Keccak(_)));
+        let wire =
+            proto::primitives::PublicKey::decode(encoded.encode_to_vec().as_slice()).unwrap();
+        assert_eq!(PublicKey::try_from(wire).unwrap(), public_key);
 
-        let encoded_signature = proto::primitives::Signature::from(&signature);
-        assert_eq!(
-            encoded_signature.variant,
-            proto::primitives::SignatureVariant::EcdsaK256Keccak as i32
+        let encoded = proto::primitives::Signature::from(&signature);
+        assert_matches!(
+            encoded.signature,
+            Some(proto::primitives::signature::Signature::EcdsaK256Keccak(_))
         );
-        assert_eq!(Signature::try_from(encoded_signature).unwrap(), signature);
+        let wire =
+            proto::primitives::Signature::decode(encoded.encode_to_vec().as_slice()).unwrap();
+        assert_eq!(Signature::try_from(wire).unwrap(), signature);
     }
 
     #[test]
     fn public_key_and_signature_reject_malformed_encodings() {
         let public_key_error = PublicKey::try_from(proto::primitives::PublicKey {
-            variant: proto::primitives::PublicKeyVariant::EcdsaK256Keccak as i32,
-            encoded: vec![],
+            key: Some(proto::primitives::public_key::Key::EcdsaK256Keccak(vec![])),
         })
         .unwrap_err();
+        assert!(public_key_error.to_string().starts_with("key.ecdsa_k256_keccak: "));
         assert_matches!(
             public_key_error
                 .source()
@@ -475,12 +461,11 @@ mod tests {
                 .and_then(|source| source.downcast_ref::<DeserializationError>()),
             Some(DeserializationError::UnexpectedEOF)
         );
-
         let signature_error = Signature::try_from(proto::primitives::Signature {
-            variant: proto::primitives::SignatureVariant::EcdsaK256Keccak as i32,
-            encoded: vec![],
+            signature: Some(proto::primitives::signature::Signature::EcdsaK256Keccak(vec![])),
         })
         .unwrap_err();
+        assert!(signature_error.to_string().starts_with("signature.ecdsa_k256_keccak: "));
         assert_matches!(
             signature_error
                 .source()
@@ -491,33 +476,36 @@ mod tests {
     }
 
     #[test]
-    fn public_key_and_signature_reject_unspecified_variants_before_decoding_bytes() {
-        let public_key_error =
-            PublicKey::try_from(proto::primitives::PublicKey { variant: 0, encoded: vec![] })
-                .unwrap_err();
-        assert_eq!(public_key_error.to_string(), "variant: public key variant is unspecified");
-
-        let signature_error =
-            Signature::try_from(proto::primitives::Signature { variant: 0, encoded: vec![] })
-                .unwrap_err();
-        assert_eq!(signature_error.to_string(), "variant: signature variant is unspecified");
+    fn public_key_and_signature_require_algorithm_payloads() {
+        assert!(
+            PublicKey::try_from(proto::primitives::PublicKey::default())
+                .unwrap_err()
+                .to_string()
+                .ends_with("::key is missing")
+        );
+        assert!(
+            Signature::try_from(proto::primitives::Signature::default())
+                .unwrap_err()
+                .to_string()
+                .ends_with("::signature is missing")
+        );
     }
 
     #[test]
-    fn public_key_and_signature_reject_unknown_variants_before_decoding_bytes() {
-        let public_key_error = PublicKey::try_from(proto::primitives::PublicKey {
-            variant: i32::MAX,
-            encoded: vec![],
-        })
-        .unwrap_err();
-        assert_eq!(public_key_error.to_string(), "variant: unknown public key variant 2147483647");
+    fn public_key_and_signature_reject_unknown_algorithm_payloads() {
+        use prost::Message;
 
-        let signature_error = Signature::try_from(proto::primitives::Signature {
-            variant: i32::MAX,
-            encoded: vec![],
-        })
-        .unwrap_err();
-        assert_eq!(signature_error.to_string(), "variant: unknown signature variant 2147483647");
+        // Unknown future algorithm field 2 must not default to the supported algorithm.
+        let bytes = &[0x12, 0][..];
+        let key = proto::primitives::PublicKey::decode(bytes).unwrap();
+        assert!(PublicKey::try_from(key).unwrap_err().to_string().ends_with("::key is missing"));
+        let signature = proto::primitives::Signature::decode(bytes).unwrap();
+        assert!(
+            Signature::try_from(signature)
+                .unwrap_err()
+                .to_string()
+                .ends_with("::signature is missing")
+        );
     }
 
     #[test]
