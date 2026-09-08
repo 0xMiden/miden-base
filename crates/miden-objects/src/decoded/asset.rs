@@ -1,4 +1,5 @@
 //! Domain construction for decoded asset messages.
+use miden_protobuf::unwrap_infallible;
 pub use proto::asset::DecodedAssetClass as AssetClass;
 
 use crate::{Verify, proto};
@@ -33,12 +34,12 @@ impl Verify for AssetId {
         match self.composition {
             DecodedComposition::Fungible(()) => Ok(Self::Verified::new_fungible(faucet_id)),
             DecodedComposition::NonFungible(asset_class) => Ok(Self::Verified::new(
-                asset_class.verify().expect("infallible asset class"),
+                unwrap_infallible(asset_class.verify()),
                 faucet_id,
                 AssetComposition::None,
             )?),
             DecodedComposition::Custom(asset_class) => Ok(Self::Verified::new(
-                asset_class.verify().expect("infallible asset class"),
+                unwrap_infallible(asset_class.verify()),
                 faucet_id,
                 AssetComposition::Custom,
             )?),

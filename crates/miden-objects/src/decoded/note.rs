@@ -1,4 +1,5 @@
 //! Domain construction for decoded note messages.
+use miden_protobuf::unwrap_infallible;
 pub use proto::note::DecodedNoteId as NoteId;
 
 use crate::{Verify, proto};
@@ -104,9 +105,9 @@ impl Verify for NoteInclusionProof {
     type Error = VerificationError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok((
-            self.note_id.verify().expect("infallible note ID"),
+            unwrap_infallible(self.note_id.verify()),
             miden_protocol::note::NoteInclusionProof::new(
-                self.block_num.verify().expect("infallible block number"),
+                unwrap_infallible(self.block_num.verify()),
                 self.note_index_in_block.try_into()?,
                 self.inclusion_path.verify()?,
             )?,

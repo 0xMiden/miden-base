@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::account::DecodedAccountVaultPatchEntry as AccountVaultPatchEntry;
 
 use super::AccountCodeError;
@@ -57,7 +58,7 @@ impl Verify for StorageMapPatchEntries {
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let mut entries = alloc::collections::BTreeMap::new();
         for entry in self.entries {
-            let (key, value) = entry.verify().expect("infallible storage map entry");
+            let (key, value) = unwrap_infallible(entry.verify());
             if entries.insert(key, value).is_some() {
                 return Err(StorageMapPatchError::DuplicateKey(key));
             }
@@ -126,7 +127,7 @@ impl Verify for StorageSlotPatch {
         let name = StorageSlotName::new(self.slot_name)?;
         let patch = match self.patch {
             DecodedPatch::Value(value) => {
-                StorageSlotPatch::Value(value.verify().expect("infallible value patch"))
+                StorageSlotPatch::Value(unwrap_infallible(value.verify()))
             },
             DecodedPatch::Map(map) => StorageSlotPatch::Map(map.verify()?),
         };
@@ -202,7 +203,7 @@ impl Verify for AccountUpdateDetails {
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         use proto::account::account_update_details::DecodedUpdate;
         match self.update {
-            DecodedUpdate::Private(value) => Ok(value.verify().expect("infallible private update")),
+            DecodedUpdate::Private(value) => Ok(unwrap_infallible(value.verify())),
             DecodedUpdate::Public(patch) => Ok(Self::Verified::Public(patch.verify()?)),
         }
     }

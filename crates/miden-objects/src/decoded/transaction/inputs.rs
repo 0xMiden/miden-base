@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::transaction::DecodedForeignAccountSlotName as ForeignAccountSlotName;
 
 use super::{InputNotesError, TransactionArgsError};
@@ -11,7 +12,7 @@ impl Verify for ForeignAccountSlotName {
         (miden_protocol::account::StorageSlotId, miden_protocol::account::StorageSlotName);
     type Error = ForeignAccountSlotNameError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        let id = self.slot_id.verify().expect("infallible storage slot ID");
+        let id = unwrap_infallible(self.slot_id.verify());
         let name = miden_protocol::account::StorageSlotName::new(self.slot_name)?;
         if name.id() != id {
             return Err(ForeignAccountSlotNameError::IdMismatch {

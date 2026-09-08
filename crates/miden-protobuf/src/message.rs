@@ -2,6 +2,30 @@ use core::error::Error;
 
 use crate::ConversionError;
 
+/// Extracts an infallible result without introducing a potential panic.
+///
+/// ```
+/// use core::convert::Infallible;
+///
+/// use miden_protobuf::unwrap_infallible;
+///
+/// assert_eq!(unwrap_infallible(Ok::<_, Infallible>(42)), 42);
+/// ```
+///
+/// Fallible results are rejected at compile time:
+///
+/// ```compile_fail,E0308
+/// use miden_protobuf::unwrap_infallible;
+///
+/// unwrap_infallible("42".parse::<u32>());
+/// ```
+pub fn unwrap_infallible<T>(result: Result<T, core::convert::Infallible>) -> T {
+    match result {
+        Ok(value) => value,
+        Err(impossible) => match impossible {},
+    }
+}
+
 /// Decodes a wire message or oneof without constructing its verified domain counterpart.
 ///
 /// Derived implementations produce schema-shaped records. Atomic messages can select an existing

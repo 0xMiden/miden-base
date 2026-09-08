@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::primitives::DecodedSmtLeafEntry as SmtLeafEntry;
 
 use crate::{Verify, proto};
@@ -70,7 +71,7 @@ impl Verify for SmtLeaf {
             },
             DecodedLeaf::Single(entry) => Ok(Self::Verified::new_single(entry.key, entry.value)),
             DecodedLeaf::Multiple(entries) => {
-                Self::Verified::new_multiple(entries.verify().expect("infallible leaf entries"))
+                Self::Verified::new_multiple(unwrap_infallible(entries.verify()))
             },
         }
     }

@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::transaction::DecodedTransactionScript as TransactionScript;
 
 use crate::{Verify, proto};
@@ -46,7 +47,7 @@ impl Verify for TransactionArgs {
         let tx_script = self.tx_script.map(Verify::verify).transpose()?;
         let mut note_args = alloc::collections::BTreeMap::new();
         for argument in self.note_args {
-            let (id, args) = argument.verify().expect("infallible note argument");
+            let (id, args) = unwrap_infallible(argument.verify());
             if note_args.insert(id, args).is_some() {
                 return Err(TransactionArgsError::DuplicateNoteArgument(id));
             }

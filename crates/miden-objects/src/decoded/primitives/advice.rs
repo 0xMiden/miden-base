@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::primitives::DecodedMerkleStoreNode as MerkleStoreNode;
 
 use crate::{Verify, proto};
@@ -69,7 +70,7 @@ impl Verify for MerkleStore {
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         let mut nodes = alloc::collections::BTreeMap::new();
         for node in self.nodes {
-            let node = node.verify().expect("infallible Merkle store node");
+            let node = unwrap_infallible(node.verify());
             if nodes.insert(node.value, node.clone()).is_some() {
                 return Err(AdviceError::DuplicateMerkleParent(node.value));
             }
@@ -87,7 +88,7 @@ impl Verify for AdviceInputs {
     type Error = AdviceError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
         Ok(Self::Verified::new(
-            self.advice_stack.verify().expect("infallible advice stack"),
+            unwrap_infallible(self.advice_stack.verify()),
             self.advice_map.verify()?,
             self.merkle_store.verify()?,
         ))

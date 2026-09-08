@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::transaction::DecodedBatchAccountUpdate as BatchAccountUpdate;
 
 use super::{OutputNoteError, ProvenTransactionError, TransactionHeaderBuildError};
@@ -105,11 +106,11 @@ impl crate::BuildUnchecked for ProvenBatch {
             .collect::<Result<_, _>>()?;
         Ok(Self::Output::new(
             self.reference_block_commitment,
-            self.reference_block_num.verify().expect("infallible block number"),
+            unwrap_infallible(self.reference_block_num.verify()),
             updates,
             miden_protocol::transaction::InputNotes::new_unchecked(inputs),
             outputs,
-            self.expiration_block_num.verify().expect("infallible block number"),
+            unwrap_infallible(self.expiration_block_num.verify()),
             miden_protocol::transaction::OrderedTransactionHeaders::new_unchecked(transactions),
             self.proof,
         )?)

@@ -1,3 +1,4 @@
+use miden_protobuf::unwrap_infallible;
 pub use proto::transaction::DecodedTransactionId as TransactionId;
 
 use super::OutputNoteError;
@@ -24,7 +25,7 @@ impl BuildUnchecked for TransactionHeader {
     type Output = miden_protocol::transaction::TransactionHeader;
     type Error = TransactionHeaderBuildError;
     fn build_unchecked(self) -> Result<Self::Output, Self::Error> {
-        let transmitted = self.transaction_id.verify().expect("infallible transaction ID");
+        let transmitted = unwrap_infallible(self.transaction_id.verify());
         let input_notes = self
             .input_notes
             .into_iter()
@@ -114,9 +115,9 @@ impl crate::BuildUnchecked for ProvenTransaction {
             self.account_update.verify()?,
             inputs,
             outputs,
-            self.reference_block_num.verify().expect("infallible block number"),
+            unwrap_infallible(self.reference_block_num.verify()),
             self.reference_block_commitment,
-            self.expiration_block_num.verify().expect("infallible block number"),
+            unwrap_infallible(self.expiration_block_num.verify()),
             self.proof,
         )?)
     }

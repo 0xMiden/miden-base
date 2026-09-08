@@ -1,4 +1,5 @@
 //! Domain construction for decoded blockchain messages.
+use miden_protobuf::unwrap_infallible;
 pub use proto::blockchain::DecodedTrackedMmrLeaf as TrackedMmrLeaf;
 
 use crate::{Verify, proto};
@@ -43,7 +44,7 @@ impl Verify for NextProtocolConfig {
     type Verified = miden_protocol::protocol_config::NextProtocolConfig;
     type Error = miden_protocol::errors::ProtocolConfigError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        let effective_from = self.effective_from.verify().expect("infallible block number");
+        let effective_from = unwrap_infallible(self.effective_from.verify());
         Self::Verified::new(effective_from, self.protocol_config)
     }
 }
@@ -54,12 +55,7 @@ impl Verify for ValidatorConfig {
     type Verified = miden_protocol::block::ValidatorConfig;
     type Error = ValidatorConfigError;
     fn verify(self) -> Result<Self::Verified, Self::Error> {
-        let keys = self
-            .keys
-            .into_iter()
-            .map(Verify::verify)
-            .collect::<Result<_, _>>()
-            .expect("canonical public keys");
+        let keys = self.keys.into_iter().map(|key| unwrap_infallible(key.verify())).collect();
         Ok(Self::Verified::new(keys, self.quorum.try_into()?)?)
     }
 }
@@ -84,14 +80,14 @@ impl crate::BuildUnchecked for BlockHeader {
         }
         Ok(Self::Output::new(
             self.prev_block_commitment,
-            self.block_num.verify().expect("infallible block number"),
+            unwrap_infallible(self.block_num.verify()),
             self.chain_commitment,
             self.account_root,
             self.nullifier_root,
             self.note_root,
             self.tx_commitment,
             self.validator_config.verify()?,
-            self.fee_parameters.verify().expect("infallible fee parameters"),
+            unwrap_infallible(self.fee_parameters.verify()),
             self.protocol_config_commitment,
             self.next_protocol_config.map(Verify::verify).transpose()?,
             self.timestamp,
@@ -281,9 +277,8 @@ impl crate::BuildUnchecked for SignedBlock {
         let signatures = self
             .signatures
             .into_iter()
-            .map(Verify::verify)
-            .collect::<Result<_, _>>()
-            .expect("canonical signatures");
+            .map(|signature| unwrap_infallible(signature.verify()))
+            .collect();
         let signatures = miden_protocol::block::BlockSignatures::new(signatures)
             .map_err(|error| SignedBlockError::Signatures(alloc::boxed::Box::new(error)))?;
         Self::Output::new(header, body, signatures)
