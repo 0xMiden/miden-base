@@ -53,7 +53,13 @@ fn fee_parameters_verify() {
 
 #[test]
 fn signed_blocks_require_a_trusted_parent_for_authentication() {
-    use miden_protocol::block::{BlockBody, BlockHeader, SignedBlock, ValidatorConfig};
+    use miden_protocol::block::{
+        BlockBody,
+        BlockHeader,
+        SignedBlock,
+        SignedBlockError,
+        ValidatorConfig,
+    };
     use miden_protocol::transaction::OrderedTransactionHeaders;
 
     use crate::{BuildUnchecked, VerifyWith};
@@ -81,20 +87,74 @@ fn signed_blocks_require_a_trusted_parent_for_authentication() {
             0,
         )
     }
-    let (signers, keys) = ValidatorConfig::random_with_signers(1);
-    let parent = header_for(0, Word::empty(), keys.clone());
-    let header = header_for(1, parent.commitment(), keys.clone());
+    let (parent_signers, parent_keys) = ValidatorConfig::random_with_signers(1);
+    let (child_signers, child_keys) = ValidatorConfig::random_with_signers(1);
+    let parent = header_for(0, Word::empty(), parent_keys.clone());
+    let header = header_for(1, parent.commitment(), child_keys.clone());
     let body =
         BlockBody::new(vec![], vec![], vec![], OrderedTransactionHeaders::new_unchecked(vec![]))
             .unwrap();
-    let block =
-        SignedBlock::new(header.clone(), body, keys.sign_all(&signers, header.commitment()))
-            .unwrap();
+    let block = SignedBlock::new(
+        header.clone(),
+        body.clone(),
+        parent_keys.sign_all(&parent_signers, header.commitment()),
+    )
+    .unwrap();
     let wire: proto::blockchain::SignedBlock = (&block).into();
     assert_eq!(wire.clone().decode_fields().unwrap().verify_with(&parent).unwrap(), block);
     let wrong_parent = header_for(0, Word::empty(), ValidatorConfig::random_with_signers(1).1);
-    assert!(wire.clone().decode_fields().unwrap().verify_with(&wrong_parent).is_err());
-    assert_eq!(wire.decode_fields().unwrap().build_unchecked().unwrap(), block);
+    let error = wire.clone().decode_fields().unwrap().verify_with(&wrong_parent).unwrap_err();
+    assert_matches!(
+        error_source::<SignedBlockError>(&error),
+        Some(SignedBlockError::ParentCommitmentMismatch { .. })
+    );
+    assert_eq!(wire.clone().decode_fields().unwrap().build_unchecked().unwrap(), block);
+
+    // Correct linkage is insufficient: signatures must use the trusted parent's keys.
+    let self_signed = SignedBlock::new(
+        header.clone(),
+        body,
+        child_keys.sign_all(&child_signers, header.commitment()),
+    )
+    .unwrap();
+    let self_signed_wire: proto::blockchain::SignedBlock = (&self_signed).into();
+    let error = self_signed_wire
+        .clone()
+        .decode_fields()
+        .unwrap()
+        .verify_with(&parent)
+        .unwrap_err();
+    assert_matches!(
+        error_source::<SignedBlockError>(&error),
+        Some(SignedBlockError::InvalidSignatureAtPosition { position: 0 })
+    );
+    assert_eq!(
+        self_signed_wire.decode_fields().unwrap().build_unchecked().unwrap(),
+        self_signed
+    );
+
+    // Both construction paths must retain the header/body consistency checks.
+    for corrupt_note_root in [false, true] {
+        let mut inconsistent = wire.clone();
+        let header = inconsistent.header.as_mut().unwrap();
+        let commitment = if corrupt_note_root {
+            &mut header.note_root
+        } else {
+            &mut header.tx_commitment
+        };
+        *commitment = Some(Word::from([1, 2, 3, 4u32]).into());
+        for error in [
+            inconsistent.clone().decode_fields().unwrap().build_unchecked().unwrap_err(),
+            inconsistent.decode_fields().unwrap().verify_with(&parent).unwrap_err(),
+        ] {
+            let source = error_source::<SignedBlockError>(&error).unwrap();
+            if corrupt_note_root {
+                assert_matches!(source, SignedBlockError::NoteRootMismatch { .. });
+            } else {
+                assert_matches!(source, SignedBlockError::TxCommitmentMismatch { .. });
+            }
+        }
+    }
 }
 
 #[test]
