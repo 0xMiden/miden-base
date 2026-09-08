@@ -30,7 +30,8 @@ message NoteMetadata {
   primitives.Word attachments_commitment = 6;
 }
 
-// Metadata supplied with full attachments, whose headers and commitment are derived from content.
+// Metadata without attachment schemes or commitment. Note carries attachments separately and
+// derives those values from their content; NoteHeader instead carries complete NoteMetadata.
 message PartialNoteMetadata {
   NoteVersion version = 1;
   account.AccountId sender = 2;
