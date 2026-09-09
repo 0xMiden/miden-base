@@ -36,12 +36,17 @@ use crate::procedure_root;
 
 account_component_code!(MULTISIG_SMART_CODE, "miden-standards-auth-multisig-smart.masp");
 
+// The library path the component is compiled under (its project.toml `namespace`), which is what
+// procedure roots are exported under. This differs from [`AuthMultisigSmart::NAME`] by the
+// `components` segment.
+const MULTISIG_SMART_LIBRARY_PATH: &str = "miden::standards::components::auth::multisig_smart";
+
 // Procedure-root statics for the delayed-execution control-plane procedures. Tests and callers
 // can use these to look up the on-chain procedure roots without re-deriving them from the
 // component code.
 procedure_root!(
     MULTISIG_SMART_UPDATE_DELAYED_EXECUTION_POLICY,
-    AuthMultisigSmart::NAME,
+    MULTISIG_SMART_LIBRARY_PATH,
     AuthMultisigSmart::UPDATE_DELAYED_EXECUTION_POLICY_PROC_NAME,
     AuthMultisigSmart::code()
 );
@@ -167,6 +172,11 @@ fn validate_proc_policies(
 /// and the eventual execution verify the approver signatures over the *proposed transaction's*
 /// commitment, so approvers sign the actual transaction they intend to run.
 ///
+/// # Auth args
+///
+/// The transaction's auth args are the commitment to
+/// [`MultisigAuthArgs`](crate::account::auth::MultisigAuthArgs).
+///
 /// # Security considerations
 ///
 /// Two properties follow from verifying proposal signatures over the proposed transaction's
@@ -193,7 +203,7 @@ pub struct AuthMultisigSmart {
 
 impl AuthMultisigSmart {
     /// The name of the component.
-    pub const NAME: &'static str = "miden::standards::components::auth::multisig_smart";
+    pub const NAME: &'static str = "miden::standards::auth::multisig_smart";
 
     pub const UPDATE_DELAYED_EXECUTION_POLICY_PROC_NAME: &'static str =
         "update_delayed_execution_policy";

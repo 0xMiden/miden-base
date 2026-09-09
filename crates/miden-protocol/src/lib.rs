@@ -15,6 +15,8 @@ pub mod errors;
 pub mod note;
 pub mod package;
 mod protocol;
+pub mod protocol_config;
+pub(crate) mod script;
 pub mod transaction;
 
 #[cfg(any(feature = "testing", test))]
@@ -34,6 +36,7 @@ pub use miden_crypto::hash::poseidon2::Poseidon2 as Hasher;
 pub use miden_crypto::word;
 pub use miden_crypto::word::{Word, WordError};
 pub use protocol::ProtocolLib;
+pub use script::MastForestScriptError;
 
 pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};

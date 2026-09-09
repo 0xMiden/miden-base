@@ -8,7 +8,6 @@ use miden_agglayer::errors::ERR_GER_ALREADY_REGISTERED;
 use miden_agglayer::{AggLayerBridge, ExitRoot, UpdateGerNote, agglayer_package};
 use miden_assembly::{Assembler, DefaultSourceManager, Linkage};
 use miden_core_lib::CoreLibrary;
-use miden_core_lib::handlers::keccak256::KeccakPreimage;
 use miden_crypto::Felt;
 use miden_processor::utils::{bytes_to_packed_u32_elements, packed_u32_elements_to_bytes};
 use miden_protocol::account::auth::AuthScheme;
@@ -25,6 +24,7 @@ use super::test_utils::{
     bridge_admin_account_id,
     create_existing_bridge_account_with_roles,
     execute_program_with_default_host,
+    hash_with_keccak256_to_elements,
 };
 
 // EXIT ROOT TEST VECTORS
@@ -80,6 +80,8 @@ async fn update_ger_note_updates_storage() -> anyhow::Result<()> {
         faucet_manager.id(),
         ger_injector.id(),
         ger_remover.id(),
+        bridge_admin_account_id(),
+        bridge_admin_account_id(),
         MIDEN_NETWORK_ID,
     );
     builder.add_account(bridge_account.clone())?;
@@ -141,8 +143,7 @@ async fn compute_ger() -> anyhow::Result<()> {
         // Computed GER using keccak256
         let ger_preimage: Vec<u8> =
             [mainnet_exit_root_bytes.as_ref(), rollup_exit_root_bytes.as_ref()].concat();
-        let ger_preimage = KeccakPreimage::new(ger_preimage);
-        let computed_ger_felts: Vec<Felt> = ger_preimage.digest().as_ref().to_vec();
+        let computed_ger_felts: Vec<Felt> = hash_with_keccak256_to_elements(&ger_preimage);
 
         assert_eq!(
             computed_ger_felts, expected_ger_felts,
@@ -226,8 +227,8 @@ async fn test_compute_ger_basic() -> anyhow::Result<()> {
     ger_preimage.extend_from_slice(&rollup_exit_root);
 
     // Compute expected GER using keccak256
-    let expected_ger_preimage = KeccakPreimage::new(ger_preimage.clone());
-    let expected_ger_felts: [Felt; 8] = expected_ger_preimage.digest().as_ref().try_into().unwrap();
+    let expected_ger_felts: [Felt; 8] =
+        hash_with_keccak256_to_elements(&ger_preimage).try_into().unwrap();
 
     let ger_bytes: [u8; 32] = packed_u32_elements_to_bytes(&expected_ger_felts).try_into().unwrap();
 
@@ -312,6 +313,8 @@ async fn update_ger_rejects_duplicate() -> anyhow::Result<()> {
         faucet_manager.id(),
         ger_injector.id(),
         ger_remover.id(),
+        bridge_admin_account_id(),
+        bridge_admin_account_id(),
         MIDEN_NETWORK_ID,
     );
     builder.add_account(bridge_account.clone())?;
@@ -379,6 +382,8 @@ async fn update_ger_non_injector_sender_reverts() -> anyhow::Result<()> {
         faucet_manager.id(),
         ger_injector.id(),
         ger_remover.id(),
+        bridge_admin_account_id(),
+        bridge_admin_account_id(),
         MIDEN_NETWORK_ID,
     );
     builder.add_account(bridge_account.clone())?;

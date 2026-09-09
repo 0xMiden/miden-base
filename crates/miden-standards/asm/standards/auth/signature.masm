@@ -49,13 +49,14 @@ const ERR_INVALID_SCHEME_ID_WORD = "invalid scheme ID word format expected three
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
 #! changed or not. Then it computes and signs the following message (in memory order):
-#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT,
-#!  BLOCK_COMMITMENT, [expiration_delta, final_nonce, 0, 0], [0, 0, 0, 0]]
+#! [[version, metadata, final_nonce, 0], [0, 0, 0, 0], ACCOUNT_DELTA_COMMITMENT,
+#!  INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT]
 #!
-#! Including the final_nonce is necessary for replay protection. The reference block commitment is
-#! included to commit to the transaction creator's intended reference block of the transaction
-#! which determines the fee parameters and therefore the fee amount that is deducted. The
-#! expiration block delta is included to commit to the transaction's expiration.
+#! Including the final_nonce is necessary for replay protection. The block commitment is included to
+#! commit to the transaction creator's intended reference block of the transaction which determines
+#! the fee parameters and therefore the fee amount that is deducted. The metadata felt is included to
+#! commit to the bound block number and the transaction's expiration delta; see
+#! `auth::create_tx_summary_with_block`.
 #!
 #! Inputs:  [PK_COMM, scheme_id]
 #! Outputs: []
@@ -69,14 +70,14 @@ pub proc authenticate_transaction
     # => [final_nonce, PK_COMM, scheme_id]
 
     # Pass the final nonce as the first user param and zero the remaining ones.
-    push.0.0.0.0.0.0 movup.6
-    # => [user_params(7), PK_COMM, scheme_id]
+    push.0.0.0.0.0 movup.5
+    # => [user_params(6), PK_COMM, scheme_id]
 
     # Compute the message that is signed. The summary preimage is inserted into the advice map
     # for extraction by the host.
     # ---------------------------------------------------------------------------------------------
     exec.auth::create_tx_summary
-    # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT, PARAMS_HEAD, PARAMS_TAIL, PK_COMM, scheme_id]
+    # => [PARAMS_HEAD, PARAMS_TAIL, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, BLOCK_COMMITMENT, PK_COMM, scheme_id]
 
     exec.auth::hash_and_insert_tx_summary
     # OS => [MESSAGE, PK_COMM, scheme_id]
@@ -202,6 +203,8 @@ end
 #! Returns 1 if scheme_id is supported, else 0.
 #! Inputs:  [scheme_id]
 #! Outputs: [is_supported]
+#!
+#! Invocation: exec
 pub proc is_supported_scheme
     dup eq.ECDSA_K256_KECCAK_SCHEME_ID
     # => [is_1, scheme_id]
@@ -216,6 +219,8 @@ end
 #! Reverts if scheme_id is not supported.
 #! Inputs:  [scheme_id]
 #! Outputs: []
+#!
+#! Invocation: exec
 pub proc assert_supported_scheme
     exec.is_supported_scheme
     # => [is_supported]
@@ -228,6 +233,8 @@ end
 #! Validates scheme id word shape: [scheme_id, 0, 0, 0]
 #! Inputs:  [SCHEME_ID_WORD]
 #! Outputs: [SCHEME_ID_WORD]
+#!
+#! Invocation: exec
 pub proc assert_supported_scheme_word
     dupw exec.assert_supported_scheme
     # => [0, 0, 0, SCHEME_ID_WORD]
@@ -254,6 +261,8 @@ end
 #!           approver_pub_key_slot_id_suffix, approver_pub_key_slot_id_prefix,
 #!           num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
+#!
+#! Invocation: exec
 @locals(5)
 pub proc verify_signatures
     loc_store.APPROVER_SCHEME_ID_SLOT_ID_SUFFIX_LOC
@@ -380,6 +389,8 @@ end
 #!
 #! Inputs: [key_index]
 #! Outputs: [APPROVER_MAP_KEY]
+#!
+#! Invocation: exec
 pub proc create_approver_map_key
     push.0.0.0 movup.3
     # => [APPROVER_MAP_KEY]

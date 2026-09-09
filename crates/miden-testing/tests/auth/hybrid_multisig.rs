@@ -12,9 +12,8 @@ use miden_protocol::asset::FungibleAsset;
 use miden_protocol::note::{Note, NoteType};
 use miden_protocol::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_protocol::transaction::RawOutputNote;
-use miden_protocol::vm::AdviceMap;
 use miden_protocol::{Felt, Hasher, Word};
-use miden_standards::account::auth::{Approver, ApproverSet, AuthMultisig};
+use miden_standards::account::auth::{Approver, ApproverSet, AuthMultisig, MultisigAuthArgs};
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::note::P2idNote;
@@ -24,6 +23,8 @@ use miden_testing::{Auth, MockChainBuilder};
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
+
+use super::multisig::MultisigAuthArgsExt;
 
 // ================================================================================================
 // HELPER FUNCTIONS
@@ -151,7 +152,10 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
         .build_transaction(multisig_account.id())
         .authenticated_input_note(input_note.id())
         .expected_output_note(RawOutputNote::Full(output_note))
-        .auth_args(salt);
+        .multisig_auth_args(MultisigAuthArgs::new(
+            mock_chain.latest_block_header().block_num(),
+            salt,
+        ));
 
     // Execute transaction without signatures - should fail
     let tx_summary = mock_tx_builder
@@ -236,7 +240,10 @@ async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
         let salt = Word::from([Felt::new_unchecked(10 + i as u64); 4]);
 
         // Build mock transaction with all config
-        let mock_tx_builder = mock_chain.build_transaction(multisig_account.id()).auth_args(salt);
+        let mock_tx_builder =
+            mock_chain.build_transaction(multisig_account.id()).multisig_auth_args(
+                MultisigAuthArgs::new(mock_chain.latest_block_header().block_num(), salt),
+            );
 
         // Execute transaction without signatures first to get tx summary
         let tx_summary = mock_tx_builder
@@ -321,7 +328,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let salt = Word::from([3_u32; 4]);
 
     // Setup new signers
-    let mut advice_map = AdviceMap::default();
     let (_new_secret_keys, new_auth_schemes, new_public_keys, _new_authenticators) =
         setup_keys_and_authenticators(4, 4)?;
 
@@ -353,9 +359,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Hash the vector to create config hash
     let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
 
-    // Insert config and public keys into advice map
-    advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
-
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
         @transaction_script
@@ -368,7 +371,9 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .with_dynamically_linked_package(AuthMultisig::code())?
         .compile_tx_script(tx_script_code)?;
 
-    let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
+    // Insert config and public keys into advice map
+    let advice_inputs =
+        AdviceInputs::default().with_map([(multisig_config_hash, config_and_pubkeys_vector)]);
 
     // Pass the MULTISIG_CONFIG_HASH as the tx_script_args
     let tx_script_args: Word = multisig_config_hash;
@@ -379,7 +384,10 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .tx_script_args(tx_script_args)
         .extend_advice_inputs(advice_inputs)
-        .auth_args(salt);
+        .multisig_auth_args(MultisigAuthArgs::new(
+            mock_chain.latest_block_header().block_num(),
+            salt,
+        ));
 
     // Execute transaction without signatures first to get tx summary
     let tx_summary = mock_tx_builder
@@ -515,7 +523,10 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let mock_tx_builder_new = new_mock_chain
         .build_transaction(updated_multisig_account.id())
         .authenticated_input_note(input_note_new.id())
-        .auth_args(salt_new);
+        .multisig_auth_args(MultisigAuthArgs::new(
+            new_mock_chain.latest_block_header().block_num(),
+            salt_new,
+        ));
 
     // Execute transaction without signatures first to get tx summary
     let tx_summary_new = mock_tx_builder_new
@@ -620,17 +631,15 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
         ]);
     }
 
-    // Create config hash and advice map
-    let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
-    let mut advice_map = AdviceMap::default();
-    advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
-
     // Create transaction script
     let tx_script = CodeBuilder::default()
         .with_dynamically_linked_package(AuthMultisig::code())?
         .compile_tx_script("@transaction_script\npub proc main\n    call.::miden::standards::components::auth::multisig::update_signers_and_threshold\nend")?;
 
-    let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
+    // Create config hash and advice map
+    let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
+    let advice_inputs =
+        AdviceInputs::default().with_map([(multisig_config_hash, config_and_pubkeys_vector)]);
 
     let salt = Word::from([Felt::new_unchecked(3); 4]);
 
@@ -640,7 +649,10 @@ async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .tx_script_args(multisig_config_hash)
         .extend_advice_inputs(advice_inputs)
-        .auth_args(salt);
+        .multisig_auth_args(MultisigAuthArgs::new(
+            mock_chain.latest_block_header().block_num(),
+            salt,
+        ));
 
     // Execute without signatures to get tx summary
     let tx_summary = mock_tx_builder
@@ -806,7 +818,6 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     // Get the multisig package
 
     // Setup new signers (these should NOT be able to sign the update transaction)
-    let mut advice_map = AdviceMap::default();
     let (_new_secret_keys, new_auth_schemes, new_public_keys, new_authenticators) =
         setup_keys_and_authenticators(4, 4)?;
 
@@ -839,9 +850,6 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     // Hash the vector to create config hash
     let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
 
-    // Insert config and public keys into advice map
-    advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
-
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
         @transaction_script
@@ -854,7 +862,9 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         .with_dynamically_linked_package(AuthMultisig::code())?
         .compile_tx_script(tx_script_code)?;
 
-    let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
+    // Insert config and public keys into advice map
+    let advice_inputs =
+        AdviceInputs::default().with_map([(multisig_config_hash, config_and_pubkeys_vector)]);
 
     // Pass the MULTISIG_CONFIG_HASH as the tx_script_args
     let tx_script_args: Word = multisig_config_hash;
@@ -865,7 +875,10 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         .tx_script(tx_script)
         .tx_script_args(tx_script_args)
         .extend_advice_inputs(advice_inputs)
-        .auth_args(salt);
+        .multisig_auth_args(MultisigAuthArgs::new(
+            mock_chain.latest_block_header().block_num(),
+            salt,
+        ));
 
     // Execute transaction without signatures first to get tx summary
     let tx_summary = mock_tx_builder
