@@ -38,7 +38,7 @@ const ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS = "a pass-through accoun
 #! concurrently.
 #!
 #! Replay protection comes from the input notes the signed transaction summary binds; see
-#! signature::authenticate_transaction_without_nonce. Since there must be at least one input note for a tx
+#! signature::authenticate_transaction_with_user_params. Since there must be at least one input note for a tx
 #! to be valid (when the account state is unchanged), this always provides replay protection.
 #!
 #! This procedure creates no TX_FEE note.
@@ -108,6 +108,6 @@ pub proc auth_pass_through(auth_args: word)
     push.0.0.0.0.0.0
     # => [user_params(6), PK_COMM, scheme_id, pad(16)]
 
-    exec.signature::authenticate_transaction_without_nonce
+    exec.signature::authenticate_transaction_with_user_params
     # => [pad(16)]
 end
