@@ -69,80 +69,147 @@ use miden_protocol::{Felt, Word};
 use prost::Message;
 
 #[test]
-fn protobuf_descriptor_includes_structured_asset_schema() {
-    assert!(
-        miden_objects::FILE_DESCRIPTOR_SET
-            .windows(b"asset.proto".len())
-            .any(|window| window == b"asset.proto")
-    );
+fn account_id_v1_roundtrips_through_protobuf_bytes() {
+    use miden_protocol::account::AccountIdV1;
+
+    for account_type in [AccountType::Private, AccountType::Public] {
+        for callbacks in [AssetCallbackFlag::Disabled, AssetCallbackFlag::Enabled] {
+            let id = AccountIdV1::dummy([7; 15], account_type, callbacks);
+            let wire = proto::account::AccountIdV1::from(id);
+            let message =
+                proto::account::AccountIdV1::decode(wire.encode_to_vec().as_slice()).unwrap();
+            assert_eq!(Felt::try_from(message.suffix.unwrap()).unwrap(), id.suffix());
+            assert_eq!(Felt::try_from(message.prefix.unwrap()).unwrap(), id.prefix().as_felt());
+            assert_eq!(AccountIdV1::try_from(message).unwrap(), id);
+            let wire = proto::account::AccountId::from(AccountId::V1(id));
+            let message =
+                proto::account::AccountId::decode(wire.encode_to_vec().as_slice()).unwrap();
+            assert_eq!(AccountId::try_from(message).unwrap(), AccountId::V1(id));
+        }
+    }
+}
+
+#[test]
+fn storage_value_patch_oneof_roundtrips_all_operations() {
+    use proto::account::storage_value_patch::Operation;
+
+    for value in [Word::empty(), Word::from([1_u32, 2, 3, 4])] {
+        for (patch, expected) in [
+            (StorageValuePatch::Create { value }, Operation::Create(value.into())),
+            (StorageValuePatch::Update { value }, Operation::Update(value.into())),
+            (StorageValuePatch::Remove, Operation::Remove(())),
+        ] {
+            let wire = proto::account::StorageValuePatch::from(&patch);
+            assert_eq!(wire.operation, Some(expected));
+            let message =
+                proto::account::StorageValuePatch::decode(wire.encode_to_vec().as_slice()).unwrap();
+            assert_eq!(StorageValuePatch::try_from(message).unwrap(), patch);
+        }
+    }
+    assert!(StorageValuePatch::try_from(proto::account::StorageValuePatch::default()).is_err());
+}
+
+#[test]
+fn storage_map_patch_oneof_roundtrips_all_operations() {
+    use miden_protocol::account::{StorageMapKey, StorageMapPatchEntries};
+
+    let entries: StorageMapPatchEntries =
+        [(StorageMapKey::from_index(1), Word::empty())].into_iter().collect();
+    for patch in [
+        StorageMapPatch::Create { entries: StorageMapPatchEntries::new() },
+        StorageMapPatch::Create { entries: entries.clone() },
+        StorageMapPatch::Update { entries },
+        StorageMapPatch::Remove,
+    ] {
+        let wire = proto::account::StorageMapPatch::from(&patch);
+        let message =
+            proto::account::StorageMapPatch::decode(wire.encode_to_vec().as_slice()).unwrap();
+        assert_eq!(StorageMapPatch::try_from(message).unwrap(), patch);
+    }
+    assert!(StorageMapPatch::try_from(proto::account::StorageMapPatch::default()).is_err());
+}
+
+#[test]
+fn storage_map_patch_preserves_entry_invariants() {
+    use proto::account::storage_map_patch::Operation;
+
+    let error = StorageMapPatch::try_from(proto::account::StorageMapPatch {
+        operation: Some(Operation::Update(proto::account::StorageMapPatchEntries::default())),
+    })
+    .unwrap_err();
+    assert_eq!(error.to_string(), "operation.update.entries: entries must be non-empty");
+
+    let entry = proto::account::StorageMapEntry {
+        key: Some(Word::empty().into()),
+        value: Some(Word::empty().into()),
+    };
+    for operation in [
+        Operation::Create(proto::account::StorageMapPatchEntries {
+            entries: vec![entry.clone(), entry.clone()],
+        }),
+        Operation::Update(proto::account::StorageMapPatchEntries {
+            entries: vec![entry.clone(), entry],
+        }),
+    ] {
+        let error = StorageMapPatch::try_from(proto::account::StorageMapPatch {
+            operation: Some(operation),
+        })
+        .unwrap_err();
+        assert!(error.to_string().ends_with("entries[1].key: duplicate storage map key"));
+    }
 }
 
 #[test]
 fn fungible_asset_roundtrips_through_structured_protobuf() {
     let asset = FungibleAsset::mock(42);
-
     let encoded = proto::asset::Asset::from(asset);
-
     assert_eq!(
         encoded.asset_id.as_ref().unwrap().version,
         proto::asset::AssetVersion::V1 as i32
     );
-    assert_eq!(
+    assert_matches!(
         encoded.asset_id.as_ref().unwrap().composition,
-        proto::asset::AssetComposition::Fungible as i32
+        Some(proto::asset::asset_id::Composition::Fungible(()))
     );
-    assert_eq!(Asset::try_from(encoded).unwrap(), asset);
+    let message = proto::asset::Asset::decode(encoded.encode_to_vec().as_slice()).unwrap();
+    assert_eq!(Asset::try_from(message).unwrap(), asset);
 }
 
 #[test]
 fn non_fungible_asset_roundtrips_through_structured_protobuf() {
     let asset = NonFungibleAsset::mock(&[1, 2, 3]);
-
     let encoded = proto::asset::Asset::from(asset);
-
-    assert_eq!(
+    assert_matches!(
         encoded.asset_id.as_ref().unwrap().composition,
-        proto::asset::AssetComposition::None as i32
+        Some(proto::asset::asset_id::Composition::NonFungible(_))
     );
-    assert_eq!(Asset::try_from(encoded).unwrap(), asset);
+    let message = proto::asset::Asset::decode(encoded.encode_to_vec().as_slice()).unwrap();
+    assert_eq!(Asset::try_from(message).unwrap(), asset);
 }
 
 #[test]
 fn structured_asset_conversion_requires_message_fields() {
-    let suffix_error = AssetClass::try_from(proto::asset::AssetClass {
-        suffix: None,
-        prefix: Some(Felt::ZERO.into()),
-    })
-    .unwrap_err();
-    assert_eq!(
-        suffix_error.to_string(),
-        "field miden_objects::proto::asset::AssetClass::suffix is missing"
-    );
-
-    let prefix_error = AssetClass::try_from(proto::asset::AssetClass {
-        suffix: Some(Felt::ZERO.into()),
-        prefix: None,
-    })
-    .unwrap_err();
-    assert_eq!(
-        prefix_error.to_string(),
-        "field miden_objects::proto::asset::AssetClass::prefix is missing"
-    );
-
-    let asset_id_error = AssetId::try_from(proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        ..Default::default()
-    })
-    .unwrap_err();
-    assert!(asset_id_error.to_string().ends_with("::asset_class is missing"));
-
+    for class in [
+        proto::asset::AssetClass {
+            suffix: None,
+            prefix: Some(Felt::ZERO.into()),
+        },
+        proto::asset::AssetClass {
+            suffix: Some(Felt::ZERO.into()),
+            prefix: None,
+        },
+    ] {
+        let error = AssetId::try_from(proto::asset::AssetId {
+            version: proto::asset::AssetVersion::V1 as i32,
+            faucet_id: Some(FungibleAsset::mock_issuer().into()),
+            composition: Some(proto::asset::asset_id::Composition::NonFungible(class)),
+        })
+        .unwrap_err();
+        assert!(error.to_string().starts_with("composition.non_fungible: field "));
+    }
     let faucet_id_error = AssetId::try_from(proto::asset::AssetId {
         version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(proto::asset::AssetClass {
-            suffix: Some(Felt::ZERO.into()),
-            prefix: Some(Felt::ZERO.into()),
-        }),
-        composition: proto::asset::AssetComposition::Fungible as i32,
+        composition: Some(proto::asset::asset_id::Composition::Fungible(())),
         faucet_id: None,
     })
     .unwrap_err();
@@ -150,17 +217,8 @@ fn structured_asset_conversion_requires_message_fields() {
 
     let asset_error = Asset::try_from(proto::asset::Asset::default()).unwrap_err();
     assert!(asset_error.to_string().ends_with("::asset_id is missing"));
-
     let value_error = Asset::try_from(proto::asset::Asset {
-        asset_id: Some(proto::asset::AssetId {
-            version: proto::asset::AssetVersion::V1 as i32,
-            asset_class: Some(proto::asset::AssetClass {
-                suffix: Some(Felt::ZERO.into()),
-                prefix: Some(Felt::ZERO.into()),
-            }),
-            composition: proto::asset::AssetComposition::Fungible as i32,
-            faucet_id: Some(FungibleAsset::mock_issuer().into()),
-        }),
+        asset_id: Some(AssetId::new_fungible(FungibleAsset::mock_issuer()).into()),
         value: None,
     })
     .unwrap_err();
@@ -168,36 +226,26 @@ fn structured_asset_conversion_requires_message_fields() {
 }
 
 #[test]
-fn structured_asset_conversion_rejects_unspecified_unknown_and_custom_compositions() {
-    let asset_class = proto::asset::AssetClass {
-        suffix: Some(Felt::ZERO.into()),
-        prefix: Some(Felt::ZERO.into()),
+fn structured_asset_conversion_rejects_missing_unknown_and_custom_compositions() {
+    let wire = proto::asset::AssetId {
+        version: proto::asset::AssetVersion::V1 as i32,
+        faucet_id: Some(FungibleAsset::mock_issuer().into()),
+        composition: None,
     };
-    let faucet_id = Some(FungibleAsset::mock_issuer().into());
+    let missing = AssetId::try_from(wire).unwrap_err();
+    assert!(missing.to_string().ends_with("::composition is missing"));
 
-    let unspecified = AssetId::try_from(proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(asset_class),
-        composition: proto::asset::AssetComposition::Unspecified as i32,
-        faucet_id: faucet_id.clone(),
-    })
-    .unwrap_err();
-    assert_eq!(unspecified.to_string(), "composition: asset composition is unspecified");
-
-    let unknown = AssetId::try_from(proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(asset_class),
-        composition: 4,
-        faucet_id: faucet_id.clone(),
-    })
-    .unwrap_err();
-    assert_eq!(unknown.to_string(), "composition: unknown asset composition 4");
+    let mut bytes = wire.encode_to_vec();
+    bytes.extend_from_slice(&[0x32, 0]); // Unknown future composition field 6.
+    let unknown =
+        AssetId::try_from(proto::asset::AssetId::decode(bytes.as_slice()).unwrap()).unwrap_err();
+    assert!(unknown.to_string().ends_with("::composition is missing"));
 
     let custom = AssetId::try_from(proto::asset::AssetId {
-        version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(asset_class),
-        composition: proto::asset::AssetComposition::Custom as i32,
-        faucet_id,
+        composition: Some(proto::asset::asset_id::Composition::Custom(
+            AssetClass::new(Felt::ZERO, Felt::ZERO).into(),
+        )),
+        ..wire
     })
     .unwrap_err();
     assert_matches!(
@@ -207,40 +255,23 @@ fn structured_asset_conversion_rejects_unspecified_unknown_and_custom_compositio
 }
 
 #[test]
-fn structured_asset_conversion_rejects_nonzero_fungible_class() {
-    let error = AssetId::try_from(proto::asset::AssetId {
+fn fungible_asset_ids_have_an_implicit_empty_class() {
+    let id = AssetId::try_from(proto::asset::AssetId {
         version: proto::asset::AssetVersion::V1 as i32,
-        asset_class: Some(proto::asset::AssetClass {
-            suffix: Some(Felt::ONE.into()),
-            prefix: Some(Felt::ZERO.into()),
-        }),
-        composition: proto::asset::AssetComposition::Fungible as i32,
+        composition: Some(proto::asset::asset_id::Composition::Fungible(())),
         faucet_id: Some(FungibleAsset::mock_issuer().into()),
     })
-    .unwrap_err();
-
-    assert_matches!(
-        error.source().and_then(|source| source.downcast_ref::<AssetError>()),
-        Some(AssetError::FungibleAssetClassMustBeZero(_))
-    );
+    .unwrap();
+    assert_eq!(id.asset_class(), AssetClass::new(Felt::ZERO, Felt::ZERO));
 }
 
 #[test]
 fn structured_asset_conversion_rejects_invalid_fungible_values() {
     let error = Asset::try_from(proto::asset::Asset {
-        asset_id: Some(proto::asset::AssetId {
-            version: proto::asset::AssetVersion::V1 as i32,
-            asset_class: Some(proto::asset::AssetClass {
-                suffix: Some(Felt::ZERO.into()),
-                prefix: Some(Felt::ZERO.into()),
-            }),
-            composition: proto::asset::AssetComposition::Fungible as i32,
-            faucet_id: Some(FungibleAsset::mock_issuer().into()),
-        }),
+        asset_id: Some(AssetId::new_fungible(FungibleAsset::mock_issuer()).into()),
         value: Some(Word::from([1_u32, 1, 0, 0]).into()),
     })
     .unwrap_err();
-
     assert_matches!(
         error.source().and_then(|source| source.downcast_ref::<AssetError>()),
         Some(AssetError::FungibleAssetValueMostSignificantElementsMustBeZero(_))
@@ -378,26 +409,40 @@ fn account_witness_conversion_preserves_account_tree_error_source() {
 }
 
 #[test]
-fn account_id_protobuf_requires_exactly_15_bytes() {
-    for id in [vec![0; AccountId::SERIALIZED_SIZE - 1], vec![0; AccountId::SERIALIZED_SIZE + 1]] {
-        let error = AccountId::try_from(proto::account::AccountId { id }).unwrap_err();
-
+fn account_id_protobuf_requires_a_known_version_and_both_elements() {
+    for bytes in [&[][..], &[0x12, 0][..]] {
+        let wire = proto::account::AccountId::decode(bytes).unwrap();
         assert!(
-            error
-                .source()
-                .and_then(|source| source.downcast_ref::<core::array::TryFromSliceError>())
-                .is_some()
+            AccountId::try_from(wire)
+                .unwrap_err()
+                .to_string()
+                .ends_with("::version is missing")
         );
+    }
+    for id in [
+        proto::account::AccountIdV1 {
+            suffix: None,
+            prefix: Some(Felt::ONE.into()),
+        },
+        proto::account::AccountIdV1 {
+            suffix: Some(Felt::ZERO.into()),
+            prefix: None,
+        },
+    ] {
+        let error = AccountId::try_from(proto::account::AccountId {
+            version: Some(proto::account::account_id::Version::V1(id)),
+        })
+        .unwrap_err();
+        assert!(error.to_string().starts_with("version.v1: field "));
     }
 }
 
 #[test]
 fn account_id_protobuf_rejects_invalid_metadata() {
-    let mut id = <[u8; AccountId::SERIALIZED_SIZE]>::from(private_account_id());
-    id[7] &= 0b1111_0000;
-
-    let error = AccountId::try_from(proto::account::AccountId { id: id.into() }).unwrap_err();
-
+    let mut wire = proto::account::AccountId::from(private_account_id());
+    let proto::account::account_id::Version::V1(id) = wire.version.as_mut().unwrap();
+    id.prefix.as_mut().unwrap().value &= !0xf;
+    let error = AccountId::try_from(wire).unwrap_err();
     assert_matches!(
         error.source().and_then(|source| source.downcast_ref::<AccountIdError>()),
         Some(AccountIdError::UnknownAccountIdVersion(0))
@@ -586,25 +631,30 @@ fn note_metadata_protobuf_preserves_unknown_version_error_sources() {
 #[test]
 fn note_protobuf_rejects_unspecified_metadata_version_before_payload_fields() {
     let error = Note::try_from(proto::note::Note {
-        metadata: Some(proto::note::NoteMetadata {
+        metadata: Some(proto::note::PartialNoteMetadata {
             version: proto::note::NoteVersion::Unspecified as i32,
             ..Default::default()
         }),
         ..Default::default()
     })
     .unwrap_err();
-
-    assert_eq!(error.to_string(), "version: note metadata version is unspecified");
+    assert_eq!(error.to_string(), "metadata.version: note metadata version is unspecified");
 }
 
 #[test]
 fn note_protobuf_reconstructs_attachment_metadata_from_structured_attachments() {
-    let note = Note::mock_noop(Word::empty());
-    let mut message = proto::note::Note::from(note.clone());
-    let metadata = message.metadata.as_mut().unwrap();
-    metadata.attachment_schemes = vec![42];
-    metadata.attachments_commitment = Some(Word::empty().into());
-
+    use miden_protocol::note::{NoteAttachment, NoteAttachmentScheme, NoteAttachments};
+    let (assets, metadata, recipient, _) = Note::mock_noop(Word::empty()).into_parts();
+    let attachment = NoteAttachment::with_words(
+        NoteAttachmentScheme::new(42).unwrap(),
+        vec![Word::from([1_u32, 2, 3, 4])],
+    )
+    .unwrap();
+    let attachments = NoteAttachments::new(vec![attachment]).unwrap();
+    let note =
+        Note::with_attachments(assets, metadata.into_partial_metadata(), recipient, attachments);
+    let wire = proto::note::Note::from(note.clone());
+    let message = proto::note::Note::decode(wire.encode_to_vec().as_slice()).unwrap();
     assert_eq!(Note::try_from(message).unwrap(), note);
 }
 
@@ -612,17 +662,14 @@ fn note_protobuf_reconstructs_attachment_metadata_from_structured_attachments() 
 fn note_metadata_protobuf_reports_invalid_sender() {
     let metadata = *Note::mock_noop(Word::empty()).metadata();
     let mut message = proto::note::NoteMetadata::from(metadata);
-    message.sender.as_mut().unwrap().id.clear();
-
+    let proto::account::account_id::Version::V1(id) =
+        message.sender.as_mut().unwrap().version.as_mut().unwrap();
+    id.prefix.as_mut().unwrap().value &= !0xf;
     let error = NoteMetadata::try_from(message).unwrap_err();
-
-    assert!(error.to_string().starts_with("sender: "));
-    assert!(
-        error
-            .source()
-            .unwrap()
-            .downcast_ref::<core::array::TryFromSliceError>()
-            .is_some()
+    assert!(error.to_string().starts_with("sender.version.v1: "));
+    assert_matches!(
+        error.source().unwrap().downcast_ref::<AccountIdError>(),
+        Some(AccountIdError::UnknownAccountIdVersion(0))
     );
 }
 
@@ -757,59 +804,54 @@ fn block_body_and_transaction_header_roundtrip() {
 }
 
 #[test]
-fn account_storage_header_rejects_invalid_slot_types() {
-    for (slot_type, expected_message) in [
-        (Default::default(), "storage slot type is unspecified"),
-        (i32::MAX, "unknown storage slot type 2147483647"),
-    ] {
-        let message = proto::account::AccountStorageHeader {
-            slots: vec![proto::account::account_storage_header::StorageSlot {
-                slot_name: "miden::test::storage".into(),
-                slot_type,
-                commitment: Some(Word::empty().into()),
-            }],
-        };
-
-        let error = AccountStorageHeader::try_from(message).unwrap_err();
-        assert_eq!(error.to_string(), format!("slots.slot_type: {expected_message}"));
-    }
-}
-
-#[test]
-fn account_storage_header_preserves_unknown_enum_value_source() {
-    let error = AccountStorageHeader::try_from(proto::account::AccountStorageHeader {
+fn account_storage_header_requires_content() {
+    let message = proto::account::AccountStorageHeader {
         slots: vec![proto::account::account_storage_header::StorageSlot {
             slot_name: "miden::test::storage".into(),
-            slot_type: i32::MAX,
-            commitment: Some(Word::empty().into()),
+            content: None,
         }],
-    })
-    .unwrap_err();
-
-    assert_matches!(
-        error
-            .source()
-            .and_then(Error::source)
-            .and_then(|source| source.downcast_ref::<prost::UnknownEnumValue>()),
-        Some(prost::UnknownEnumValue(value)) if *value == i32::MAX
-    );
+    };
+    let error = AccountStorageHeader::try_from(message).unwrap_err();
+    assert!(error.to_string().ends_with("::content is missing"));
 }
 
 #[test]
-fn account_storage_header_uses_generated_slot_type_values() {
-    for (slot_type, expected_slot_type) in [
-        (StorageSlotType::Value, proto::account::StorageSlotType::Value),
-        (StorageSlotType::Map, proto::account::StorageSlotType::Map),
-    ] {
+fn account_storage_header_rejects_unknown_content() {
+    let mut bytes = proto::account::account_storage_header::StorageSlot {
+        slot_name: "miden::test::storage".into(),
+        content: None,
+    }
+    .encode_to_vec();
+    bytes.extend_from_slice(&[0x22, 0]); // Unknown future content field 4.
+    let slot =
+        proto::account::account_storage_header::StorageSlot::decode(bytes.as_slice()).unwrap();
+    let error =
+        AccountStorageHeader::try_from(proto::account::AccountStorageHeader { slots: vec![slot] })
+            .unwrap_err();
+    assert!(error.to_string().ends_with("::content is missing"));
+}
+
+#[test]
+fn account_storage_header_roundtrips_value_and_map_root_payloads() {
+    use proto::account::account_storage_header::storage_slot::Content;
+    let value = Word::from([1_u32, 2, 3, 4]);
+    for slot_type in [StorageSlotType::Value, StorageSlotType::Map] {
         let header = AccountStorageHeader::new(vec![StorageSlotHeader::new(
             StorageSlotName::new("miden::test::storage").unwrap(),
             slot_type,
-            Word::empty(),
+            value,
         )])
         .unwrap();
-
-        let message = proto::account::AccountStorageHeader::from(&header);
-        assert_eq!(message.slots[0].slot_type, expected_slot_type as i32);
+        let wire = proto::account::AccountStorageHeader::from(&header);
+        let message =
+            proto::account::AccountStorageHeader::decode(wire.encode_to_vec().as_slice()).unwrap();
+        match (slot_type, message.slots[0].content.as_ref().unwrap()) {
+            (StorageSlotType::Value, Content::Value(word))
+            | (StorageSlotType::Map, Content::MapRoot(word)) => {
+                assert_eq!(Word::try_from(word).unwrap(), value)
+            },
+            _ => panic!("wrong storage slot payload"),
+        }
         assert_eq!(AccountStorageHeader::try_from(message).unwrap(), header);
     }
 }
@@ -954,11 +996,16 @@ fn block_header_protobuf_rejects_invalid_validator_quorum() {
 fn block_header_protobuf_reports_invalid_validator_key_index() {
     let header = block_header_with_scheduled_upgrade();
     let mut message = proto::blockchain::BlockHeader::from(header);
-    message.validator_config.as_mut().unwrap().keys[1].encoded.clear();
+    message.validator_config.as_mut().unwrap().keys[1].key =
+        Some(proto::primitives::public_key::Key::EcdsaK256Keccak(vec![]));
 
     let error = BlockHeader::try_from(message).unwrap_err();
 
-    assert!(error.to_string().starts_with("validator_config.keys[1].encoded: "));
+    assert!(
+        error
+            .to_string()
+            .starts_with("validator_config.keys[1].key.ecdsa_k256_keccak: ")
+    );
 }
 
 #[test]
