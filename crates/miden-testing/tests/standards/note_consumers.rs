@@ -1,8 +1,12 @@
-//! Requires every note script to state who may consume it.
+//! Requires every note script to declare who may consume it.
 //!
 //! An open note and a forgotten check look identical in a script's body, so a script either
 //! enforces its rule itself, declares itself open to any consumer, or names the account procedure
-//! that enforces the rule on its behalf. This fails for one that does none of those.
+//! that enforces the rule on its behalf. This is a source-level check on that declaration, not a
+//! proof that the rule holds: what a restricted note actually rejects is covered by the execution
+//! tests next to each note, which consume it with an account that is not its target and pin the
+//! error (see `scripts::ownable2step::config::decoy_account_cannot_consume_note_of_another_account`
+//! and `agglayer::note_targets`).
 
 use std::path::{Path, PathBuf};
 
@@ -22,7 +26,7 @@ const DELEGATED_DECLARATION: &str = "#! Consumers: target account (enforced by";
 // ================================================================================================
 
 #[test]
-fn every_note_script_states_who_may_consume_it() {
+fn every_note_script_declares_who_may_consume_it() {
     let manifest = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     for asm_dir in [manifest.join("../miden-standards/asm"), manifest.join("../miden-agglayer/asm")]
@@ -32,7 +36,8 @@ fn every_note_script_states_who_may_consume_it() {
 
         for path in scripts {
             let source = module_source(&path);
-            let enforces = ENFORCEMENT_PREFIXES.iter().any(|prefix| source.contains(prefix));
+            let code = strip_comments(&source);
+            let enforces = ENFORCEMENT_PREFIXES.iter().any(|prefix| code.contains(prefix));
             let declares =
                 source.contains(UNRESTRICTED_DECLARATION) || source.contains(DELEGATED_DECLARATION);
             assert!(
@@ -66,6 +71,16 @@ fn find_note_scripts(asm_dir: &Path) -> Vec<PathBuf> {
         }
     }
     scripts
+}
+
+/// Returns `source` without its comment lines, so a commented-out procedure call does not read as
+/// an enforcement site.
+fn strip_comments(source: &str) -> String {
+    source
+        .lines()
+        .filter(|line| !line.trim_start().starts_with('#'))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Returns whether the MASM file at `path` defines a note script, i.e. carries the `@note_script`
