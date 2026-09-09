@@ -20,7 +20,7 @@ const SCHEME_ID_SLOT = word("miden::standards::auth::pass_through::scheme")
 
 const ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED = "a pass-through account's state must be the one it had at the start of the transaction"
 
-const ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS = "a pass-through account must hold no assets when it is created, or they can never be moved out again"
+const ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS = "a pass-through account must hold no assets when it is created"
 
 # AUTH PROCEDURE
 # =================================================================================================

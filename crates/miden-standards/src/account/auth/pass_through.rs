@@ -55,10 +55,6 @@ static SCHEME_ID_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
 /// transaction leaving the account unchanged must consume at least one input note to be valid,
 /// this always applies. The deploying transaction is exempt: an account can only be created once.
 ///
-/// When linking against this component, the `miden::standards` library must be available to the
-/// assembler (which also implies availability of `miden::protocol`). This is the case when using
-/// [`CodeBuilder`][builder].
-///
 /// [builder]: crate::code_builder::CodeBuilder
 pub struct AuthPassThrough {
     approver: Approver,
@@ -96,7 +92,8 @@ impl AuthPassThrough {
     ///
     /// The public key commitment is derived from the provided ECDSA K256 public key.
     ///
-    /// Note: this scheme discloses the signer's public key and signature at proving time and
+    /// # Privacy
+    /// This scheme discloses the signer's public key and signature at proving time and
     /// therefore does not provide public-key privacy. See
     /// [`AuthScheme::EcdsaK256Keccak`][scheme] for details, and prefer
     /// [`falcon512_poseidon2`](Self::falcon512_poseidon2) if signer-key privacy is required.
