@@ -1601,7 +1601,7 @@ async fn test_multisig_set_procedure_threshold(
         .await;
 
     assert!(
-        matches!(clear_check_result, Err(TransactionExecutorError::Unauthorized(_))),
+        matches!(clear_check_result, Err(TransactionExecutorError::Unauthorized { .. })),
         "override cleared via threshold=0 should restore default threshold requirements"
     );
 

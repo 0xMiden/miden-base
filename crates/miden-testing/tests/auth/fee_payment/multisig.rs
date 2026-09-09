@@ -226,7 +226,7 @@ async fn multisig_fee_payment_preserves_replay_protection() -> anyhow::Result<()
     let result = replay_builder.build()?.execute().await;
 
     assert!(
-        matches!(result, Err(TransactionExecutorError::Unauthorized(_))),
+        matches!(result, Err(TransactionExecutorError::Unauthorized { .. })),
         "replayed multisig transaction should be rejected as unauthorized"
     );
 

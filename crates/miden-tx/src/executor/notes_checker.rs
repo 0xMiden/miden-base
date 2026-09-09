@@ -19,7 +19,7 @@ use miden_standards::note::{NoteConsumptionStatus, StandardNote};
 use super::{ProgramExecutor, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
 use crate::errors::TransactionCheckerError;
-use crate::executor::map_execution_error;
+use crate::executor::map_failed_execution;
 use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 
 // CONSTANTS
@@ -440,15 +440,16 @@ where
         let program = TransactionKernel::main();
         let kernel_debug_info = TransactionKernel::main_debug_info();
         let fallback_debug_info = PackageDebugInfo::default();
-        let result = processor
+        let execution = processor
             .execute_with_package_debug_info(
                 &program,
                 kernel_debug_info.as_deref().unwrap_or(&fallback_debug_info),
                 TransactionKernel::main_entrypoint_source_node(),
                 &mut host,
             )
-            .await
-            .map_err(map_execution_error);
+            .await;
+        let result = execution
+            .map_err(|exec_err| map_failed_execution(exec_err, || tx_inputs.clone(), &host));
 
         match result {
             Ok(execution_output) => {
@@ -530,7 +531,7 @@ fn handle_epilogue_error(epilogue_error: TransactionExecutorError) -> NoteConsum
     match epilogue_error {
         // `Unauthorized` is returned for the multisig accounts if the transaction doesn't have
         // enough signatures.
-        TransactionExecutorError::Unauthorized(_)
+        TransactionExecutorError::Unauthorized { .. }
         // `MissingAuthenticator` is returned for the account with the basic auth if the
         // authenticator was not provided to the executor (UnreachableAuth).
         | TransactionExecutorError::MissingAuthenticator => {

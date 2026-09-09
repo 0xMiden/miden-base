@@ -4,6 +4,7 @@ use alloc::vec::Vec;
 use core::error::Error;
 
 use miden_processor::ExecutionError;
+use miden_processor::advice::AdviceInputs;
 use miden_processor::serde::DeserializationError;
 use miden_protocol::account::auth::{PublicKeyCommitment, Signature};
 use miden_protocol::account::{AccountId, StorageMapKey};
@@ -21,7 +22,7 @@ use miden_protocol::errors::{
     TransactionOutputError,
 };
 use miden_protocol::note::{NoteId, PartialNoteMetadata};
-use miden_protocol::transaction::{TransactionEventId, TransactionSummary};
+use miden_protocol::transaction::{TransactionEventId, TransactionInputs, TransactionSummary};
 use miden_protocol::{Felt, Word};
 use thiserror::Error;
 
@@ -125,10 +126,20 @@ pub enum TransactionExecutorError {
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
-    /// This variant can be matched on to get the summary of a transaction for signing purposes.
-    // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
-    #[error("transaction is unauthorized with summary {0:?}")]
-    Unauthorized(Box<TransactionSummary>),
+    /// The account's authentication procedure refused the transaction for lack of a signature.
+    ///
+    /// Carries the [`TransactionSummary`] to sign, and the [`TransactionInputs`] the execution ran
+    /// with, their advice inputs extended with everything loaded before authorization was refused.
+    /// Since authentication runs last, those inputs describe every foreign account, storage map
+    /// entry and vault asset the transaction touched, so another party can re-execute it from them
+    /// without fetching that data again.
+    // Both fields are boxed to avoid triggering clippy::result_large_err for functions that return
+    // this type.
+    #[error("transaction is unauthorized with summary {summary:?}")]
+    Unauthorized {
+        summary: Box<TransactionSummary>,
+        tx_inputs: Box<TransactionInputs>,
+    },
     #[error(
         "failed to respond to signature requested since no authenticator is assigned to the host"
     )]
@@ -143,7 +154,7 @@ pub enum TransactionExecutorError {
 impl TransactionExecutorError {
     pub fn unwrap_unauthorized_err(self) -> Box<TransactionSummary> {
         match self {
-            TransactionExecutorError::Unauthorized(transaction_summary) => transaction_summary,
+            TransactionExecutorError::Unauthorized { summary, .. } => summary,
             other => panic!("expected TransactionExecutorError::Unauthorized, got {other}"),
         }
     }
@@ -299,9 +310,14 @@ pub enum TransactionKernelError {
         source: DataStoreError,
     },
     /// This variant signals that a signature over the contained commitments is required, but
-    /// missing.
+    /// missing. It carries the advice inputs as they stood at that point: the VM discards its
+    /// advice provider on failure, so this is the executor's only view of what the transaction
+    /// loaded.
     #[error("transaction requires a signature")]
-    Unauthorized(Box<TransactionSummary>),
+    Unauthorized {
+        summary: Box<TransactionSummary>,
+        advice_inputs: Box<AdviceInputs>,
+    },
     /// A generic error returned when the transaction kernel did not behave as expected.
     #[error("{message}")]
     Other {

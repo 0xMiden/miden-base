@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use core::marker::PhantomData;
@@ -206,15 +207,18 @@ where
         let program = TransactionKernel::main();
         let kernel_debug_info = TransactionKernel::main_debug_info();
         let fallback_debug_info = PackageDebugInfo::default();
-        let output = processor
+        let execution = processor
             .execute_with_package_debug_info(
                 &program,
                 kernel_debug_info.as_deref().unwrap_or(&fallback_debug_info),
                 TransactionKernel::main_entrypoint_source_node(),
                 &mut host,
             )
-            .await
-            .map_err(map_execution_error)?;
+            .await;
+        let output = match execution {
+            Ok(output) => output,
+            Err(exec_err) => return Err(map_failed_execution(exec_err, || tx_inputs, &host)),
+        };
         let stack_outputs = output.stack;
         let advice_provider = output.advice;
 
@@ -468,10 +472,39 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
     }
 }
 
+/// Maps a failed execution of the transaction kernel to an executor error.
+///
+/// A refused authorization carries the advice inputs as they stood when the account's
+/// authentication procedure refused the transaction. They are a superset of the advice inputs the
+/// execution started with, so, folded into the transaction inputs together with what `host` loaded,
+/// they describe everything a re-execution needs. `tx_inputs` is only called in that case.
+fn map_failed_execution<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
+    exec_err: ExecutionError,
+    tx_inputs: impl FnOnce() -> TransactionInputs,
+    host: &TransactionExecutorHost<STORE, AUTH>,
+) -> TransactionExecutorError {
+    let refused = match &exec_err {
+        ExecutionError::EventError { error, .. } => {
+            match error.downcast_ref::<TransactionKernelError>() {
+                Some(TransactionKernelError::Unauthorized { summary, advice_inputs }) => {
+                    Some((summary.clone(), (**advice_inputs).clone()))
+                },
+                _ => None,
+            }
+        },
+        _ => None,
+    };
+    let Some((summary, advice_inputs)) = refused else {
+        return map_execution_error(exec_err);
+    };
+
+    let tx_inputs = host.extend_tx_inputs(tx_inputs(), advice_inputs);
+    TransactionExecutorError::Unauthorized { summary, tx_inputs: Box::new(tx_inputs) }
+}
+
 /// Remaps an execution error to a transaction executor error.
 ///
-/// - If the inner error is [`TransactionKernelError::Unauthorized`], it is remapped to
-///   [`TransactionExecutorError::Unauthorized`].
+/// - A refused authorization is not handled here: see [`map_failed_execution`].
 /// - If the inner error is [`TransactionKernelError::AuthRequestOutsideAuthProcedure`], it is
 ///   remapped to [`TransactionExecutorError::AuthRequestOutsideAuthProcedure`].
 /// - If the inner error is
@@ -483,9 +516,6 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
     match exec_err {
         ExecutionError::EventError { ref error, .. } => {
             match error.downcast_ref::<TransactionKernelError>() {
-                Some(TransactionKernelError::Unauthorized(summary)) => {
-                    TransactionExecutorError::Unauthorized(summary.clone())
-                },
                 Some(TransactionKernelError::MissingAuthenticator) => {
                     TransactionExecutorError::MissingAuthenticator
                 },

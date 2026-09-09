@@ -4,6 +4,7 @@
 
 ### Changes
 
+- [BREAKING] `TransactionExecutorError::Unauthorized` now also carries the `TransactionInputs` the execution ran with, their advice inputs extended with everything loaded before authorization was refused, so a transaction awaiting signatures can be re-executed elsewhere from them without fetching that data again; `TransactionKernelError::Unauthorized` carries the advice inputs it was built from. Both are struct variants now: match `Unauthorized { summary, .. }` instead of `Unauthorized(summary)`.
 - [BREAKING] The `AuthMultisig` component now bounds its fee payment to the native fee asset, capped at twice the computed fee via the new `multisig::pay_bounded_fee` shared by the three multisig components ([#3802](https://github.com/0xMiden/protocol/pull/3802)).
 
 ## v0.16.0 (2026-08-17)

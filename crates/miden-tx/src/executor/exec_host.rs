@@ -3,7 +3,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_processor::advice::AdviceMutation;
+use miden_processor::advice::{AdviceInputs, AdviceMutation, AdviceProvider};
 use miden_processor::event::EventError;
 use miden_processor::{BaseHost, FutureMaybeSend, Host, LoadedMastForest, ProcessorState};
 use miden_protocol::account::auth::PublicKeyCommitment;
@@ -33,6 +33,7 @@ use miden_protocol::transaction::{
     InputNotes,
     RawOutputNote,
     TransactionAdviceInputs,
+    TransactionInputs,
     TransactionSummary,
 };
 use miden_protocol::vm::{AdviceMap, EventId, EventName};
@@ -167,6 +168,21 @@ where
     /// Returns a reference to the foreign account slot names collected during execution.
     pub fn foreign_account_slot_names(&self) -> &BTreeMap<StorageSlotId, StorageSlotName> {
         &self.foreign_account_slot_names
+    }
+
+    /// Extends `tx_inputs` with what this host loaded while executing them: `advice_inputs`, the
+    /// advice state after execution, plus the signatures the authenticator produced, the code of
+    /// every foreign account accessed, and the storage slot names it resolved.
+    pub fn extend_tx_inputs(
+        &self,
+        tx_inputs: TransactionInputs,
+        mut advice_inputs: AdviceInputs,
+    ) -> TransactionInputs {
+        advice_inputs.map.extend(self.generated_signatures.clone());
+        tx_inputs
+            .with_foreign_account_code(self.accessed_foreign_account_code.clone())
+            .with_foreign_account_slot_names(self.foreign_account_slot_names.clone())
+            .with_advice_inputs(advice_inputs)
     }
 
     // EVENT HANDLERS
@@ -474,6 +490,15 @@ where
             _ => None,
         };
 
+        // A refused authorization aborts the VM, which discards its advice provider, so the state
+        // the transaction loaded is captured here, while it is still reachable.
+        let refused_advice_inputs = match &tx_event_result {
+            Some(Ok(Some(TransactionEvent::Unauthorized { .. }))) => {
+                Some(advice_inputs_snapshot(process.advice_provider()))
+            },
+            _ => None,
+        };
+
         async move {
             if let Some(mutations) = core_lib_event_result? {
                 return Ok(mutations);
@@ -617,7 +642,13 @@ where
 
                 // This always returns an error to abort the transaction.
                 TransactionEvent::Unauthorized { tx_summary } => {
-                    Err(TransactionKernelError::Unauthorized(Box::new(tx_summary)))
+                    let advice_inputs = refused_advice_inputs.expect(
+                        "advice inputs are captured whenever the unauthorized event is extracted",
+                    );
+                    Err(TransactionKernelError::Unauthorized {
+                        summary: Box::new(tx_summary),
+                        advice_inputs: Box::new(advice_inputs),
+                    })
                 },
 
                 TransactionEvent::LinkMapSet { advice_mutation } => Ok(advice_mutation),
@@ -697,4 +728,16 @@ fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> [AdviceMutat
     )]));
 
     [merkle_store_ext, map_ext]
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Copies the advice map and Merkle store out of `advice_provider` as [`AdviceInputs`]. The
+/// advice stack is left out: re-execution rebuilds it.
+fn advice_inputs_snapshot(advice_provider: &AdviceProvider) -> AdviceInputs {
+    let (_stack, advice_map, merkle_store) = advice_provider.clone().into_parts();
+    let mut advice_inputs = AdviceInputs::default().with_merkle_store(merkle_store);
+    advice_inputs.map = advice_map;
+    advice_inputs
 }
