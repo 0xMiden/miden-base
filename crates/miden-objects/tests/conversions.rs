@@ -137,10 +137,7 @@ fn storage_map_patch_preserves_entry_invariants() {
         operation: Some(Operation::Update(proto::account::StorageMapPatchEntries::default())),
     })
     .unwrap_err();
-    assert_eq!(
-        error.to_string(),
-        "operation.update.entries: entries must be non-empty for an update operation"
-    );
+    assert_eq!(error.to_string(), "operation.update.entries: entries must be non-empty");
 
     let entry = proto::account::StorageMapEntry {
         key: Some(Word::empty().into()),

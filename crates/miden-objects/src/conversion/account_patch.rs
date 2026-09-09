@@ -127,10 +127,8 @@ impl TryFrom<proto::account::StorageMapPatch> for StorageMapPatch {
                 let entries: StorageMapPatchEntries =
                     entries.try_into().context("operation.update")?;
                 if entries.is_empty() {
-                    return Err(ConversionError::message(
-                        "entries must be non-empty for an update operation",
-                    )
-                    .context("operation.update.entries"));
+                    return Err(ConversionError::message("entries must be non-empty")
+                        .context("operation.update.entries"));
                 }
                 Ok(Self::Update { entries })
             },
