@@ -215,7 +215,19 @@ impl AuthMultisigSmart {
 
     /// Creates a new [`AuthMultisigSmart`] component from the provided configuration.
     pub fn new(config: AuthMultisigSmartConfig) -> Result<Self, AccountError> {
-        validate_proc_policies(config.approvers().len() as u32, config.procedure_policies())?;
+        let num_approvers = config.approvers().len() as u32;
+        validate_proc_policies(num_approvers, config.procedure_policies())?;
+
+        // A propose threshold above the approver count would make proposing impossible, bricking
+        // the delayed-execution path.
+        if let Some(propose_threshold) = config.delayed_execution_policy().propose_threshold()
+            && propose_threshold > num_approvers
+        {
+            return Err(AccountError::other(
+                "delayed execution propose threshold cannot exceed number of approvers",
+            ));
+        }
+
         Ok(Self { config })
     }
 
@@ -371,14 +383,15 @@ impl From<AuthMultisigSmart> for AccountComponent {
             procedure_policies,
         ));
 
-        // Delay-mode config slot (value: [min_delay, propose_expiration_delta, 0, 0]).
+        // Delay-mode config slot (value: [min_delay, propose_expiration_delta, propose_threshold,
+        // 0]). A zero propose_threshold means proposing falls back to the default threshold.
         let delayed_execution_policy = multisig.config.delayed_execution_policy();
         storage_slots.push(StorageSlot::with_value(
             AuthMultisigSmart::delay_mode_config_slot().clone(),
             Word::from([
                 delayed_execution_policy.min_delay(),
                 delayed_execution_policy.propose_expiration_delta() as u32,
-                0u32,
+                delayed_execution_policy.propose_threshold().unwrap_or(0),
                 0u32,
             ]),
         ));
