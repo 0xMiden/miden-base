@@ -109,7 +109,14 @@ impl Error for ContextualError {
 }
 
 pub trait ConversionResultExt<T> {
+    /// Adds a field path segment if the result is an error.
     fn context(self, field: impl Into<String>) -> Result<T, ConversionError>;
+
+    /// Computes and adds a field path segment only if the result is an error.
+    fn with_context<F, S>(self, field: F) -> Result<T, ConversionError>
+    where
+        F: FnOnce() -> S,
+        S: Into<String>;
 }
 
 impl<T, E> ConversionResultExt<T> for Result<T, E>
@@ -117,7 +124,15 @@ where
     E: Error + Send + Sync + 'static,
 {
     fn context(self, field: impl Into<String>) -> Result<T, ConversionError> {
-        self.map_err(|error| ConversionError::new(error).context(field))
+        self.with_context(|| field)
+    }
+
+    fn with_context<F, S>(self, field: F) -> Result<T, ConversionError>
+    where
+        F: FnOnce() -> S,
+        S: Into<String>,
+    {
+        self.map_err(|error| ConversionError::new(error).context(field()))
     }
 }
 
@@ -127,7 +142,35 @@ mod tests {
     use core::error::Error;
     use core::num::TryFromIntError;
 
-    use super::ConversionError;
+    use super::{ConversionError, ConversionResultExt};
+
+    #[test]
+    fn with_context_does_not_evaluate_the_closure_on_success() {
+        let value = Ok::<_, TryFromIntError>(7)
+            .with_context(|| -> &'static str { panic!("context must not be evaluated") })
+            .unwrap();
+
+        assert_eq!(value, 7);
+    }
+
+    #[test]
+    fn with_context_evaluates_once_and_preserves_the_path_and_source() {
+        let source = u8::try_from(256_u16).unwrap_err();
+        let inner = ConversionError::new(source).context("inner");
+        let field = "outer".to_string();
+        let mut calls = 0;
+
+        let error = Err::<(), _>(inner)
+            .with_context(|| {
+                calls += 1;
+                field
+            })
+            .unwrap_err();
+
+        assert_eq!(calls, 1);
+        assert_eq!(error.to_string(), alloc::format!("outer.inner: {source}"));
+        assert!(error.source().unwrap().is::<TryFromIntError>());
+    }
 
     #[test]
     fn deserialization_errors_preserve_the_source() {

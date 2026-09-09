@@ -88,7 +88,9 @@ where
         self.values
             .into_iter()
             .enumerate()
-            .map(|(index, value)| value.try_into().context(format!("{}[{index}]", self.name)))
+            .map(|(index, value)| {
+                value.try_into().with_context(|| format!("{}[{index}]", self.name))
+            })
             .collect()
     }
 }

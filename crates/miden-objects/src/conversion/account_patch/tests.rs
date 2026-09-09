@@ -103,7 +103,6 @@ fn storage_value_patch_oneof_roundtrips_all_operations() {
             assert_eq!(decoded.decode_fields().unwrap().verify().unwrap(), patch);
         }
     }
-
 }
 
 #[test]

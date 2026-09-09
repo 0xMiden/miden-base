@@ -79,6 +79,7 @@ impl From<&StorageMapPatchEntries> for proto::account::StorageMapPatchEntries {
         }
     }
 }
+
 impl From<&AccountStoragePatch> for proto::account::AccountStoragePatch {
     fn from(patch: &AccountStoragePatch) -> Self {
         Self {
