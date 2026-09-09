@@ -41,13 +41,27 @@ account_component_code!(MULTISIG_SMART_CODE, "miden-standards-auth-multisig-smar
 // `components` segment.
 const MULTISIG_SMART_LIBRARY_PATH: &str = "miden::standards::components::auth::multisig_smart";
 
-// Procedure-root statics for the delayed-execution control-plane procedures. Tests and callers
-// can use these to look up the on-chain procedure roots without re-deriving them from the
-// component code.
+// Procedure-root statics for the component's control-plane procedures. Callers need these to
+// attach a per-procedure policy to them, which is how an account raises the threshold guarding a
+// sensitive procedure above its default (e.g. requiring 4-of-5 to rotate the approver set).
 procedure_root!(
     MULTISIG_SMART_UPDATE_DELAYED_EXECUTION_POLICY,
     MULTISIG_SMART_LIBRARY_PATH,
     AuthMultisigSmart::UPDATE_DELAYED_EXECUTION_POLICY_PROC_NAME,
+    AuthMultisigSmart::code()
+);
+
+procedure_root!(
+    MULTISIG_SMART_UPDATE_SIGNERS_AND_THRESHOLD,
+    MULTISIG_SMART_LIBRARY_PATH,
+    AuthMultisigSmart::UPDATE_SIGNERS_AND_THRESHOLD_PROC_NAME,
+    AuthMultisigSmart::code()
+);
+
+procedure_root!(
+    MULTISIG_SMART_SET_PROCEDURE_POLICY,
+    MULTISIG_SMART_LIBRARY_PATH,
+    AuthMultisigSmart::SET_PROCEDURE_POLICY_PROC_NAME,
     AuthMultisigSmart::code()
 );
 
@@ -208,6 +222,12 @@ impl AuthMultisigSmart {
     pub const UPDATE_DELAYED_EXECUTION_POLICY_PROC_NAME: &'static str =
         "update_delayed_execution_policy";
 
+    /// The name of the procedure that rotates the approver set and thresholds.
+    pub const UPDATE_SIGNERS_AND_THRESHOLD_PROC_NAME: &'static str = "update_signers_and_threshold";
+
+    /// The name of the procedure that edits per-procedure policies.
+    pub const SET_PROCEDURE_POLICY_PROC_NAME: &'static str = "set_procedure_policy";
+
     /// Returns the [`AccountComponentCode`] of this component.
     pub fn code() -> &'static AccountComponentCode {
         &MULTISIG_SMART_CODE
@@ -282,6 +302,22 @@ impl AuthMultisigSmart {
     /// Returns the [`AccountProcedureRoot`] of the `update_delayed_execution_policy` procedure.
     pub fn update_delayed_execution_policy_root() -> AccountProcedureRoot {
         *MULTISIG_SMART_UPDATE_DELAYED_EXECUTION_POLICY
+    }
+
+    /// Returns the [`AccountProcedureRoot`] of the `update_signers_and_threshold` procedure.
+    ///
+    /// Use it to key a [`ProcedurePolicy`] that guards approver-set rotation at a higher threshold
+    /// than the account default.
+    pub fn update_signers_and_threshold_root() -> AccountProcedureRoot {
+        *MULTISIG_SMART_UPDATE_SIGNERS_AND_THRESHOLD
+    }
+
+    /// Returns the [`AccountProcedureRoot`] of the `set_procedure_policy` procedure.
+    ///
+    /// It is the only procedure that writes the policy map, so callers guarding policy edits
+    /// commonly need its root.
+    pub fn set_procedure_policy_root() -> AccountProcedureRoot {
+        *MULTISIG_SMART_SET_PROCEDURE_POLICY
     }
 
     pub fn threshold_config_slot_schema() -> (StorageSlotName, StorageSlotSchema) {

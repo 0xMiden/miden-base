@@ -1768,3 +1768,167 @@ async fn test_multisig_smart_low_propose_threshold_does_not_weaken_execution(
 
     Ok(())
 }
+
+/// A procedure policy raises the bar as well as lowering it: guarding
+/// `update_signers_and_threshold` with an immediate threshold of 4 makes approver-set rotation
+/// require 4-of-5 on an account whose default is 3-of-5. This exercises
+/// `update_signers_and_threshold_root`, which callers need to key a policy on that procedure.
+#[rstest]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
+#[tokio::test]
+async fn test_multisig_smart_policy_raises_threshold_for_signer_rotation(
+    #[case] auth_scheme: AuthScheme,
+) -> anyhow::Result<()> {
+    // Five approvers, four of which can sign in this test.
+    let (_secret_keys, _auth_schemes, public_keys, authenticators) =
+        setup_keys_and_authenticators_with_scheme(5, 4, auth_scheme)?;
+
+    // Default threshold is 3-of-5, but rotating the approver set is pinned to 4 signatures.
+    let multisig_account = create_multisig_smart_account(
+        3,
+        &public_keys,
+        10,
+        vec![(
+            AuthMultisigSmart::update_signers_and_threshold_root().as_word(),
+            ProcedurePolicy::with_immediate_threshold(4)?,
+        )],
+    )?;
+    let account_id = multisig_account.id();
+    let mock_chain =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap().build()?;
+
+    let (_new_secret_keys, _new_auth_schemes, new_public_keys, _new_authenticators) =
+        setup_keys_and_authenticators_with_scheme(4, 4, auth_scheme)?;
+    let multisig_config_data =
+        build_update_signers_config_vector(3, 4, &new_public_keys, auth_scheme);
+    let multisig_config_hash = Hasher::hash_elements(&multisig_config_data);
+    let advice_inputs =
+        AdviceInputs::default().with_map([(multisig_config_hash, multisig_config_data)]);
+
+    let update_signers_script = compile_multisig_smart_tx_script(
+        "
+        @transaction_script
+        pub proc main
+            call.::miden::standards::components::auth::multisig_smart::update_signers_and_threshold
+        end
+        ",
+    )?;
+
+    let auth_args = MultisigAuthArgs::new(mock_chain.latest_block_header().block_num(), salt(970));
+
+    // Three signatures satisfy the account default but not the procedure's policy.
+    let under_threshold = execute_script_with_signers(
+        &mock_chain,
+        account_id,
+        update_signers_script.clone(),
+        auth_args,
+        &[0, 1, 2],
+        &public_keys,
+        &authenticators,
+        Some(multisig_config_hash),
+        Some(advice_inputs.clone()),
+    )
+    .await?;
+    match under_threshold {
+        Err(TransactionExecutorError::Unauthorized(_)) => {},
+        other => {
+            panic!("expected Unauthorized below the procedure policy threshold, got: {other:?}")
+        },
+    }
+
+    // The fourth signature meets the policy threshold.
+    execute_script_with_signers(
+        &mock_chain,
+        account_id,
+        update_signers_script,
+        auth_args,
+        &[0, 1, 2, 3],
+        &public_keys,
+        &authenticators,
+        Some(multisig_config_hash),
+        Some(advice_inputs),
+    )
+    .await?
+    .expect("four signatures should satisfy the procedure policy threshold");
+
+    Ok(())
+}
+
+/// `set_procedure_policy` can be guarded by its own policy, so editing the policy map requires more
+/// signatures than the account default. Exercises `set_procedure_policy_root`.
+#[rstest]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
+#[tokio::test]
+async fn test_multisig_smart_policy_raises_threshold_for_policy_edits(
+    #[case] auth_scheme: AuthScheme,
+) -> anyhow::Result<()> {
+    let (_secret_keys, _auth_schemes, public_keys, authenticators) =
+        setup_keys_and_authenticators_with_scheme(5, 4, auth_scheme)?;
+
+    let multisig_account = create_multisig_smart_account(
+        3,
+        &public_keys,
+        10,
+        vec![(
+            AuthMultisigSmart::set_procedure_policy_root().as_word(),
+            ProcedurePolicy::with_immediate_threshold(4)?,
+        )],
+    )?;
+    let account_id = multisig_account.id();
+    let mock_chain =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap().build()?;
+
+    // Lower the receive_asset threshold to 1 - an edit that must itself clear the 4-signature bar.
+    // `call.` does not consume operand-stack inputs, so the script drops the 7 elements it pushed.
+    let receive_asset_root = StorageMapKey::from_raw(BasicWallet::receive_asset_root().as_word());
+    let set_policy_script = compile_multisig_smart_tx_script(format!(
+        "
+        @transaction_script
+        pub proc main
+            push.{root}
+            push.0     # note_restrictions
+            push.0     # delayed_threshold
+            push.1     # immediate_threshold
+            call.::miden::standards::components::auth::multisig_smart::set_procedure_policy
+            drop drop drop  # immediate, delayed, note_restrictions
+            dropw           # PROC_ROOT
+        end
+        ",
+        root = receive_asset_root,
+    ))?;
+
+    let auth_args = MultisigAuthArgs::new(mock_chain.latest_block_header().block_num(), salt(980));
+
+    let under_threshold = execute_script_with_signers(
+        &mock_chain,
+        account_id,
+        set_policy_script.clone(),
+        auth_args,
+        &[0, 1, 2],
+        &public_keys,
+        &authenticators,
+        None,
+        None,
+    )
+    .await?;
+    match under_threshold {
+        Err(TransactionExecutorError::Unauthorized(_)) => {},
+        other => panic!("expected Unauthorized below the policy-edit threshold, got: {other:?}"),
+    }
+
+    execute_script_with_signers(
+        &mock_chain,
+        account_id,
+        set_policy_script,
+        auth_args,
+        &[0, 1, 2, 3],
+        &public_keys,
+        &authenticators,
+        None,
+        None,
+    )
+    .await?
+    .expect("four signatures should satisfy the policy-edit threshold");
+
+    Ok(())
+}
