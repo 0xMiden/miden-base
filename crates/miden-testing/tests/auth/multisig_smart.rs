@@ -798,6 +798,7 @@ async fn test_multisig_smart_unpolicied_proc_call_requires_default_threshold() -
 use miden_protocol::transaction::ExecutedTransaction;
 use miden_standards::errors::standards::{
     ERR_CANCEL_INSUFFICIENT_SIGNATURES,
+    ERR_DELAYED_EXECUTION_REQUIRES_EXPIRATION,
     ERR_PROC_POLICY_INVALID_MODE,
     ERR_TX_ALREADY_PROPOSED,
     ERR_TX_STILL_TIMELOCKED,
@@ -924,8 +925,12 @@ async fn test_multisig_smart_delayed_only_proc_rejects_direct_path_without_propo
 
     let update_timelock_script = compile_multisig_smart_tx_script(
         "
+        use miden::protocol::tx
+
         @transaction_script
         pub proc main
+            # Delayed execution requires the transaction to bound its own validity window.
+            push.100 exec.tx::update_expiration_block_delta
             push.2
             push.40
             call.::miden::standards::components::auth::multisig_smart::update_delayed_execution_policy
@@ -1090,8 +1095,12 @@ async fn test_multisig_smart_execute_before_min_delay_fails(
     // an execution because it is not a propose/cancel-only transaction.
     let execute_script = compile_multisig_smart_tx_script(
         "
+        use miden::protocol::tx
+
         @transaction_script
         pub proc main
+            # Delayed execution requires the transaction to bound its own validity window.
+            push.100 exec.tx::update_expiration_block_delta
             push.2
             push.40
             call.::miden::standards::components::auth::multisig_smart::update_delayed_execution_policy
@@ -1177,8 +1186,12 @@ async fn test_multisig_smart_full_propose_wait_execute_lifecycle(
 
     let execute_script = compile_multisig_smart_tx_script(
         "
+        use miden::protocol::tx
+
         @transaction_script
         pub proc main
+            # Delayed execution requires the transaction to bound its own validity window.
+            push.100 exec.tx::update_expiration_block_delta
             push.2
             push.40
             call.::miden::standards::components::auth::multisig_smart::update_delayed_execution_policy
@@ -1568,8 +1581,12 @@ async fn test_multisig_smart_propose_threshold_lowers_delayed_path_signature_cou
 
     let execute_script = compile_multisig_smart_tx_script(
         "
+        use miden::protocol::tx
+
         @transaction_script
         pub proc main
+            # Delayed execution requires the transaction to bound its own validity window.
+            push.100 exec.tx::update_expiration_block_delta
             push.2
             push.40
             call.::miden::standards::components::auth::multisig_smart::update_delayed_execution_policy
@@ -1688,8 +1705,12 @@ async fn test_multisig_smart_low_propose_threshold_does_not_weaken_execution(
 
     let execute_script = compile_multisig_smart_tx_script(
         "
+        use miden::protocol::tx
+
         @transaction_script
         pub proc main
+            # Delayed execution requires the transaction to bound its own validity window.
+            push.100 exec.tx::update_expiration_block_delta
             push.2
             push.40
             call.::miden::standards::components::auth::multisig_smart::update_delayed_execution_policy
@@ -1929,6 +1950,95 @@ async fn test_multisig_smart_policy_raises_threshold_for_policy_edits(
     )
     .await?
     .expect("four signatures should satisfy the policy-edit threshold");
+
+    Ok(())
+}
+
+/// Delayed execution must bound its own validity window. The approver signatures are over the
+/// target commitment and stay usable for as long as the transaction can be included, so a proposed
+/// transaction that sets no expiration would be a perpetual authorization; executing one is
+/// rejected.
+#[rstest]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
+#[tokio::test]
+async fn test_multisig_smart_delayed_execution_requires_expiration(
+    #[case] auth_scheme: AuthScheme,
+) -> anyhow::Result<()> {
+    let (_secret_keys, _auth_schemes, public_keys, authenticators) =
+        setup_keys_and_authenticators_with_scheme(2, 2, auth_scheme)?;
+    let mut multisig_account = create_multisig_smart_account(
+        2,
+        &public_keys,
+        100,
+        vec![(
+            AuthMultisigSmart::update_delayed_execution_policy_root().as_word(),
+            ProcedurePolicy::with_immediate_and_delay_thresholds(2, 1)?,
+        )],
+    )?;
+    let account_id = multisig_account.id();
+    let mut mock_chain =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap().build()?;
+
+    // Deliberately omits `update_expiration_block_delta`, unlike the other delayed-execution tests.
+    let execute_script = compile_multisig_smart_tx_script(
+        "
+        @transaction_script
+        pub proc main
+            push.2
+            push.40
+            call.::miden::standards::components::auth::multisig_smart::update_delayed_execution_policy
+            drop
+            drop
+        end
+        ",
+    )?;
+
+    let bound_block = mock_chain.latest_block_header().block_num();
+    let exec_auth_args = MultisigAuthArgs::new(bound_block, salt(990));
+
+    let tx_summary = mock_chain
+        .build_transaction(account_id)
+        .tx_script(execute_script.clone())
+        .multisig_auth_args(exec_auth_args)
+        .build()?
+        .execute()
+        .await
+        .unwrap_err()
+        .unwrap_unauthorized_err();
+    let target_commitment = tx_summary.as_ref().to_commitment();
+
+    let propose_tx = execute_delay_action(
+        &mock_chain,
+        account_id,
+        "propose_transaction",
+        target_commitment,
+        MultisigAuthArgs::new(bound_block, salt(991)),
+        &[0, 1],
+        &public_keys,
+        &authenticators,
+    )
+    .await?
+    .expect("propose tx should succeed");
+    multisig_account.apply_patch(propose_tx.account_patch())?;
+    mock_chain.add_pending_executed_transaction(&propose_tx)?;
+    mock_chain.prove_next_block()?;
+
+    let target_timestamp = mock_chain.latest_block_header().timestamp() + 60;
+    mock_chain.prove_next_block_at(target_timestamp)?;
+
+    let result = execute_script_with_signers(
+        &mock_chain,
+        account_id,
+        execute_script,
+        exec_auth_args,
+        &[0, 1],
+        &public_keys,
+        &authenticators,
+        None,
+        None,
+    )
+    .await?;
+    assert_transaction_executor_error!(result, ERR_DELAYED_EXECUTION_REQUIRES_EXPIRATION);
 
     Ok(())
 }
