@@ -2,11 +2,7 @@
 //!
 //! An open note and a forgotten check look identical in a script's body, so a script either
 //! enforces its rule itself, declares itself open to any consumer, or names the account procedure
-//! that enforces the rule on its behalf. This is a source-level check on that declaration, not a
-//! proof that the rule holds: what a restricted note actually rejects is covered by the execution
-//! tests next to each note, which consume it with an account that is not its target and pin the
-//! error (see `scripts::ownable2step::config::decoy_account_cannot_consume_note_of_another_account`
-//! and `agglayer::note_targets`).
+//! that enforces the rule on its behalf.
 
 use std::path::{Path, PathBuf};
 
