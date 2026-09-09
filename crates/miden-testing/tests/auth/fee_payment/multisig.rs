@@ -6,9 +6,11 @@ use miden_protocol::testing::account_id::ACCOUNT_ID_FEE_FAUCET;
 use miden_protocol::transaction::{ExecutedTransaction, TransactionSummary};
 use miden_protocol::{Word, ZERO};
 use miden_standards::account::auth::{Approver, ApproverSet, FeeConversionInfo, MultisigAuthArgs};
+use miden_standards::code_builder::CodeBuilder;
+use miden_standards::errors::standards::ERR_MULTISIG_APPROVAL_EXPIRED;
 use miden_standards::note::TxFeeNote;
 use miden_standards::tx_script::ExpirationTransactionScript;
-use miden_testing::{Auth, MockChain};
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
 use rstest::rstest;
@@ -153,15 +155,22 @@ async fn multisig_pays_fee_note(#[case] auth_scheme: AuthScheme) -> anyhow::Resu
 
 /// A later approver sees the same summary, and the original signatures remain valid at a newer
 /// execution block. The fee note stays unchanged when the account nonce and fee amount do not
-/// change.
+/// change, but execution at or after the signed expiration is rejected.
 #[rstest]
-#[case::falcon(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE)]
-#[case::ecdsa(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE)]
-#[case::zero_fee(AuthScheme::EcdsaK256Keccak, 0)]
+#[case::falcon(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 5)]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 5)]
+#[case::zero_fee(AuthScheme::EcdsaK256Keccak, 0, 5)]
+#[case::falcon_before_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 9)]
+#[case::ecdsa_before_expiration(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 9)]
+#[case::falcon_at_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 10)]
+#[case::ecdsa_at_expiration(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 10)]
+#[case::falcon_after_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 11)]
+#[case::ecdsa_after_expiration(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 11)]
 #[tokio::test]
 async fn multisig_fee_note_is_stable_across_reference_blocks(
     #[case] auth_scheme: AuthScheme,
     #[case] base_fee: u32,
+    #[case] blocks_advanced: u32,
 ) -> anyhow::Result<()> {
     let (approver_set, signers) = multisig_fixture(2, 2, auth_scheme)?;
     let fee_asset = FungibleAsset::new(ACCOUNT_ID_FEE_FAUCET.try_into()?, 1_000_000)?;
@@ -204,7 +213,21 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     }
     let original_tx = original_builder.build()?.execute().await?;
 
-    mock_chain.prove_until_block(signed_block + 5)?;
+    mock_chain.prove_until_block(signed_block + blocks_advanced)?;
+
+    let mut later_builder = mock_chain
+        .build_transaction(account.id())
+        .tx_script(expiration_script.into())
+        .tx_script_args(expiration_script.tx_script_args())
+        .multisig_auth_args(auth_args);
+    for (key, signature) in &signatures {
+        later_builder = later_builder.add_signature(*key, msg, signature.clone());
+    }
+    if blocks_advanced >= 10 {
+        let result = later_builder.build()?.execute().await;
+        assert_transaction_executor_error!(result, ERR_MULTISIG_APPROVAL_EXPIRED);
+        return Ok(());
+    }
 
     let later_summary = mock_chain
         .build_transaction(account.id())
@@ -219,17 +242,9 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
         .unwrap_unauthorized_err();
     assert_eq!(later_summary.to_commitment(), msg);
 
-    let mut later_builder = mock_chain
-        .build_transaction(account.id())
-        .tx_script(expiration_script.into())
-        .tx_script_args(expiration_script.tx_script_args())
-        .multisig_auth_args(auth_args);
-    for (key, signature) in signatures {
-        later_builder = later_builder.add_signature(key, msg, signature);
-    }
     let later_tx = later_builder.build()?.execute().await?;
 
-    assert_eq!(later_tx.block_header().block_num(), signed_block + 5);
+    assert_eq!(later_tx.block_header().block_num(), signed_block + blocks_advanced);
     assert_eq!(later_tx.expiration_block_num(), signed_block + 10);
     assert_eq!(original_tx.output_notes().commitment(), later_tx.output_notes().commitment());
     if base_fee == 0 {
@@ -241,6 +256,120 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
         let fee_note = later_tx.output_notes().get_note(0);
         assert_eq!(fee_note.recipient().unwrap().serial_num(), expected_serial);
     }
+
+    Ok(())
+}
+
+/// Extra computation at a newer reference block raises the fee without changing the proposal
+/// block or account nonce. The fee note's recipient stays stable, but its assets and the vault
+/// withdrawal change, so execution requires fresh signatures.
+#[rstest]
+#[case::falcon(AuthScheme::Falcon512Poseidon2)]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
+#[tokio::test]
+async fn multisig_rejects_original_signatures_when_fee_changes(
+    #[case] auth_scheme: AuthScheme,
+) -> anyhow::Result<()> {
+    let (approver_set, signers) = multisig_fixture(2, 2, auth_scheme)?;
+    let fee_asset = FungibleAsset::new(ACCOUNT_ID_FEE_FAUCET.try_into()?, 1_000_000)?;
+    let mut builder = MockChain::builder().verification_base_fee(VERIFICATION_BASE_FEE);
+    let account = builder.add_existing_wallet_with_assets(
+        Auth::Multisig { approver_set, proc_threshold_map: vec![] },
+        [fee_asset.into()],
+    )?;
+    let mut mock_chain = builder.build()?;
+    let signed_block = mock_chain.latest_block_header().block_num();
+    let auth_args = fee_paying_auth_args(&mock_chain, Word::from([21u32, 22, 23, 24]))?;
+
+    // Use the same script at both blocks. The later execution does enough extra work to cross
+    // a fee cycle bucket, without creating notes or changing account state itself.
+    let tx_script = CodeBuilder::default().compile_tx_script(format!(
+        "
+        use miden::protocol::tx
+
+        @transaction_script
+        pub proc main
+            exec.tx::get_reference_block_number push.{signed_block} neq
+            if.true
+                push.65536
+                dup neq.0
+                while.true
+                    sub.1 dup neq.0
+                end
+                drop
+            end
+        end
+        "
+    ))?;
+    let original_builder = mock_chain
+        .build_transaction(account.id())
+        .tx_script(tx_script.clone())
+        .multisig_auth_args(auth_args);
+    let original_summary = original_builder
+        .clone()
+        .build()?
+        .execute()
+        .await
+        .unwrap_err()
+        .unwrap_unauthorized_err();
+    let original_msg = original_summary.to_commitment();
+    let signing_inputs = SigningInputs::TransactionSummary(original_summary.clone());
+    let mut signatures = Vec::new();
+    let mut signed_builder = original_builder;
+    for (key, authenticator) in &signers {
+        let signature = authenticator.get_signature(key.to_commitment(), &signing_inputs).await?;
+        signed_builder =
+            signed_builder.add_signature(key.to_commitment(), original_msg, signature.clone());
+        signatures.push((key.to_commitment(), signature));
+    }
+    let original_tx = signed_builder.build()?.execute().await?;
+    let original_fee = assert_single_fee_note(&original_tx)?;
+
+    // Do not apply the original transaction: the account and its nonce must remain unchanged.
+    mock_chain.prove_until_block(signed_block + 5)?;
+    let later_builder = mock_chain
+        .build_transaction(account.id())
+        .tx_script(tx_script)
+        .multisig_auth_args(auth_args);
+    let mut stale_builder = later_builder.clone();
+    for (key, signature) in signatures {
+        stale_builder = stale_builder.add_signature(key, original_msg, signature);
+    }
+    let later_summary =
+        stale_builder.build()?.execute().await.unwrap_err().unwrap_unauthorized_err();
+
+    assert_eq!(later_summary.metadata(), original_summary.metadata());
+    assert_eq!(later_summary.block_commitment(), original_summary.block_commitment());
+    assert_eq!(later_summary.user_params(), original_summary.user_params());
+    assert_eq!(later_summary.input_notes(), original_summary.input_notes());
+    assert_eq!(
+        later_summary.account_delta().storage(),
+        original_summary.account_delta().storage()
+    );
+    assert_eq!(
+        later_summary.account_delta().nonce_delta(),
+        original_summary.account_delta().nonce_delta()
+    );
+    assert_ne!(later_summary.account_delta().vault(), original_summary.account_delta().vault());
+    let later_msg = later_summary.to_commitment();
+    assert_ne!(later_msg, original_msg);
+
+    // Fresh approvals must succeed, ruling out an unrelated execution failure.
+    let signing_inputs = SigningInputs::TransactionSummary(later_summary);
+    let mut signed_builder = later_builder;
+    for (key, authenticator) in signers {
+        let signature = authenticator.get_signature(key.to_commitment(), &signing_inputs).await?;
+        signed_builder = signed_builder.add_signature(key.to_commitment(), later_msg, signature);
+    }
+    let later_tx = signed_builder.build()?.execute().await?;
+    let later_fee = assert_single_fee_note(&later_tx)?;
+    assert!(later_fee.amount() > original_fee.amount());
+    assert_eq!(later_tx.initial_account().nonce(), original_tx.initial_account().nonce());
+    assert_eq!(
+        later_tx.output_notes().get_note(0).recipient(),
+        original_tx.output_notes().get_note(0).recipient()
+    );
+    assert_ne!(later_tx.output_notes().commitment(), original_tx.output_notes().commitment());
 
     Ok(())
 }
