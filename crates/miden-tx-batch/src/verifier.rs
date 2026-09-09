@@ -4,7 +4,7 @@ use miden_protocol::block::BlockNumber;
 use miden_protocol::vm::ProgramInfo;
 use miden_verifier::{ExecutionClaim, Verifier};
 
-use crate::{BatchVerifierError, proof_has_precompiles};
+use crate::BatchVerifierError;
 
 // BATCH VERIFIER
 // ================================================================================================
@@ -54,7 +54,7 @@ impl BatchVerifier {
     /// - The verified proof has an outstanding precompile obligation.
     /// - The security level of the verified proof is below the configured minimum.
     pub fn verify(&self, batch: &ProvenBatch) -> Result<u32, BatchVerifierError> {
-        if proof_has_precompiles(batch.proof()) {
+        if batch.proof().has_precompiles() {
             return Err(BatchVerifierError::BatchProofContainsPrecompiles);
         }
 
@@ -81,7 +81,7 @@ impl BatchVerifier {
         if !outcome.is_complete() {
             return Err(BatchVerifierError::IncompleteProof);
         }
-        let verified_security_level = outcome.security_level();
+        let verified_security_level = outcome.vm_security_parameters().conjectured_security_level();
 
         if verified_security_level < self.min_proof_security_level {
             return Err(BatchVerifierError::InsufficientProofSecurityLevel {
