@@ -187,9 +187,9 @@ pub proc auth_network_transaction(auth_args: word)
     exec.native_account::has_state_changed
     # => [has_account_state_changed, pad(16)]
 
-    # has_state_changed verifies that the active account is the native account, so reading the
-    # active account nonce here identifies whether that native account is new.
-    exec.active_account::get_nonce eq.0
+    # has_state_changed verifies that the active account is the native account, so checking that
+    # the active account is new is enough.
+    exec.active_account::is_new_account
     # => [is_new_account, has_account_state_changed, pad(16)]
 
     or

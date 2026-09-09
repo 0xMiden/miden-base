@@ -61,8 +61,7 @@ pub proc auth_pass_through(auth_args: word)
     dropw
     # => [pad(16)]
 
-    # nonce = 0 means account deployment
-    exec.active_account::get_nonce eq.0
+    exec.active_account::is_new_account
     # => [is_new_account, pad(16)]
 
     if.true

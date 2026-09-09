@@ -71,6 +71,22 @@ pub proc get_nonce() -> felt
     # => [nonce]
 end
 
+#! Returns whether the active account is new.
+#!
+#! An active account is new when its initial nonce is zero.
+#!
+#! Inputs:  []
+#! Outputs: [is_new_account]
+#!
+#! Panics if:
+#! - the invocation of this procedure does not originate from the account context.
+#!
+#! Invocation: exec
+pub proc is_new_account() -> Bool
+    exec.get_nonce eq.0
+    # => [is_new_account]
+end
+
 # COMMITMENTS
 # -------------------------------------------------------------------------------------------------
 
