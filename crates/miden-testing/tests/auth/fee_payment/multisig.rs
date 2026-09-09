@@ -1,9 +1,13 @@
+use core::num::NonZeroU16;
+
 use miden_protocol::account::auth::{AuthScheme, PublicKey};
 use miden_protocol::asset::{Asset, FungibleAsset};
 use miden_protocol::testing::account_id::ACCOUNT_ID_FEE_FAUCET;
 use miden_protocol::transaction::{ExecutedTransaction, TransactionSummary};
 use miden_protocol::{Word, ZERO};
 use miden_standards::account::auth::{Approver, ApproverSet, FeeConversionInfo, MultisigAuthArgs};
+use miden_standards::note::TxFeeNote;
+use miden_standards::tx_script::ExpirationTransactionScript;
 use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
@@ -147,13 +151,112 @@ async fn multisig_pays_fee_note(#[case] auth_scheme: AuthScheme) -> anyhow::Resu
     Ok(())
 }
 
+/// A later approver sees the same summary, and the original signatures remain valid at a newer
+/// execution block. The fee note stays unchanged when the account nonce and fee amount do not
+/// change.
+#[rstest]
+#[case::falcon(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE)]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE)]
+#[case::zero_fee(AuthScheme::EcdsaK256Keccak, 0)]
+#[tokio::test]
+async fn multisig_fee_note_is_stable_across_reference_blocks(
+    #[case] auth_scheme: AuthScheme,
+    #[case] base_fee: u32,
+) -> anyhow::Result<()> {
+    let (approver_set, signers) = multisig_fixture(2, 2, auth_scheme)?;
+    let fee_asset = FungibleAsset::new(ACCOUNT_ID_FEE_FAUCET.try_into()?, 1_000_000)?;
+    let mut builder = MockChain::builder().verification_base_fee(base_fee);
+    let account = builder.add_existing_wallet_with_assets(
+        Auth::Multisig { approver_set, proc_threshold_map: vec![] },
+        [fee_asset.into()],
+    )?;
+    let mut mock_chain = builder.build()?;
+    let signed_block = mock_chain.latest_block_header().block_num();
+    let auth_args = fee_paying_auth_args(&mock_chain, Word::from([17u32, 18, 19, 20]))?;
+    let expiration_script = ExpirationTransactionScript::new(NonZeroU16::new(10).unwrap());
+
+    let original_summary = mock_chain
+        .build_transaction(account.id())
+        .tx_script(expiration_script.into())
+        .tx_script_args(expiration_script.tx_script_args())
+        .multisig_auth_args(auth_args)
+        .build()?
+        .execute()
+        .await
+        .unwrap_err()
+        .unwrap_unauthorized_err();
+    let msg = original_summary.to_commitment();
+    let signing_inputs = SigningInputs::TransactionSummary(original_summary);
+    let mut signatures = Vec::new();
+    for (public_key, authenticator) in &signers {
+        let signature =
+            authenticator.get_signature(public_key.to_commitment(), &signing_inputs).await?;
+        signatures.push((public_key.to_commitment(), signature));
+    }
+
+    let mut original_builder = mock_chain
+        .build_transaction(account.id())
+        .tx_script(expiration_script.into())
+        .tx_script_args(expiration_script.tx_script_args())
+        .multisig_auth_args(auth_args);
+    for (key, signature) in &signatures {
+        original_builder = original_builder.add_signature(*key, msg, signature.clone());
+    }
+    let original_tx = original_builder.build()?.execute().await?;
+
+    mock_chain.prove_until_block(signed_block + 5)?;
+
+    let later_summary = mock_chain
+        .build_transaction(account.id())
+        .tx_script(expiration_script.into())
+        .tx_script_args(expiration_script.tx_script_args())
+        .multisig_auth_args(auth_args)
+        .add_signature(signatures[0].0, msg, signatures[0].1.clone())
+        .build()?
+        .execute()
+        .await
+        .unwrap_err()
+        .unwrap_unauthorized_err();
+    assert_eq!(later_summary.to_commitment(), msg);
+
+    let mut later_builder = mock_chain
+        .build_transaction(account.id())
+        .tx_script(expiration_script.into())
+        .tx_script_args(expiration_script.tx_script_args())
+        .multisig_auth_args(auth_args);
+    for (key, signature) in signatures {
+        later_builder = later_builder.add_signature(key, msg, signature);
+    }
+    let later_tx = later_builder.build()?.execute().await?;
+
+    assert_eq!(later_tx.block_header().block_num(), signed_block + 5);
+    assert_eq!(later_tx.expiration_block_num(), signed_block + 10);
+    assert_eq!(original_tx.output_notes().commitment(), later_tx.output_notes().commitment());
+    if base_fee == 0 {
+        assert_eq!(later_tx.output_notes().num_notes(), 0);
+    } else {
+        assert_eq!(assert_single_fee_note(&original_tx)?, assert_single_fee_note(&later_tx)?);
+        let expected_serial =
+            TxFeeNote::derive_serial_number(account.id(), account.nonce(), signed_block);
+        let fee_note = later_tx.output_notes().get_note(0);
+        assert_eq!(fee_note.recipient().unwrap().serial_num(), expected_serial);
+    }
+
+    Ok(())
+}
+
 /// On a fee-charging chain, replaying a signed multisig transaction (same auth args and
 /// signatures) is rejected: after the first execution the account nonce advances, so the replayed
 /// transaction's fee note serial number and thus its summary commitment differ from the signed
 /// one, and the stale signatures fail verification.
+#[rstest]
+#[case::falcon(AuthScheme::Falcon512Poseidon2)]
+#[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
 #[tokio::test]
-async fn multisig_fee_payment_preserves_replay_protection() -> anyhow::Result<()> {
-    let (approver_set, signers) = multisig_fixture(2, 2, AuthScheme::Falcon512Poseidon2)?;
+async fn multisig_fee_payment_preserves_replay_protection(
+    #[case] auth_scheme: AuthScheme,
+) -> anyhow::Result<()> {
+    let (approver_set, signers) = multisig_fixture(2, 2, auth_scheme)?;
 
     let fee_faucet_id = ACCOUNT_ID_FEE_FAUCET.try_into()?;
     let fee_asset: Asset = FungibleAsset::new(fee_faucet_id, 1_000_000)?.into();
