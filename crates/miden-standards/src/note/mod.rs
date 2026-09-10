@@ -309,9 +309,7 @@ impl StandardNote {
     ///       be either consumed, or consumed after timelock height, or consumed after reclaim
     ///       height.
     /// - for `TX_FEE` note:
-    ///     - check that note storage is empty. Whether the target account collects the note's
-    ///       assets is only known by executing the transaction, so the status is otherwise
-    ///       undetermined.
+    ///     - check that note storage is empty; the note is otherwise consumable by any account.
     fn is_consumable_inner(
         &self,
         note: &Note,
@@ -375,16 +373,16 @@ impl StandardNote {
                 }
             },
 
-            // TX_FEE notes carry no target restriction, but the note script rejects any storage
-            // shape other than no storage items. A well-formed note leaves its assets for the
-            // consuming account to collect, which only executing the transaction can verify.
+            // TX_FEE notes carry no target restriction: any account can consume them, as long as
+            // the note carries no storage items (the note script rejects any other
+            // storage shape).
             StandardNote::TX_FEE => {
                 if usize::from(note.storage().num_items()) != TxFeeNote::NUM_STORAGE_ITEMS {
                     Ok(Some(NoteConsumptionStatus::NeverConsumable(
                         "TX_FEE note carries unexpected storage items".into(),
                     )))
                 } else {
-                    Ok(None)
+                    Ok(Some(NoteConsumptionStatus::ConsumableWithAuthorization))
                 }
             },
 

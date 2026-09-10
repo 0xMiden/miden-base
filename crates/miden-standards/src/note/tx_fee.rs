@@ -42,10 +42,9 @@ static TX_FEE_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
 /// A TX_FEE note: the canonical way for a transaction to pay its fee to a batch builder.
 ///
 /// The note does not restrict who can consume it: any account (i.e. whichever account builds the
-/// batch) can consume the note. Its script leaves the assets in the note for the consuming
-/// account's own code to collect, by removing them from the note from the account context; a
-/// transaction that does not account for them fails the kernel's asset conservation check. The
-/// note is completely unopinionated about which assets are used to pay the fee.
+/// batch) can consume the note. Its script leaves the assets in the note, so the consuming
+/// account's own code must move them out. The note is completely unopinionated about which assets
+/// are used to pay the fee.
 ///
 /// TX_FEE notes are always [public](NoteType::Public), carry no storage and no attachments, and
 /// are tagged with the unique [`TxFeeNote::TAG`].
@@ -285,10 +284,9 @@ mod tests {
     // CONSUMPTION ANALYSIS TESTS
     // --------------------------------------------------------------------------------------------
 
-    /// Static consumption analysis leaves a well-formed TX_FEE note undetermined for an arbitrary
-    /// account (only executing it shows whether the account collects the assets) and rejects a
-    /// note that shares the TX_FEE script root but carries unexpected storage items (such a note
-    /// would panic in the note script on execution).
+    /// Static consumption analysis accepts a well-formed TX_FEE note for an arbitrary account
+    /// and rejects a note that shares the TX_FEE script root but carries unexpected storage
+    /// items (such a note would panic in the note script on execution).
     #[test]
     fn is_consumable_validates_storage() {
         let block_ref = BlockNumber::from(0u32);
@@ -307,7 +305,7 @@ mod tests {
 
         assert_matches!(
             standard_note.is_consumable(&fee_note, unrelated_consumer(), block_ref),
-            None
+            Some(NoteConsumptionStatus::ConsumableWithAuthorization)
         );
 
         // A note with the TX_FEE script root but non-empty storage can never be consumed.

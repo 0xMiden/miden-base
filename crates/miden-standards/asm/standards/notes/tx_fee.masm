@@ -27,8 +27,7 @@ const TX_FEE_NOTE_TAG = 0xFEE
 #!
 #! A TX_FEE note is the canonical way for a transaction to pay its fee to the batch builder. The
 #! note does not restrict who can consume it. Its assets stay in the note, so the consuming
-#! account's own code moves them out (by removing them from the note from the account context); a
-#! transaction that does not account for them fails the kernel's asset conservation check.
+#! account's own code must move them out.
 #!
 #! Inputs:  []
 #! Outputs: []
