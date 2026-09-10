@@ -62,9 +62,6 @@ impl SuccessfulNote {
 pub struct FailedNote {
     note: Note,
     /// The error the failing execution produced.
-    ///
-    /// Shared rather than owned because a whole bundle of notes is tested at once, and every note
-    /// of a rejected bundle is reported with the error that rejected it.
     error: Arc<TransactionExecutorError>,
     /// The number of cycles consumed by the note before it failed.
     ///
@@ -157,9 +154,6 @@ impl NoteConsumptionInfo {
 
 /// A group of input notes that has to be tested for consumability as a unit, such as a feature note
 /// and the notes which sponsor it.
-///
-/// Neither half of such a group executes on its own, so probing its notes individually always
-/// fails and the search for an executable set has to treat the bundle as its smallest unit.
 #[derive(Debug)]
 struct NoteBundle {
     notes: Vec<Note>,
@@ -168,19 +162,21 @@ struct NoteBundle {
 impl NoteBundle {
     /// Groups `notes` into bundles that must be consumed together.
     ///
-    /// A FEE_SPONSORSHIP note joins the bundle of the feature note it names; one whose feature note
-    /// is absent forms a bundle of its own, so that it fails alone rather than dropping the notes
-    /// it would otherwise have been grouped with. Every other note forms a bundle of its own.
+    /// A FEE_SPONSORSHIP note joins the bundle of the feature note it sponsors; an unpaired
+    /// sponsorship note forms a bundle of its own, so that it fails alone rather than dropping the
+    /// notes it would otherwise have been grouped with. Every other note type forms a bundle of its
+    /// own.
     ///
-    /// The note heading a bundle, the one the rest of it is bound to, is always first, and bundles
-    /// keep the ordering of `notes`.
+    /// The feature note is always first in the resulting bundle (if any); bundle preserves the
+    /// relative order of the sponsorship notes in it.
     fn group(notes: Vec<Note>) -> Vec<Self> {
         let note_indices: BTreeMap<NoteId, usize> =
             notes.iter().enumerate().map(|(idx, note)| (note.id(), idx)).collect();
 
-        // Key every note by the index of the note heading its bundle: its feature note's for a
-        // sponsorship bound to one, its own otherwise. Keying by index rather than by note ID keeps
-        // the bundles in the caller's order.
+        // Put the feature notes and orphan notes to the values with keys equal to this note index
+        // in the `note_indices`. Sponsorship notes are appended to the values which contain the
+        // corresponding feature note.
+        // Keying by index rather than by note ID keeps the bundles in the caller's order.
         let mut bundles: BTreeMap<usize, Vec<Note>> = BTreeMap::new();
         for (idx, note) in notes.into_iter().enumerate() {
             // A sponsorship is only bundled when the note it names is actually an input; otherwise
