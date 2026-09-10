@@ -179,8 +179,8 @@ impl NoteBundle {
         // Keying by index rather than by note ID keeps the bundles in the caller's order.
         let mut bundles: BTreeMap<usize, Vec<Note>> = BTreeMap::new();
         for (idx, note) in notes.into_iter().enumerate() {
-            // A sponsorship is only bundled when the note it names is actually an input; otherwise
-            // it can only be reclaimed, which is something it has to attempt on its own.
+            // A sponsorship is only bundled when the note it sponsors is actually an input;
+            // otherwise it can only be reclaimed, which is something it has to attempt on its own.
             match FeeSponsorshipNote::try_from(&note)
                 .ok()
                 .and_then(|sponsorship| note_indices.get(&sponsorship.feature_note_id()).copied())
