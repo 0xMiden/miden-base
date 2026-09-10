@@ -255,7 +255,7 @@ The TX_FEE note script is the canonical way for a transaction to pay its fee to 
 - **Assets:** Carries one or more assets of the sender's choosing - the note is unopinionated about which assets are used to pay
 - **Tag:** The unique `0xFEE` tag. Its 18 least significant bits are non-zero, so it can never collide with a default account-target tag (those have their 18 least significant bits set to zero)
 - **Validation:** None - unlike P2ID, there is no target account check, so any account may consume the note. In practice, due to the fee incentives, only the batch builder that includes the transaction will actually consume it
-- **Requirements:** Collection requires an account whose own code moves the note's assets out; since the script leaves them in place, only removal from the account context (`miden::protocol::input_note::remove_asset`) can. A transaction that does not account for them fails the kernel's asset conservation check
+- **Requirements:** The note script does not move the assets, so the consuming account's own code must remove them from the note. Only the account context can do this, via `miden::protocol::input_note::remove_asset` or `remove_all_assets`. A transaction that leaves any of the note's assets uncollected fails the kernel's asset conservation check
 
 **Use case:** Paying transaction fees to whichever account builds the batch, in any asset the batch builder accepts.
 
