@@ -21,8 +21,8 @@ use miden_standards::account::auth::{
     AuthMultisigSmart,
     AuthMultisigSmartConfig,
     AuthNetworkAccount,
-    AuthPassThrough,
     AuthSingleSig,
+    AuthTxFeeCollector,
     GuardianConfig,
     SponsorshipPolicy,
 };
@@ -67,13 +67,13 @@ pub enum Auth {
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
 
-    /// Pass-through authentication: forwards the single asset of every consumed note into one P2ID
-    /// note for the target given by the auth args, verifies a signature over the transaction
-    /// summary and leaves the account unchanged (the nonce is only incremented when the account is
-    /// created).
+    /// TX_FEE collector authentication: forwards the single asset of every consumed note into one
+    /// P2ID note for the target given by the auth args, verifies a signature over the
+    /// transaction summary and leaves the account unchanged (the nonce is only incremented when
+    /// the account is created).
     ///
     /// Creates a secret key and a [BasicAuthenticator] to sign with, like [`Auth::BasicAuth`].
-    PassThrough { auth_scheme: AuthScheme },
+    TxFeeCollector { auth_scheme: AuthScheme },
 
     /// Creates a mock authentication mechanism for the account that conditionally succeeds and
     /// conditionally increments the nonce based on the authentication arguments.
@@ -130,7 +130,7 @@ impl Auth {
     /// The authentication component is always the first component of the returned vector; variants
     /// that expand into multiple components (e.g. [`Auth::NetworkAccount`]) yield their companion
     /// components after it. The authenticator is only `Some` when [`Auth::BasicAuth`] or
-    /// [`Auth::PassThrough`] is passed.
+    /// [`Auth::TxFeeCollector`] is passed.
     pub fn build_components(&self) -> (Vec<AccountComponent>, Option<BasicAuthenticator>) {
         match self {
             Auth::BasicAuth { auth_scheme } => {
@@ -174,9 +174,9 @@ impl Auth {
             },
             Auth::IncrNonce => (vec![IncrNonceAuthComponent.into()], None),
             Auth::Noop => (vec![NoopAuthComponent.into()], None),
-            Auth::PassThrough { auth_scheme } => {
+            Auth::TxFeeCollector { auth_scheme } => {
                 Self::build_single_key_auth(*auth_scheme, |approver| {
-                    AuthPassThrough::new(approver).into()
+                    AuthTxFeeCollector::new(approver).into()
                 })
             },
             Auth::Conditional => (vec![ConditionalAuthComponent.into()], None),

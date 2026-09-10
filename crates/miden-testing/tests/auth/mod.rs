@@ -12,4 +12,4 @@ mod guarded_multisig;
 
 mod network_account;
 
-mod pass_through;
+mod tx_fee_collector;

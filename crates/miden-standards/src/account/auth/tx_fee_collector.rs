@@ -21,26 +21,26 @@ use miden_protocol::{Felt, Hasher, Word};
 use super::Approver;
 use crate::account::account_component_code;
 
-account_component_code!(AUTH_PASS_THROUGH_CODE, "miden-standards-auth-pass-through.masp");
+account_component_code!(AUTH_TX_FEE_COLLECTOR_CODE, "miden-standards-auth-tx-fee-collector.masp");
 
 // CONSTANTS
 // ================================================================================================
 
 static PUBKEY_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::pass_through::pub_key")
+    StorageSlotName::new("miden::standards::auth::tx_fee_collector::pub_key")
         .expect("storage slot name should be valid")
 });
 
 static SIGNATURE_SCHEME_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| {
-    StorageSlotName::new("miden::standards::auth::pass_through::signature_scheme")
+    StorageSlotName::new("miden::standards::auth::tx_fee_collector::signature_scheme")
         .expect("storage slot name should be valid")
 });
 
-/// An [`AccountComponent`] implementing the authentication scheme of a pass-through account: an
+/// An [`AccountComponent`] implementing the authentication scheme of a TX_FEE collector account: an
 /// account that forwards the assets of the notes it consumes and is never changed by a
 /// transaction.
 ///
-/// It exports the procedure `auth_pass_through`, which:
+/// It exports the procedure `auth_tx_fee_collector`, which:
 /// - Creates a P2ID note for the target given by the auth args (see [`Self::auth_args`]) and moves
 ///   the single asset of every consumed note into it, straight from the note; the account's vault
 ///   is never touched. A transaction consuming no notes is rejected, except for the one creating
@@ -64,13 +64,13 @@ static SIGNATURE_SCHEME_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| 
 ///
 /// Like every auth component, it is installed alongside at least one other component, typically
 /// [`BasicWallet`](crate::account::wallets::BasicWallet).
-pub struct AuthPassThrough {
+pub struct AuthTxFeeCollector {
     approver: Approver,
 }
 
-impl AuthPassThrough {
+impl AuthTxFeeCollector {
     /// The name of the component.
-    pub const NAME: &'static str = "miden::standards::auth::pass_through";
+    pub const NAME: &'static str = "miden::standards::auth::tx_fee_collector";
 
     /// Returns the canonical [`AccountComponentName`] of this component.
     pub const fn name() -> AccountComponentName {
@@ -79,15 +79,16 @@ impl AuthPassThrough {
 
     /// Returns the [`AccountComponentCode`] of this component.
     pub fn code() -> &'static AccountComponentCode {
-        &AUTH_PASS_THROUGH_CODE
+        &AUTH_TX_FEE_COLLECTOR_CODE
     }
 
-    /// Creates a new [`AuthPassThrough`] component with the given approver.
+    /// Creates a new [`AuthTxFeeCollector`] component with the given approver.
     pub fn new(approver: Approver) -> Self {
         Self { approver }
     }
 
-    /// Creates a new [`AuthPassThrough`] component using the Falcon512Poseidon2 signature scheme.
+    /// Creates a new [`AuthTxFeeCollector`] component using the Falcon512Poseidon2 signature
+    /// scheme.
     ///
     /// The public key commitment is derived from the provided Falcon512 public key.
     pub fn falcon512_poseidon2(pub_key: falcon512_poseidon2::PublicKey) -> Self {
@@ -96,7 +97,7 @@ impl AuthPassThrough {
         }
     }
 
-    /// Creates a new [`AuthPassThrough`] component using the EcdsaK256Keccak signature scheme.
+    /// Creates a new [`AuthTxFeeCollector`] component using the EcdsaK256Keccak signature scheme.
     ///
     /// The public key commitment is derived from the provided ECDSA K256 public key.
     ///
@@ -113,7 +114,7 @@ impl AuthPassThrough {
         }
     }
 
-    /// Creates a new [`AuthPassThrough`] component from a [`PublicKey`].
+    /// Creates a new [`AuthTxFeeCollector`] component from a [`PublicKey`].
     ///
     /// The authentication scheme and public key commitment are derived from the provided key.
     pub fn from_public_key(pub_key: PublicKey) -> Self {
@@ -189,28 +190,28 @@ impl AuthPassThrough {
         .expect("storage schema should be valid");
 
         AccountComponentMetadata::new(Self::NAME)
-            .with_description("Pass-through authentication component")
+            .with_description("TX_FEE collector authentication component")
             .with_storage_schema(storage_schema)
     }
 }
 
-impl From<AuthPassThrough> for AccountComponent {
-    fn from(pass_through: AuthPassThrough) -> Self {
-        let metadata = AuthPassThrough::component_metadata();
+impl From<AuthTxFeeCollector> for AccountComponent {
+    fn from(collector: AuthTxFeeCollector) -> Self {
+        let metadata = AuthTxFeeCollector::component_metadata();
 
         let storage_slots = vec![
             StorageSlot::with_value(
-                AuthPassThrough::public_key_slot().clone(),
-                pass_through.approver.pub_key().into(),
+                AuthTxFeeCollector::public_key_slot().clone(),
+                collector.approver.pub_key().into(),
             ),
             StorageSlot::with_value(
-                AuthPassThrough::signature_scheme_slot().clone(),
-                Word::from([pass_through.approver.auth_scheme().as_u8(), 0, 0, 0]),
+                AuthTxFeeCollector::signature_scheme_slot().clone(),
+                Word::from([collector.approver.auth_scheme().as_u8(), 0, 0, 0]),
             ),
         ];
 
-        AccountComponent::new(AuthPassThrough::code().clone(), storage_slots, metadata).expect(
-            "AuthPassThrough component should satisfy the requirements of a valid account \
+        AccountComponent::new(AuthTxFeeCollector::code().clone(), storage_slots, metadata).expect(
+            "AuthTxFeeCollector component should satisfy the requirements of a valid account \
              component",
         )
     }

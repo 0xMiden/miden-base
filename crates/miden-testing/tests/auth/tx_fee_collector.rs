@@ -8,13 +8,13 @@ use miden_protocol::note::{Note, NoteAssets, NoteTag, NoteType};
 use miden_protocol::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_SENDER};
 use miden_protocol::transaction::TransactionScript;
 use miden_protocol::{Felt, Word};
-use miden_standards::account::auth::AuthPassThrough;
+use miden_standards::account::auth::AuthTxFeeCollector;
 use miden_standards::account::wallets::BasicWallet;
 use miden_standards::code_builder::CodeBuilder;
 use miden_standards::errors::standards::{
-    ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS,
-    ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED,
-    ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET,
+    ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_CREATED_WITH_ASSETS,
+    ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_STATE_CHANGED,
+    ERR_AUTH_TX_FEE_COLLECTOR_NOTE_MUST_CARRY_ONE_ASSET,
 };
 use miden_standards::note::P2idNoteStorage;
 use miden_testing::{
@@ -47,8 +47,8 @@ fn fee_asset() -> Asset {
     FungibleAsset::mock(10)
 }
 
-/// The components of a pass-through account: `BasicWallet` and the auth component.
-fn pass_through_account_builder(
+/// The components of a fee collector account: `BasicWallet` and the auth component.
+fn tx_fee_collector_account_builder(
     seed: [u8; 32],
     assets: impl IntoIterator<Item = Asset>,
 ) -> AccountBuilder {
@@ -58,25 +58,25 @@ fn pass_through_account_builder(
         .account_type(AccountType::Public)
 }
 
-/// Adds an existing pass-through account to the chain.
+/// Adds an existing fee collector account to the chain.
 ///
 /// Registers it through the builder rather than with `add_account`, so the chain also learns the
 /// authenticator that signs for it.
-fn add_pass_through_account(builder: &mut MockChainBuilder) -> anyhow::Result<Account> {
-    add_pass_through_account_with(builder, [42; 32], [], AccountState::Exists)
+fn add_tx_fee_collector_account(builder: &mut MockChainBuilder) -> anyhow::Result<Account> {
+    add_tx_fee_collector_account_with(builder, [42; 32], [], AccountState::Exists)
 }
 
-/// As [`add_pass_through_account`], but lets the caller pick the seed, any assets the account
+/// As [`add_tx_fee_collector_account`], but lets the caller pick the seed, any assets the account
 /// already holds, and whether it exists or is created by the transaction under test.
-fn add_pass_through_account_with(
+fn add_tx_fee_collector_account_with(
     builder: &mut MockChainBuilder,
     seed: [u8; 32],
     assets: impl IntoIterator<Item = Asset>,
     state: AccountState,
 ) -> anyhow::Result<Account> {
     builder.add_account_from_builder(
-        Auth::PassThrough { auth_scheme: AUTH_SCHEME },
-        pass_through_account_builder(seed, assets),
+        Auth::TxFeeCollector { auth_scheme: AUTH_SCHEME },
+        tx_fee_collector_account_builder(seed, assets),
         state,
     )
 }
@@ -116,14 +116,14 @@ fn deposit_script(asset: Asset) -> anyhow::Result<TransactionScript> {
 
 /// The auth args addressing a public P2ID note to `target`.
 fn auth_args(target: AccountId) -> Word {
-    AuthPassThrough::auth_args(target, NoteType::Public)
+    AuthTxFeeCollector::auth_args(target, NoteType::Public)
 }
 
-/// Sets up the common shape of a pass-through transaction: the account, a target wallet to
+/// Sets up the common shape of a fee collection transaction: the account, a target wallet to
 /// forward to, and one TX_FEE note to forward.
-fn pass_through_setup() -> anyhow::Result<(Account, AccountId, Note, MockChain)> {
+fn tx_fee_collector_setup() -> anyhow::Result<(Account, AccountId, Note, MockChain)> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
     let fee_note = add_fee_note(&mut builder, &[fee_asset()])?;
 
@@ -136,9 +136,10 @@ fn pass_through_setup() -> anyhow::Result<(Account, AccountId, Note, MockChain)>
 /// The auth procedure merges the assets of several fee notes into one P2ID note for the
 /// target, leaving the account untouched.
 #[tokio::test]
-async fn pass_through_auth_forwards_several_fee_notes_into_one_p2id_note() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_forwards_several_fee_notes_into_one_p2id_note() -> anyhow::Result<()>
+{
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
 
     let fee_notes = [
@@ -153,7 +154,7 @@ async fn pass_through_auth_forwards_several_fee_notes_into_one_p2id_note() -> an
         tx_builder = tx_builder.authenticated_input_note(note.id());
     }
     let mock_tx = tx_builder.auth_args(auth_args(target.id())).build()?;
-    let serial_number = AuthPassThrough::derive_serial_number(
+    let serial_number = AuthTxFeeCollector::derive_serial_number(
         auth_args(target.id()),
         mock_tx.input_notes().commitment(),
     );
@@ -180,7 +181,7 @@ async fn pass_through_auth_forwards_several_fee_notes_into_one_p2id_note() -> an
     // the account is a conduit: none of the forwarded assets stuck to it
     assert!(
         executed.account_patch().vault().is_empty(),
-        "a pass-through transaction must not change the account's vault",
+        "a fee collection transaction must not change the account's vault",
     );
     assert_eq!(
         executed.final_account().nonce(),
@@ -199,14 +200,15 @@ async fn pass_through_auth_forwards_several_fee_notes_into_one_p2id_note() -> an
 /// Assets of different faucets and compositions are all forwarded into the same output note, in
 /// input-note order.
 #[tokio::test]
-async fn pass_through_auth_forwards_assets_of_every_faucet_and_composition() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_forwards_assets_of_every_faucet_and_composition()
+-> anyhow::Result<()> {
     let other_faucet_id = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?;
     let mock_asset: Asset = FungibleAsset::mock(25);
     let other_asset: Asset = FungibleAsset::new(other_faucet_id, 40)?.into();
     let non_fungible_asset: Asset = NonFungibleAsset::mock(&[4, 5, 6]);
 
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
 
     let notes = [
@@ -234,13 +236,14 @@ async fn pass_through_auth_forwards_assets_of_every_faucet_and_composition() -> 
 
 /// As many distinct assets as a note can hold are forwarded into the single P2ID note.
 #[tokio::test]
-async fn pass_through_auth_forwards_the_maximum_number_of_distinct_assets() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_forwards_the_maximum_number_of_distinct_assets() -> anyhow::Result<()>
+{
     let assets: Vec<Asset> = (0..NoteAssets::MAX_NUM_ASSETS)
         .map(|i| NonFungibleAsset::mock(&[u8::try_from(i).unwrap()]))
         .collect();
 
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
 
     let mut notes = Vec::new();
@@ -264,9 +267,9 @@ async fn pass_through_auth_forwards_the_maximum_number_of_distinct_assets() -> a
 
 /// The P2ID note the auth procedure creates is claimable by its target.
 #[tokio::test]
-async fn pass_through_auth_output_note_is_consumable_by_the_target() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_output_note_is_consumable_by_the_target() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let mut target = add_target(&mut builder)?;
 
     let fee_asset = FungibleAsset::mock(100);
@@ -300,12 +303,16 @@ async fn pass_through_auth_output_note_is_consumable_by_the_target() -> anyhow::
 
 /// The account's own balance is not forwarded: only what the consumed notes carry is.
 #[tokio::test]
-async fn pass_through_auth_leaves_the_accounts_own_balance_alone() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_leaves_the_accounts_own_balance_alone() -> anyhow::Result<()> {
     let own_asset: Asset = FungibleAsset::mock(5);
 
     let mut builder = MockChain::builder();
-    let account =
-        add_pass_through_account_with(&mut builder, [43; 32], [own_asset], AccountState::Exists)?;
+    let account = add_tx_fee_collector_account_with(
+        &mut builder,
+        [43; 32],
+        [own_asset],
+        AccountState::Exists,
+    )?;
     let target = add_target(&mut builder)?;
     let fee_note = add_fee_note(&mut builder, &[fee_asset()])?;
     let mock_chain = builder.build()?;
@@ -329,9 +336,9 @@ async fn pass_through_auth_leaves_the_accounts_own_balance_alone() -> anyhow::Re
 
 /// A consumed note carrying two assets is rejected.
 #[tokio::test]
-async fn pass_through_auth_rejects_a_note_carrying_two_assets() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_rejects_a_note_carrying_two_assets() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
     let two_asset_note =
         add_fee_note(&mut builder, &[fee_asset(), NonFungibleAsset::mock(&[7, 8, 9])])?;
@@ -345,7 +352,7 @@ async fn pass_through_auth_rejects_a_note_carrying_two_assets() -> anyhow::Resul
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET);
+    assert_transaction_executor_error!(result, ERR_AUTH_TX_FEE_COLLECTOR_NOTE_MUST_CARRY_ONE_ASSET);
 
     Ok(())
 }
@@ -355,9 +362,9 @@ async fn pass_through_auth_rejects_a_note_carrying_two_assets() -> anyhow::Resul
 
 /// A transaction that changes the account's vault is rejected: the commitment changed.
 #[tokio::test]
-async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_rejects_a_state_change() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let mock_chain = builder.build()?;
 
     let result = mock_chain
@@ -367,7 +374,7 @@ async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED);
+    assert_transaction_executor_error!(result, ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_STATE_CHANGED);
 
     Ok(())
 }
@@ -375,9 +382,9 @@ async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
 /// A consumed note that moved its asset out itself (a P2ID note deposits into the wallet) leaves
 /// nothing for the auth procedure to forward, so the transaction is rejected.
 #[tokio::test]
-async fn pass_through_auth_rejects_a_note_that_moved_its_asset_out() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_rejects_a_note_that_moved_its_asset_out() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
 
     let note = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into()?,
@@ -394,7 +401,7 @@ async fn pass_through_auth_rejects_a_note_that_moved_its_asset_out() -> anyhow::
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET);
+    assert_transaction_executor_error!(result, ERR_AUTH_TX_FEE_COLLECTOR_NOTE_MUST_CARRY_ONE_ASSET);
 
     Ok(())
 }
@@ -402,9 +409,9 @@ async fn pass_through_auth_rejects_a_note_that_moved_its_asset_out() -> anyhow::
 /// On a fee-charging chain the auth procedure creates no TX_FEE note, so the transaction's only
 /// output is the P2ID note.
 #[tokio::test]
-async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyhow::Result<()> {
     let mut builder = MockChain::builder().verification_base_fee(VERIFICATION_BASE_FEE);
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
     let fee_note = add_fee_note(&mut builder, &[fee_asset()])?;
     let mock_chain = builder.build()?;
@@ -414,7 +421,7 @@ async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyh
         .authenticated_input_note(fee_note.id())
         .auth_args(auth_args(target.id()))
         .build()?;
-    let serial_number = AuthPassThrough::derive_serial_number(
+    let serial_number = AuthTxFeeCollector::derive_serial_number(
         auth_args(target.id()),
         mock_tx.input_notes().commitment(),
     );
@@ -423,7 +430,7 @@ async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyh
     assert_eq!(
         executed.output_notes().num_notes(),
         1,
-        "a pass-through transaction pays no fee, so the P2ID note is its only output",
+        "a fee collection transaction pays no fee, so the P2ID note is its only output",
     );
     assert_eq!(
         executed.output_notes().get_note(0).recipient_digest(),
@@ -434,13 +441,13 @@ async fn pass_through_auth_creates_no_fee_note_on_a_fee_charging_chain() -> anyh
     Ok(())
 }
 
-/// Two successive pass-through transactions leave the account byte-identical, nonce included,
+/// Two successive fee collection transactions leave the account byte-identical, nonce included,
 /// which is what lets batch builders build them concurrently. Their P2ID notes differ.
 #[tokio::test]
-async fn pass_through_auth_leaves_the_account_untouched_across_transactions() -> anyhow::Result<()>
-{
+async fn tx_fee_collector_auth_leaves_the_account_untouched_across_transactions()
+-> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account(&mut builder)?;
+    let account = add_tx_fee_collector_account(&mut builder)?;
     let target = add_target(&mut builder)?;
 
     let first_note = add_fee_note(&mut builder, &[fee_asset()])?;
@@ -470,8 +477,8 @@ async fn pass_through_auth_leaves_the_account_untouched_across_transactions() ->
 /// A transaction consuming no input notes against an existing account creates no P2ID note and
 /// changes nothing, so the kernel rejects it as empty.
 #[tokio::test]
-async fn pass_through_auth_rejects_a_transaction_without_input_notes() -> anyhow::Result<()> {
-    let (account, target, _fee_note, mock_chain) = pass_through_setup()?;
+async fn tx_fee_collector_auth_rejects_a_transaction_without_input_notes() -> anyhow::Result<()> {
+    let (account, target, _fee_note, mock_chain) = tx_fee_collector_setup()?;
 
     let result = mock_chain
         .build_transaction(account.id())
@@ -491,9 +498,9 @@ async fn pass_through_auth_rejects_a_transaction_without_input_notes() -> anyhow
 /// The account's key holder can deploy it themselves: the creating transaction is the one case in
 /// which the nonce is incremented, and it needs no notes.
 #[tokio::test]
-async fn pass_through_auth_can_create_an_account() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_can_create_an_account() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account_with(&mut builder, [45; 32], [], AccountState::New)?;
+    let account = add_tx_fee_collector_account_with(&mut builder, [45; 32], [], AccountState::New)?;
     let mock_chain = builder.build()?;
 
     // a new account is passed by value, since the chain does not yet know it
@@ -515,10 +522,10 @@ async fn pass_through_auth_can_create_an_account() -> anyhow::Result<()> {
 
 /// The creating transaction can already forward fee notes.
 #[tokio::test]
-async fn pass_through_auth_can_create_an_account_and_forward_in_one_transaction()
+async fn tx_fee_collector_auth_can_create_an_account_and_forward_in_one_transaction()
 -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account_with(&mut builder, [46; 32], [], AccountState::New)?;
+    let account = add_tx_fee_collector_account_with(&mut builder, [46; 32], [], AccountState::New)?;
     let target = add_target(&mut builder)?;
     let fee_note = add_fee_note(&mut builder, &[fee_asset()])?;
     let mock_chain = builder.build()?;
@@ -544,9 +551,9 @@ async fn pass_through_auth_can_create_an_account_and_forward_in_one_transaction(
 /// An account created holding assets could never move them out again (every later transaction has
 /// to leave it unchanged), so the creating transaction is rejected instead.
 #[tokio::test]
-async fn pass_through_auth_rejects_an_account_created_holding_assets() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_rejects_an_account_created_holding_assets() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account_with(&mut builder, [49; 32], [], AccountState::New)?;
+    let account = add_tx_fee_collector_account_with(&mut builder, [49; 32], [], AccountState::New)?;
     let mock_chain = builder.build()?;
 
     let result = mock_chain
@@ -556,7 +563,10 @@ async fn pass_through_auth_rejects_an_account_created_holding_assets() -> anyhow
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS);
+    assert_transaction_executor_error!(
+        result,
+        ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_CREATED_WITH_ASSETS
+    );
 
     Ok(())
 }
@@ -566,10 +576,10 @@ async fn pass_through_auth_rejects_an_account_created_holding_assets() -> anyhow
 
 /// Without the key nothing can be executed against the account.
 #[tokio::test]
-async fn pass_through_auth_requires_a_signature() -> anyhow::Result<()> {
-    let (account, target, fee_note, mock_chain) = pass_through_setup()?;
+async fn tx_fee_collector_auth_requires_a_signature() -> anyhow::Result<()> {
+    let (account, target, fee_note, mock_chain) = tx_fee_collector_setup()?;
 
-    // an otherwise valid pass-through transaction, so that only the missing key can fail it
+    // an otherwise valid fee collection transaction, so that only the missing key can fail it
     let result = mock_chain
         .build_transaction(account.id())
         .authenticated_input_note(fee_note.id())
@@ -587,9 +597,9 @@ async fn pass_through_auth_requires_a_signature() -> anyhow::Result<()> {
 /// The creating transaction is signed like any other: skipping the state check does not skip the
 /// signature.
 #[tokio::test]
-async fn pass_through_auth_requires_a_signature_to_create_an_account() -> anyhow::Result<()> {
+async fn tx_fee_collector_auth_requires_a_signature_to_create_an_account() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = add_pass_through_account_with(&mut builder, [48; 32], [], AccountState::New)?;
+    let account = add_tx_fee_collector_account_with(&mut builder, [48; 32], [], AccountState::New)?;
     let mock_chain = builder.build()?;
 
     let result = mock_chain
@@ -606,10 +616,10 @@ async fn pass_through_auth_requires_a_signature_to_create_an_account() -> anyhow
 
 /// A signature from a key other than the account's is rejected, so holding *a* key is not enough.
 #[tokio::test]
-async fn pass_through_auth_rejects_a_foreign_key_signature() -> anyhow::Result<()> {
-    let (account, target, fee_note, mock_chain) = pass_through_setup()?;
+async fn tx_fee_collector_auth_rejects_a_foreign_key_signature() -> anyhow::Result<()> {
+    let (account, target, fee_note, mock_chain) = tx_fee_collector_setup()?;
 
-    // re-derive the account's public key from the seed `Auth::PassThrough` uses, then bind a
+    // re-derive the account's public key from the seed `Auth::TxFeeCollector` uses, then bind a
     // foreign secret key to it, so the procedure gets a signature that must fail to verify
     let mut account_rng = ChaCha20Rng::from_seed(Default::default());
     let account_pub_key =

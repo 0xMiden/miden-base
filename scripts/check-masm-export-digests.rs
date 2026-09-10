@@ -89,7 +89,7 @@ mod current {
         AuthMultisig,
         AuthMultisigSmart,
         AuthNetworkAccount,
-        AuthPassThrough,
+        AuthTxFeeCollector,
         AuthSingleSig,
         NoAuth,
     };
@@ -127,7 +127,7 @@ mod current {
         AuthMultisigSmart::code,
         AuthGuardedMultisig::code,
         AuthNetworkAccount::code,
-        AuthPassThrough::code,
+        AuthTxFeeCollector::code,
         BurnAllowAll::code,
         BurnOwnerOnly::code,
         MinBurnAmount::code,

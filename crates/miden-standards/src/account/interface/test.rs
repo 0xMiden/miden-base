@@ -13,8 +13,8 @@ use crate::account::auth::{
     ApproverSet,
     AuthMultisig,
     AuthMultisigConfig,
-    AuthPassThrough,
     AuthSingleSig,
+    AuthTxFeeCollector,
     NoAuth,
 };
 use crate::account::interface::{AccountComponentInterface, AccountInterface, AccountInterfaceExt};
@@ -143,19 +143,22 @@ fn test_account_interface_identifies_no_auth() {
 }
 
 #[test]
-fn test_account_interface_identifies_pass_through_auth() {
+fn test_account_interface_identifies_tx_fee_collector_auth() {
     let mock_seed = Word::from([4, 5, 6, 7u32]).as_bytes();
-    let pass_through_account = AccountBuilder::new(mock_seed)
-        .with_component(AuthPassThrough::from_public_key(
+    let collector_account = AccountBuilder::new(mock_seed)
+        .with_component(AuthTxFeeCollector::from_public_key(
             AuthSecretKey::new_ecdsa_k256_keccak().public_key(),
         ))
         .with_component(BasicWallet)
         .build_existing()
-        .expect("failed to create pass-through account");
+        .expect("failed to create fee collector account");
 
-    let interface = AccountInterface::from_account(&pass_through_account);
+    let interface = AccountInterface::from_account(&collector_account);
 
-    assert!(matches!(interface.auth_component(), AccountComponentInterface::AuthPassThrough));
+    assert!(matches!(
+        interface.auth_component(),
+        AccountComponentInterface::AuthTxFeeCollector
+    ));
 }
 
 #[test]

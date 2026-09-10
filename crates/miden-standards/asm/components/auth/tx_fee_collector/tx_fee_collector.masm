@@ -1,6 +1,6 @@
-# The MASM code of the Pass Through Authentication Account Component.
+# The MASM code of the TX_FEE Collector Authentication Account Component.
 #
-# See the `AuthPassThrough` Rust type's documentation for more details.
+# See the `AuthTxFeeCollector` Rust type's documentation for more details.
 
 use miden::core::crypto::hashes::poseidon2
 use miden::protocol::active_account
@@ -11,15 +11,16 @@ use miden::protocol::output_note
 use miden::protocol::tx
 use miden::standards::auth::signature
 use miden::standards::notes::p2id
+use {AuthArgs} from miden::standards::types
 
 # CONSTANTS
 # =================================================================================================
 
 # The slot in this component's storage layout where the public key commitment is stored.
-const PUBLIC_KEY_COMMITMENT_SLOT = word("miden::standards::auth::pass_through::pub_key")
+const PUBLIC_KEY_COMMITMENT_SLOT = word("miden::standards::auth::tx_fee_collector::pub_key")
 
 # The slot in this component's storage layout where the corresponding signature scheme is stored.
-const SIGNATURE_SCHEME_SLOT = word("miden::standards::auth::pass_through::signature_scheme")
+const SIGNATURE_SCHEME_SLOT = word("miden::standards::auth::tx_fee_collector::signature_scheme")
 
 # The local of forward_note_assets that a consumed note's asset is removed into.
 const ASSET_LOC = 0
@@ -27,11 +28,11 @@ const ASSET_LOC = 0
 # ERRORS
 # =================================================================================================
 
-const ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED = "a pass-through account's state must be the one it had at the start of the transaction"
+const ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_STATE_CHANGED = "a fee collector account's state must be the one it had at the start of the transaction"
 
-const ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS = "a pass-through account must hold no assets when it is created"
+const ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_CREATED_WITH_ASSETS = "a fee collector account must hold no assets when it is created"
 
-const ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET = "every note a pass-through account consumes must carry exactly one asset"
+const ERR_AUTH_TX_FEE_COLLECTOR_NOTE_MUST_CARRY_ONE_ASSET = "every note a fee collector account consumes must carry exactly one asset"
 
 # AUTH PROCEDURE
 # =================================================================================================
@@ -74,7 +75,7 @@ const ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET = "every note a pass-throu
 #!
 #! Invocation: call
 @auth_script
-pub proc auth_pass_through(auth_args: word)
+pub proc auth_tx_fee_collector(auth_args: AuthArgs)
     # => [AUTH_ARGS, pad(12)]
 
     # Forward the consumed notes' assets, if any notes were consumed.
@@ -111,7 +112,7 @@ pub proc auth_pass_through(auth_args: word)
         exec.active_account::get_vault_root
         # => [CURRENT_VAULT_ROOT, INITIAL_VAULT_ROOT, pad(16)]
 
-        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS
+        assert_eqw.err=ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_CREATED_WITH_ASSETS
         # => [pad(16)]
     else
         exec.native_account::get_initial_commitment
@@ -121,7 +122,7 @@ pub proc auth_pass_through(auth_args: word)
         # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
 
         # kernel would catch this, but we assert here for a clearer error
-        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED
+        assert_eqw.err=ERR_AUTH_TX_FEE_COLLECTOR_ACCOUNT_STATE_CHANGED
         # => [pad(16)]
     end
 
@@ -158,11 +159,11 @@ end
 #!
 #! Where:
 #! - num_input_notes is the number of input notes, at least 1.
-#! - AUTH_ARGS is [target_id_suffix, target_id_prefix, tag, note_type], see auth_pass_through.
+#! - AUTH_ARGS is [target_id_suffix, target_id_prefix, tag, note_type], see auth_tx_fee_collector.
 #!
 #! Panics if:
 #! - an input note does not carry exactly one asset.
-#! - the P2ID note cannot take an asset, see auth_pass_through.
+#! - the P2ID note cannot take an asset, see auth_tx_fee_collector.
 #!
 #! Invocation: exec
 @locals(8)
@@ -200,7 +201,7 @@ proc forward_note_assets
         dup locaddr.ASSET_LOC exec.input_note::remove_all_assets
         # => [num_assets, note_idx, num_input_notes, out_note_idx]
 
-        eq.1 assert.err=ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET
+        eq.1 assert.err=ERR_AUTH_TX_FEE_COLLECTOR_NOTE_MUST_CARRY_ONE_ASSET
         # => [note_idx, num_input_notes, out_note_idx]
 
         # and add it to the P2ID note
