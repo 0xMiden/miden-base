@@ -85,10 +85,10 @@ async fn tx_fee_note_assets_are_collected_by_account_code() -> anyhow::Result<()
                 # => [ASSET_ID, ASSET_VALUE, note_index, pad(7)]
 
                 exec.input_note::remove_asset dropw
-                # => [pad(16)]
+                # => [pad(7)]
 
                 locaddr.0 exec.asset::load exec.native_account::add_asset dropw
-                # => [pad(16)]
+                # => [pad(7)]
             end
             ",
         )?,
