@@ -245,7 +245,7 @@ The P2IDE note script extends P2ID with additional features including time-locki
 
 ### TX_FEE
 
-The TX_FEE note script is the canonical way for a transaction to pay its fee to a batch builder. It adds the note's remaining assets to the consuming account, without restricting who that account is.
+The TX_FEE note script is the canonical way for a transaction to pay its fee to a batch builder. It leaves the note's assets in place for the consuming account to collect, without restricting who that account is.
 
 **Key characteristics:**
 
@@ -254,8 +254,8 @@ The TX_FEE note script is the canonical way for a transaction to pay its fee to 
 - **Note type:** Always public
 - **Assets:** Carries one or more assets of the sender's choosing - the note is unopinionated about which assets are used to pay
 - **Tag:** The unique `0xFEE` tag. Its 18 least significant bits are non-zero, so it can never collide with a default account-target tag (those have their 18 least significant bits set to zero)
-- **Validation:** None - unlike P2ID, there is no target account check, so the note is consumable by any account. In practice, due to the fee incentives, only the batch builder that includes the transaction will actually consume it
-- **Requirements:** Consuming account must expose the `miden::standards::wallets::basic::receive_asset` procedure
+- **Validation:** None - unlike P2ID, there is no target account check, so any account may consume the note. In practice, due to the fee incentives, only the batch builder that includes the transaction will actually consume it
+- **Requirements:** Collection requires an account whose own code moves the note's assets out (removing them from the note is only possible from the account context); a transaction that does not account for them fails the kernel's asset conservation check
 
 **Use case:** Paying transaction fees to whichever account builds the batch, in any asset the batch builder accepts.
 
