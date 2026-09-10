@@ -841,7 +841,7 @@ end
 #! - `miden::standards::note::note_creator::create_note` procedure.
 #!
 #! Consumers: unrestricted - any account may fill the order and receive the offered asset in
-#!   exchange for the requested one, which is the point of a swap note
+#!   exchange for the requested one
 #!
 #! Inputs:  [NOTE_ARGS]
 #! Outputs: []
