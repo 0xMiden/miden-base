@@ -7,7 +7,7 @@ description: Use when a MASM procedure needs temporary scratch storage — keep 
 
 ## Rule
 
-When a MASM procedure needs scratch storage that lives only for the duration of one invocation, use procedure-local memory (`loc_store`, `loc_load`, `loc_storew`, `loc_loadw`) rather than allocating in a shared global memory region.
+When a MASM procedure needs scratch storage that lives only for the duration of one invocation, use procedure-local memory (`loc_store`, `loc_load`, `loc_storew_be` / `loc_loadw_be`, or the corresponding `_le` word forms) rather than allocating in a shared global memory region.
 
 Global memory regions are reserved for state that crosses procedure boundaries (kernel inputs, account data, advice-keyed state). Stashing per-call scratch there leaks an implementation detail into a shared namespace and ties the procedure to a fixed address.
 
@@ -21,6 +21,7 @@ Procedure locals are allocated and freed by the VM, so two callers of the same p
 
 ```masm
 # Good
+@locals(2)
 proc compute_hash
     # allocate two local slots
     loc_store.0

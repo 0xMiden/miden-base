@@ -14,7 +14,7 @@ Inline comments (single `#`) should begin with a lowercase letter.
 ```masm
 # good: lowercase start
 exec.native_account::remove_asset
-# => [ASSET, note_idx, pad(11)]
+# => [FINAL_ASSET_VALUE, note_idx, pad(11)]
 
 # Bad: uppercase start (avoid)
 # Remove the asset from the account
@@ -50,11 +50,16 @@ This pairs each stack state visually with the operation that produced it and let
 **Good:**
 
 ```masm
-exec.native_account::remove_asset
-# => [ASSET, note_idx, pad(11)]
+# => [ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
 
-dupw dup.8 movdn.4
-# => [ASSET, note_idx, ASSET, note_idx, pad(11)]
+dupw.1 dupw.1
+# => [ASSET_ID, ASSET_VALUE, ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
+
+exec.native_account::remove_asset
+# => [FINAL_ASSET_VALUE, ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
+
+dropw
+# => [ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
 ```
 
 **Also OK (no blank line before `end` or control flow):**
@@ -136,15 +141,18 @@ dup
 **Good:**
 
 ```masm
-# remove the asset from the account
-exec.native_account::remove_asset
-# => [ASSET, note_idx, pad(11)]
+# preserve the asset before removing it from the account
+dupw.1 dupw.1
+# => [ASSET_ID, ASSET_VALUE, ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
 
-dupw dup.8 movdn.4
-# => [ASSET, note_idx, ASSET, note_idx, pad(11)]
+exec.native_account::remove_asset
+# => [FINAL_ASSET_VALUE, ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
+
+dropw
+# => [ASSET_ID, ASSET_VALUE, note_idx, pad(7)]
 
 exec.output_note::add_asset
-# => [ASSET, note_idx, pad(11)]
+# => [pad(16)]
 ```
 
 **Avoid:**
