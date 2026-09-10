@@ -197,14 +197,8 @@ impl StandardNote {
         match self {
             Self::P2ID => NoteConsumers::TargetAccount,
             Self::P2IDE => NoteConsumers::CommittedAccounts,
-            Self::SWAP => NoteConsumers::Unrestricted {
-                rationale: "any account may take the offered asset in exchange for the requested \
-                            one, which is the point of a swap note",
-            },
-            Self::PSWAP => NoteConsumers::Unrestricted {
-                rationale: "any account may fill the order and receive the offered asset in \
-                            exchange for the requested one, which is the point of a swap note",
-            },
+            Self::SWAP => NoteConsumers::Unrestricted,
+            Self::PSWAP => NoteConsumers::Unrestricted,
             Self::MINT => NoteConsumers::TargetAccount,
             Self::BURN => NoteConsumers::TargetAccount,
             Self::CONSTANT_FEE_POLICY_CONFIG => NoteConsumers::TargetAccount,
@@ -217,15 +211,8 @@ impl StandardNote {
             Self::OWNER_CONFIG => NoteConsumers::TargetAccount,
             Self::RBAC_CONFIG => NoteConsumers::TargetAccount,
             Self::NETWORK_ACCOUNT_CONFIG => NoteConsumers::TargetAccount,
-            Self::FEE_SPONSORSHIP => NoteConsumers::Unrestricted {
-                rationale: "the note pays for one feature note and may only be consumed alongside \
-                            it, so consumption rights are inherited from that note; the reclaim \
-                            path is restricted to the reclaimer named in the note storage",
-            },
-            Self::TX_FEE => NoteConsumers::Unrestricted {
-                rationale: "the fee is claimed by whichever batch builder includes the \
-                            transaction, which is not known when the note is created",
-            },
+            Self::FEE_SPONSORSHIP => NoteConsumers::Unrestricted,
+            Self::TX_FEE => NoteConsumers::Unrestricted,
         }
     }
 

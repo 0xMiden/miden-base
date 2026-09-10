@@ -16,14 +16,14 @@ pub enum NoteConsumers {
     /// decides which of them a given consumption belongs to.
     CommittedAccounts,
 
-    /// Any account may consume the note.
-    Unrestricted { rationale: &'static str },
+    /// Any account may consume the note. The note script's `Consumers:` line says why.
+    Unrestricted,
 }
 
 impl NoteConsumers {
     /// Returns whether consumption is restricted to accounts the note commits to.
     pub const fn is_restricted(&self) -> bool {
-        !matches!(self, Self::Unrestricted { .. })
+        !matches!(self, Self::Unrestricted)
     }
 
     /// Returns the name of the rule, which is the class named on the note script's `Consumers:`
@@ -32,7 +32,7 @@ impl NoteConsumers {
         match self {
             Self::TargetAccount => "target account",
             Self::CommittedAccounts => "committed accounts",
-            Self::Unrestricted { .. } => "unrestricted",
+            Self::Unrestricted => "unrestricted",
         }
     }
 }
