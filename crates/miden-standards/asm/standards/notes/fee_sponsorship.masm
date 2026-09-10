@@ -1,3 +1,4 @@
+use {AccountId, BlockNumber, NoteArgs, NoteId, NoteRecipient, NoteSerialNumber, NoteTag, NoteType} from miden::protocol::types
 use miden::protocol::account_id
 use miden::protocol::active_account
 use miden::protocol::active_note
@@ -7,7 +8,6 @@ use miden::protocol::tx
 
 use miden::standards::wallets::basic as basic_wallet
 
-use {AccountId, BlockNumber, NoteRecipient, NoteId, NoteTag, NoteType} from miden::protocol::types
 
 # CONSTANTS
 # =================================================================================================
@@ -67,7 +67,7 @@ const ERR_FEE_SPONSORSHIP_RECLAIM_ACCT_IS_NOT_RECLAIMER = "failed to reclaim fee
 #! - reclaim is disabled.
 #! - the reclaim block height has not been reached.
 #! - the active account is not the note's reclaimer.
-proc reclaim_note
+proc reclaim_note(reclaim_block_height: BlockNumber, reclaimer_id: AccountId)
     dup neq.0 assert.err=ERR_FEE_SPONSORSHIP_RECLAIM_DISABLED
     # => [reclaim_block_height, reclaimer_id_suffix, reclaimer_id_prefix]
 
@@ -134,7 +134,7 @@ end
 #! - the note is reclaimed and the reclaiming account does not expose the
 #!   miden::standards::wallets::basic::receive_asset procedure.
 @note_script
-pub proc main
+pub proc main(note_args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -211,7 +211,7 @@ pub proc prepare_note(
     reclaim_block_height: BlockNumber,
     tag: NoteTag,
     note_type: NoteType,
-    serial_num: word
+    serial_num: NoteSerialNumber
 ) -> (NoteTag, NoteType, NoteRecipient)
     # store the 7 storage items into locals in the layout the note script expects
     loc_storew_le.FEATURE_NOTE_ID_ITEM dropw

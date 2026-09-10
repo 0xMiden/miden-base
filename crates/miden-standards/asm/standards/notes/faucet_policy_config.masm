@@ -1,3 +1,4 @@
+use {AccountProcedureRoot, NoteArgs} from miden::protocol::types
 use miden::protocol::active_note
 use miden::standards::attachments::network_account_target
 use miden::standards::faucets::policies::policy_manager
@@ -69,7 +70,7 @@ const ERR_FAUCET_POLICY_CONFIG_NOTE_IS_NOT_PUBLIC = "faucet policy config note m
 #! - the caller is not authorized per the installed `Authority` component, or the policy root is not
 #!   an allowed alternative (per the `TokenPolicyManager` procedures).
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -142,7 +143,7 @@ end
 #! - num_storage_items is not NUM_ITEMS_SET_POLICY.
 #!
 #! Invocation: exec
-proc load_policy_root_window
+proc load_policy_root_window(num_storage_items: u32) -> (AccountProcedureRoot, [felt; 12])
     eq.NUM_ITEMS_SET_POLICY
     assert.err=ERR_FAUCET_POLICY_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => []
@@ -164,7 +165,7 @@ end
 #!   allowed mint policy (per `policy_manager::set_mint_policy`).
 #!
 #! Invocation: exec
-proc execute_set_mint_policy
+proc execute_set_mint_policy(num_storage_items: u32)
     exec.load_policy_root_window
     # => [NEW_POLICY_ROOT, pad(12)]
 
@@ -186,7 +187,7 @@ end
 #!   allowed burn policy (per `policy_manager::set_burn_policy`).
 #!
 #! Invocation: exec
-proc execute_set_burn_policy
+proc execute_set_burn_policy(num_storage_items: u32)
     exec.load_policy_root_window
     # => [NEW_POLICY_ROOT, pad(12)]
 
@@ -208,7 +209,7 @@ end
 #!   allowed send policy (per `policy_manager::set_send_policy`).
 #!
 #! Invocation: exec
-proc execute_set_send_policy
+proc execute_set_send_policy(num_storage_items: u32)
     exec.load_policy_root_window
     # => [NEW_POLICY_ROOT, pad(12)]
 
@@ -230,7 +231,7 @@ end
 #!   allowed receive policy (per `policy_manager::set_receive_policy`).
 #!
 #! Invocation: exec
-proc execute_set_receive_policy
+proc execute_set_receive_policy(num_storage_items: u32)
     exec.load_policy_root_window
     # => [NEW_POLICY_ROOT, pad(12)]
 

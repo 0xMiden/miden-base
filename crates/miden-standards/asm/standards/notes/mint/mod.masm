@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 # miden::standards::notes::mint
 #
 # The MINT note script, which mints against both fungible and non-fungible faucets. This module
@@ -41,7 +42,7 @@ const ERR_MINT_UNSUPPORTED_FAUCET = "the consuming account exposes neither a fun
 #! - the number of storage items does not match the detected faucet kind.
 #! - the asset stored in the note does not belong to the consuming faucet.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
