@@ -21,6 +21,8 @@ There are two distinct quantities involved in paying a fee:
 
 Nothing at the protocol level validates the fee note. The authentication procedure (via `pay_fee`) is currently the only place the paid amount is checked against the computed fee.
 
+`pay_fee` takes a `serial_number_block` argument and passes it to `create_and_fund_fee_note` to derive the fee note's serial number. Multisig accounts pass the block bound by the signed summary; other standard auth components pass the execution reference block. This lets multisig approvals execute against a newer reference block when the account nonce, fee amount, and other signed effects remain unchanged. Fee computation and foreign account reads still use the execution reference block.
+
 ## How fees are paid
 
 - The account’s authentication procedure computes the fee via `compute_fee` and creates a TX_FEE note funded from the account’s vault with the native fee asset, before the transaction summary is created - so the fee note and the vault withdrawal are covered by the transaction signature. Standard auth components do this automatically via the pay_fee procedures in the `miden::standards::fee` module.
