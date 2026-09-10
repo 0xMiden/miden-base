@@ -1,4 +1,4 @@
-use {Approver, SignatureThreshold, ThresholdConfig} from miden::standards::types
+use {Approver} from miden::standards::auth::signature
 use {AccountProcedureRoot, BlockNumber} from miden::protocol::types
 # The MASM code of the Multi-Signature Authentication Component.
 #
@@ -14,6 +14,18 @@ use {ConversionInfo} from miden::standards::fee
 use miden::core::mem
 use miden::core::word
 use {ONE_WORD} from miden::standards::utils
+
+# Standard multisig components support at most 64 approvers.
+pub type SignatureThreshold = u8
+pub type MultisigConfig = struct {
+    threshold: SignatureThreshold,
+    num_approvers: u8,
+    padding: [felt; 2]
+}
+pub type ThresholdConfig = struct {
+    threshold: SignatureThreshold,
+    num_approvers: u8
+}
 
 # Local Memory Addresses
 const IS_SIGNER_FOUND_LOC=0

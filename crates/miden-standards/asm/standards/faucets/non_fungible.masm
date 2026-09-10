@@ -1,4 +1,4 @@
-use {TokenId, TokenStatus, TokenStatusValue, TokenSymbol} from miden::standards::types
+use {TokenSymbol} from miden::standards::faucets
 use {Asset, NoteRecipient, NoteTag, NoteType, StorageMapKey} from miden::protocol::types
 # miden::standards::faucets::non_fungible
 #
@@ -39,6 +39,13 @@ use miden::protocol::native_account
 use miden::protocol::output_note
 use miden::standards::assets::non_fungible_asset
 use miden::standards::faucets::policies::policy_manager
+
+pub type TokenId = struct { suffix: felt, prefix: felt }
+pub type TokenStatus = u8
+pub type TokenStatusValue = struct {
+    status: TokenStatus,
+    padding: [felt; 3]
+}
 
 # =================================================================================================
 # CONSTANTS — slot names

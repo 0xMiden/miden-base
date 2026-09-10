@@ -8,7 +8,7 @@ use {
     StorageMapKey,
     StorageSlotId,
 } from miden::protocol_utils::types
-use {AccountData, Digest, StorageSlot} from miden::tx_kernel_core::types
+use {AccountData, Commitment, StorageSlot} from miden::tx_kernel_core::types
 use miden::tx_kernel_core::account_update
 use miden::protocol_utils::account_id
 use miden::tx_kernel_core::asset_vault
@@ -298,7 +298,7 @@ pub use {get_init_account_commitment as get_initial_commitment} from miden::tx_k
 #!
 #! Where:
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
-pub proc compute_commitment() -> Digest
+pub proc compute_commitment() -> Commitment
     # if outdated, recompute the storage commitment and store it in the memory
     exec.refresh_storage_commitment
     # => []
@@ -339,7 +339,7 @@ pub use {get_init_account_storage_commitment as get_initial_storage_commitment}
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the commitment of the active account storage.
-pub proc compute_storage_commitment() -> Digest
+pub proc compute_storage_commitment() -> Commitment
     # if outdated, recompute the storage commitment and store it in the memory
     exec.refresh_storage_commitment
 
@@ -1274,7 +1274,7 @@ end
 #! Panics if:
 #! - the number of account storage slots exceeded the maximum limit of 255.
 #! - the computed account storage commitment does not match the provided account storage commitment.
-pub proc save_account_storage_data(storage_commitment: Digest)
+pub proc save_account_storage_data(storage_commitment: Commitment)
     # move storage slot data from the advice map to the advice stack
     adv.push_mapvaln
     # OS => [STORAGE_COMMITMENT]
@@ -1344,7 +1344,7 @@ end
 #! Panics if:
 #! - the number of account procedures exceeded the maximum limit of 256.
 #! - the computed account code commitment does not match the provided account code commitment.
-pub proc save_account_procedure_data(code_commitment: Digest)
+pub proc save_account_procedure_data(code_commitment: Commitment)
     # move procedure data from the advice map to the advice stack
     adv.push_mapvaln
     # OS => [CODE_COMMITMENT]
@@ -2046,7 +2046,7 @@ end
 #!
 #! Inputs:  [KEY]
 #! Outputs: [HASHED_KEY]
-proc hash_map_key(key: StorageMapKey) -> Digest
+proc hash_map_key(key: StorageMapKey) -> Commitment
     exec.poseidon2::hash
     # => [HASHED_KEY]
 end
@@ -2249,7 +2249,7 @@ end
 #! Where:
 #! - account_id_{suffix,prefix} are the suffix and prefix felts of the account ID.
 #! - ACCOUNT_ID_KEY is the key word built from the provided account ID.
-proc create_id_key(account_id: AccountId) -> Digest
+proc create_id_key(account_id: AccountId) -> Commitment
     push.0.0
     # => [0, 0, account_id_suffix, account_id_prefix]
     # => [ACCOUNT_ID_KEY]

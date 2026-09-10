@@ -1,5 +1,5 @@
 use {AccountId, BlockNumber} from miden::protocol_utils::types
-use {Digest} from miden::tx_kernel_core::types
+use {Commitment} from miden::tx_kernel_core::types
 use miden::core::word
 
 use miden::tx_kernel_core::epilogue
@@ -73,7 +73,7 @@ const EPILOGUE_END_EVENT = event("miden::protocol::tx::epilogue_end")
 #!   patch commitment.
 #! - tx_expiration_block_num is the transaction expiration block number.
 @locals(1)
-proc main(block_commitment: Digest, initial_account_commitment: Digest, input_notes_commitment: Digest, account_id: AccountId, block_num: BlockNumber, padding: [felt; 1]) -> (Digest, Digest, BlockNumber, [felt; 7])
+proc main(block_commitment: Commitment, initial_account_commitment: Commitment, input_notes_commitment: Commitment, account_id: AccountId, block_num: BlockNumber, padding: [felt; 1]) -> (Commitment, Commitment, BlockNumber, [felt; 7])
     # Prologue
     # ---------------------------------------------------------------------------------------------
     emit.PROLOGUE_START_EVENT

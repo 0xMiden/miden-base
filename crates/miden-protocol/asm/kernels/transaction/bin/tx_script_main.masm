@@ -1,4 +1,4 @@
-use {Digest} from miden::tx_kernel_core::types
+use {Commitment} from miden::tx_kernel_core::types
 use {AccountId, BlockNumber} from miden::protocol_utils::types
 use miden::core::word
 
@@ -37,9 +37,9 @@ const ERR_TX_TRANSACTION_SCRIPT_IS_MISSING = "the transaction script is missing"
 #! - INITIAL_ACCOUNT_COMMITMENT is the account state prior to the transaction, EMPTY_WORD for new accounts.
 #! - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
 proc main(
-    block_commitment: Digest,
-    initial_account_commitment: Digest,
-    input_notes_commitment: Digest,
+    block_commitment: Commitment,
+    initial_account_commitment: Commitment,
+    input_notes_commitment: Commitment,
     account_id: AccountId,
     block_num: BlockNumber,
     padding: [felt; 1]

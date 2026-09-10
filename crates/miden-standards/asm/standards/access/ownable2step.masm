@@ -1,4 +1,3 @@
-use {OwnershipInfo} from miden::standards::types
 use {AccountId, Bool} from miden::protocol::types
 # miden::standards::access::ownable2step
 #
@@ -33,6 +32,11 @@ use miden::protocol::account_id
 use miden::protocol::active_note
 use miden::protocol::native_account
 use {ZERO_WORD} from miden::standards::utils
+
+pub type OwnershipInfo = struct {
+    owner: AccountId,
+    nominated_owner: AccountId
+}
 
 # CONSTANTS
 # =================================================================================================

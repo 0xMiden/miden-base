@@ -1,5 +1,9 @@
-use {ExpirationArgs} from miden::standards::types
 use miden::protocol::tx
+
+pub type ExpirationArgs = struct {
+    delta: u16,
+    padding: [felt; 3]
+}
 
 #! Set the transaction's expiration delta.
 #!

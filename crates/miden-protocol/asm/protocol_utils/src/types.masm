@@ -20,6 +20,9 @@ pub type NoteMetadata = word
 pub type NoteScriptRoot = word
 pub type TransactionScriptRoot = word
 
+#! Commitment to a block header.
+pub type BlockCommitment = word
+
 # Full asset: the asset ID (an AssetId) on top of the stack, the asset value (an AssetValue)
 # below it.
 pub type Asset = struct {
@@ -31,7 +34,11 @@ pub type Asset = struct {
 pub type Bool = i1
 pub type AssetAmount = felt
 pub type NoteTag = u32
-pub type NoteType = u8
+# Discriminants match the Rust NoteType representation.
+pub enum NoteType : u8 {
+    PRIVATE = 0,
+    PUBLIC = 1,
+}
 pub type BlockNumber = u32
 
 pub type DoubleWord = struct { lo: word, hi: word }
@@ -39,7 +46,12 @@ pub type DoubleWord = struct { lo: word, hi: word }
 # Asset class identifier and compact asset metadata fields.
 pub type AssetClass = struct { suffix: felt, prefix: felt }
 pub type AssetMetadata = u8
-pub type AssetComposition = u8
+# Discriminants match the Rust AssetComposition representation, including reserved custom logic.
+pub enum AssetComposition : u8 {
+    NONE = 0,
+    FUNGIBLE = 1,
+    CUSTOM = 2,
+}
 
 # Commitments to note data.
 pub type NoteAssetsCommitment = word

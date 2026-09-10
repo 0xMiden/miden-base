@@ -20,7 +20,7 @@ use {
 use {
     AccountData,
     AccountMetadata,
-    Digest,
+    Commitment,
     InputNoteData,
     LinkMapEntry,
     OutputNoteData,
@@ -433,7 +433,7 @@ end
 #!
 #! Where:
 #! - INPUT_VAULT_ROOT is the input vault root.
-pub proc get_input_vault_root() -> Digest
+pub proc get_input_vault_root() -> Commitment
     padw mem_loadw_le.INPUT_VAULT_ROOT_PTR
 end
 
@@ -444,7 +444,7 @@ end
 #!
 #! Where:
 #! - INPUT_VAULT_ROOT is the input vault root.
-pub proc set_input_vault_root(input_vault_root: Digest) -> Digest
+pub proc set_input_vault_root(input_vault_root: Commitment) -> Commitment
     mem_storew_le.INPUT_VAULT_ROOT_PTR
 end
 
@@ -455,7 +455,7 @@ end
 #!
 #! Where:
 #! - OUTPUT_VAULT_ROOT is the output vault root.
-pub proc get_output_vault_root() -> Digest
+pub proc get_output_vault_root() -> Commitment
     padw mem_loadw_le.OUTPUT_VAULT_ROOT_PTR
 end
 
@@ -466,7 +466,7 @@ end
 #!
 #! Where:
 #! - OUTPUT_VAULT_ROOT is the output vault root.
-pub proc set_output_vault_root(output_vault_root: Digest) -> Digest
+pub proc set_output_vault_root(output_vault_root: Commitment) -> Commitment
     mem_storew_le.OUTPUT_VAULT_ROOT_PTR
 end
 
@@ -526,7 +526,7 @@ end
 #!
 #! Where:
 #! - BLOCK_COMMITMENT is the commitment of the transaction reference block.
-pub proc set_block_commitment(block_commitment: Digest) -> Digest
+pub proc set_block_commitment(block_commitment: Commitment) -> Commitment
     mem_storew_le.BLOCK_COMMITMENT_PTR
 end
 
@@ -537,7 +537,7 @@ end
 #!
 #! Where:
 #! - BLOCK_COMMITMENT is the commitment of the transaction reference block.
-pub proc get_ref_block_commitment() -> Digest
+pub proc get_ref_block_commitment() -> Commitment
     padw mem_loadw_le.BLOCK_COMMITMENT_PTR
 end
 
@@ -574,7 +574,7 @@ end
 #!
 #! Where:
 #! - INIT_ACCOUNT_COMMITMENT is the initial account commitment.
-pub proc set_init_account_commitment(init_account_commitment: Digest) -> Digest
+pub proc set_init_account_commitment(init_account_commitment: Commitment) -> Commitment
     mem_storew_le.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
@@ -585,7 +585,7 @@ end
 #!
 #! Where:
 #! - INIT_ACCOUNT_COMMITMENT is the initial account commitment.
-pub proc get_init_account_commitment() -> Digest
+pub proc get_init_account_commitment() -> Commitment
     padw mem_loadw_le.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
@@ -618,7 +618,7 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
-pub proc set_init_native_account_vault_root(init_native_account_vault_root: Digest) -> Digest
+pub proc set_init_native_account_vault_root(init_native_account_vault_root: Commitment) -> Commitment
     mem_storew_le.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
@@ -629,7 +629,7 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
-pub proc get_init_native_account_vault_root() -> Digest
+pub proc get_init_native_account_vault_root() -> Commitment
     padw mem_loadw_le.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
@@ -642,7 +642,7 @@ end
 #! Where:
 #! - native_account_initial_vault_root_ptr is the memory pointer to the initial vault root of the
 #!   native account.
-pub proc get_init_native_account_vault_root_ptr() -> ptr<Digest>
+pub proc get_init_native_account_vault_root_ptr() -> ptr<Commitment>
     push.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
@@ -654,8 +654,8 @@ end
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
 pub proc set_init_account_storage_commitment(
-    init_native_account_storage_commitment: Digest
-) -> Digest
+    init_native_account_storage_commitment: Commitment
+) -> Commitment
     mem_storew_le.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
 end
 
@@ -666,7 +666,7 @@ end
 #!
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
-pub proc get_init_account_storage_commitment() -> Digest
+pub proc get_init_account_storage_commitment() -> Commitment
     padw mem_loadw_le.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
 end
 
@@ -679,7 +679,7 @@ end
 #!
 #! Where:
 #! - INPUT_NOTES_COMMITMENT is the input notes commitment.
-pub proc get_input_notes_commitment() -> Digest
+pub proc get_input_notes_commitment() -> Commitment
     padw mem_loadw_le.INPUT_NOTES_COMMITMENT_PTR
 end
 
@@ -690,7 +690,7 @@ end
 #!
 #! Where:
 #! - INPUT_NOTES_COMMITMENT is the notes' commitment.
-pub proc set_nullifier_commitment(input_notes_commitment: Digest) -> Digest
+pub proc set_nullifier_commitment(input_notes_commitment: Commitment) -> Commitment
     mem_storew_le.INPUT_NOTES_COMMITMENT_PTR
 end
 
@@ -773,7 +773,7 @@ end
 #!
 #! Where:
 #! - PREV_BLOCK_COMMITMENT_PTR is the block commitment of the transaction reference block.
-pub proc get_prev_block_commitment() -> Digest
+pub proc get_prev_block_commitment() -> Commitment
     padw mem_loadw_le.PREV_BLOCK_COMMITMENT_PTR
 end
 
@@ -840,7 +840,7 @@ end
 #!
 #! Where:
 #! - CHAIN_COMMITMENT is the chain commitment of the transaction reference block.
-pub proc get_chain_commitment() -> Digest
+pub proc get_chain_commitment() -> Commitment
     padw mem_loadw_le.CHAIN_COMMITMENT_PTR
 end
 
@@ -851,7 +851,7 @@ end
 #!
 #! Where:
 #! - ACCT_DB_ROOT is the account database root of the transaction reference block.
-pub proc get_account_db_root() -> Digest
+pub proc get_account_db_root() -> Commitment
     padw mem_loadw_le.ACCT_DB_ROOT_PTR
 end
 
@@ -862,7 +862,7 @@ end
 #!
 #! Where:
 #! - NULLIFIER_ROOT is the nullifier root of the transaction reference block.
-pub proc get_nullifier_db_root() -> Digest
+pub proc get_nullifier_db_root() -> Commitment
     padw mem_loadw_le.NULLIFIER_ROOT_PTR
 end
 
@@ -873,7 +873,7 @@ end
 #!
 #! Where:
 #! - TX_COMMITMENT is the tx commitment of the transaction reference block.
-pub proc get_tx_commitment() -> Digest
+pub proc get_tx_commitment() -> Commitment
     padw mem_loadw_le.TX_COMMITMENT_PTR
 end
 
@@ -884,7 +884,7 @@ end
 #!
 #! Where:
 #! - PROTOCOL_CONFIG_COMMITMENT is the commitment to the chain's protocol config.
-pub proc get_protocol_config_commitment() -> Digest
+pub proc get_protocol_config_commitment() -> Commitment
     padw mem_loadw_le.PROTOCOL_CONFIG_COMMITMENT_PTR
 end
 
@@ -896,7 +896,7 @@ end
 #! Where:
 #! - TX_KERNEL_CONFIG_COMMITMENT is the commitment to the transaction kernel's main procedure root
 #!   and its exposed procedure roots.
-pub proc get_tx_kernel_config_commitment() -> Digest
+pub proc get_tx_kernel_config_commitment() -> Commitment
     padw mem_loadw_le.TX_KERNEL_CONFIG_COMMITMENT_PTR
 end
 
@@ -907,7 +907,7 @@ end
 #!
 #! Where:
 #! - NOTE_ROOT is the note root of the transaction reference block.
-pub proc get_note_root() -> Digest
+pub proc get_note_root() -> Commitment
     padw mem_loadw_le.NOTE_ROOT_PTR
 end
 
@@ -918,7 +918,7 @@ end
 #!
 #! Where:
 #! - NOTE_ROOT is the note root of the transaction reference block.
-pub proc set_note_root(note_root: Digest) -> Digest
+pub proc set_note_root(note_root: Commitment) -> Commitment
     mem_storew_le.NOTE_ROOT_PTR
 end
 
@@ -1199,7 +1199,7 @@ end
 #!
 #! Where:
 #! - account_vault_root_ptr is the memory pointer to the account asset vault root.
-pub proc get_account_vault_root_ptr() -> ptr<Digest>
+pub proc get_account_vault_root_ptr() -> ptr<Commitment>
     exec.get_active_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
 end
 
@@ -1210,7 +1210,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the account asset vault root.
-pub proc get_account_vault_root() -> Digest
+pub proc get_account_vault_root() -> Commitment
     padw
     exec.get_active_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_loadw_le
@@ -1223,7 +1223,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the account vault root to be set.
-pub proc set_account_vault_root(acct_vault_root: Digest) -> Digest
+pub proc set_account_vault_root(acct_vault_root: Commitment) -> Commitment
     exec.get_active_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_storew_le
 end
@@ -1235,7 +1235,7 @@ end
 #!
 #! Where:
 #! - account_vault_root_ptr is the memory pointer to the native account's asset vault root.
-pub proc get_native_account_vault_root_ptr() -> ptr<Digest>
+pub proc get_native_account_vault_root_ptr() -> ptr<Commitment>
     push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_VAULT_ROOT_OFFSET
 end
 
@@ -1246,7 +1246,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the native account's asset vault root.
-pub proc get_native_account_vault_root() -> Digest
+pub proc get_native_account_vault_root() -> Commitment
     padw exec.get_native_account_vault_root_ptr mem_loadw_le
 end
 
@@ -1259,7 +1259,7 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the code commitment of the account.
-pub proc get_account_code_commitment() -> Digest
+pub proc get_account_code_commitment() -> Commitment
     padw
     exec.get_active_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_loadw_le
@@ -1272,7 +1272,7 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the code commitment to be set.
-pub proc set_account_code_commitment(code_commitment: Digest) -> Digest
+pub proc set_account_code_commitment(code_commitment: Commitment) -> Commitment
     exec.get_active_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_storew_le
 end
@@ -1353,7 +1353,7 @@ end
 #! Where:
 #! - proc_idx is the index of the account procedure.
 #! - proc_ptr is the memory pointer to the account procedure at the specified index.
-pub proc get_account_procedure_ptr(proc_idx: u8) -> ptr<AccountProcedureRoot>
+pub proc get_account_procedure_ptr(proc_idx: u16) -> ptr<AccountProcedureRoot>
     mul.ACCOUNT_PROCEDURE_DATA_LENGTH exec.get_account_procedures_section_ptr add
 end
 
@@ -1366,7 +1366,7 @@ end
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
-pub proc get_account_storage_commitment() -> Digest
+pub proc get_account_storage_commitment() -> Commitment
     padw
     exec.get_active_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_loadw_le
@@ -1379,7 +1379,7 @@ end
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
-pub proc set_account_storage_commitment(storage_commitment: Digest) -> Digest
+pub proc set_account_storage_commitment(storage_commitment: Commitment) -> Commitment
     exec.get_active_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_storew_le
 end
@@ -1391,7 +1391,7 @@ end
 #!
 #! Where:
 #! - CODE_UPGRADE_COMMITMENT is the commitment to the account code upgrade.
-pub proc set_code_upgrade_commitment(code_upgrade_commitment: Digest)
+pub proc set_code_upgrade_commitment(code_upgrade_commitment: Commitment)
     mem_storew_le.CODE_UPGRADE_COMMITMENT_PTR dropw
 end
 
@@ -1402,7 +1402,7 @@ end
 #!
 #! Where:
 #! - STORAGE_UPGRADE_COMMITMENT is the commitment to the account storage upgrade.
-pub proc set_storage_upgrade_commitment(storage_upgrade_commitment: Digest)
+pub proc set_storage_upgrade_commitment(storage_upgrade_commitment: Commitment)
     mem_storew_le.STORAGE_UPGRADE_COMMITMENT_PTR dropw
 end
 
@@ -1592,8 +1592,8 @@ end
 #! - NOTE_DETAILS_COMMITMENT is the commitment to the note's details.
 pub proc set_input_note_details_commitment(
     note_ptr: ptr<InputNoteData>,
-    note_details_commitment: Digest
-) -> Digest
+    note_details_commitment: Commitment
+) -> Commitment
     mem_storew_le
 end
 
@@ -1632,7 +1632,7 @@ end
 #! Where:
 #! - idx is the index of the input note.
 #! - NULLIFIER is the nullifier of the input note.
-pub proc set_input_note_nullifier(idx: u16, nullifier: Digest) -> Digest
+pub proc set_input_note_nullifier(idx: u16, nullifier: Commitment) -> Commitment
     mul.4 add.INPUT_NOTE_NULLIFIER_SECTION_PTR mem_storew_le
 end
 

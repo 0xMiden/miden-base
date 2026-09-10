@@ -32,7 +32,7 @@ const NO_AUTH_POST_FEE_CYCLES = 1024
 #!
 #! Invocation: call
 @auth_script
-pub proc auth_no_auth(auth_args: AuthArgs, padding: [felt; 12]) -> [felt; 16]
+pub proc auth_no_auth(auth_args: AuthArgs)
     dropw
     # => [pad(16)]
 

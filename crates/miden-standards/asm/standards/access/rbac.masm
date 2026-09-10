@@ -1,4 +1,4 @@
-use {RoleConfig, RoleMemberCount, RoleSymbol} from miden::standards::types
+use {RoleSymbol} from miden::standards::access::role_symbol
 use {AccountId, Bool} from miden::protocol::types
 # miden::standards::access::rbac
 #
@@ -44,6 +44,13 @@ use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::protocol::native_account
 use miden::standards::access::role_symbol
+
+# Membership counts are field elements; the role map does not impose a u32 bound.
+pub type RoleMemberCount = felt
+pub type RoleConfig = struct {
+    member_count: RoleMemberCount,
+    admin: RoleSymbol
+}
 
 # CONSTANTS
 # =================================================================================================

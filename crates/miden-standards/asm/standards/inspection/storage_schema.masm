@@ -1,9 +1,10 @@
-use {StorageSchemaCommitment} from miden::standards::types
 # This module defines the storage schema functionality for accounts. It exposes the storage
 # slot at which an account stores a commitment to its storage schema, and provides a helper
 # procedure to load that commitment from the active account's storage.
 
 use miden::protocol::active_account
+
+pub type StorageSchemaCommitment = word
 
 # CONSTANTS
 # =================================================================================================

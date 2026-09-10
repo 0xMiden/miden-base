@@ -19,6 +19,7 @@ pub use {
     NoteTag,
     NoteType,
     BlockNumber,
+    BlockCommitment,
     DoubleWord,
     AssetClass,
     AssetMetadata,

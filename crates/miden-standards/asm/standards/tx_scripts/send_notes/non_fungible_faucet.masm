@@ -1,4 +1,4 @@
-use {SendNotesPayloadCommitment} from miden::standards::types
+use {SendNotesPayloadCommitment} from miden::standards::tx_scripts::send_notes
 # The canonical `send_notes` transaction script for accounts exposing the non-fungible faucet
 # interface.
 #

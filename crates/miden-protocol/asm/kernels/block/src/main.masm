@@ -1,4 +1,11 @@
-type Digest = word
+use {BlockCommitment} from miden::protocol_utils::types
+
+#! Sequential commitment to the ordered batch IDs in a block.
+type BatchesCommitment = word
+
+#! Commitment to the nullifiers created in a block.
+type NullifierCommitment = word
+
 # MAIN
 # =================================================================================================
 
@@ -22,7 +29,7 @@ type Digest = word
 #! - NULLIFIER_COMMITMENT is the commitment to the set of nullifiers created in this block. In
 #!   this skeleton it is the empty word.
 #!
-proc main(prev_block_commitment: Digest, batches_commitment: Digest, padding: [felt; 8]) -> (Digest, Digest, [felt; 8])
+proc main(prev_block_commitment: BlockCommitment, batches_commitment: BatchesCommitment, padding: [felt; 8]) -> (BlockCommitment, NullifierCommitment, [felt; 8])
     dropw dropw
     # => [pad(16)]
 end

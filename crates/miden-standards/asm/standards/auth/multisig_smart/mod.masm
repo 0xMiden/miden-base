@@ -1,4 +1,4 @@
-use {ProcedurePolicy, SignatureThreshold} from miden::standards::types
+use {SignatureThreshold} from miden::standards::auth::multisig
 use {AccountProcedureRoot, BlockNumber, Bool} from miden::protocol::types
 use miden::protocol::active_account
 use miden::protocol::native_account
@@ -10,6 +10,12 @@ use {APPROVER_SCHEME_ID_SLOT} from miden::standards::auth::multisig
 use {THRESHOLD_CONFIG_SLOT} from miden::standards::auth::multisig
 use miden::standards::auth::signature
 use miden::standards::auth::tx_policy
+
+pub type ProcedurePolicy = struct {
+    immediate: SignatureThreshold,
+    delayed: SignatureThreshold,
+    note_restrictions: u8
+}
 
 # STORAGE SLOTS
 # =================================================================================================

@@ -1,4 +1,4 @@
-use {Commitment, MetadataStringCommitment, MutabilityConfig, TokenName} from miden::standards::types
+use {Commitment} from miden::standards::types
 use {Bool} from miden::protocol::types
 # miden::standards::faucets
 #
@@ -14,6 +14,16 @@ use miden::protocol::active_account
 use miden::protocol::native_account
 use miden::standards::access::authority
 use miden::standards::access::pausable
+
+pub type TokenSymbol = felt
+pub type MutabilityConfig = struct {
+    description: Bool,
+    logo_uri: Bool,
+    external_link: Bool,
+    max_supply: Bool
+}
+pub type TokenName = struct { first: word, second: word }
+pub type MetadataStringCommitment = word
 
 pub mod fungible
 pub mod non_fungible

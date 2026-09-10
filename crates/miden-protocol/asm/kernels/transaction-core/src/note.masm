@@ -1,5 +1,5 @@
 use {NoteArgs, NoteScriptRoot} from miden::protocol_utils::types
-use {Digest, InputNoteData, OutputNoteData} from miden::tx_kernel_core::types
+use {Commitment, InputNoteData, OutputNoteData} from miden::tx_kernel_core::types
 use miden::core::crypto::hashes::poseidon2
 
 use {ASSET_SIZE} from miden::tx_kernel_core::asset
@@ -96,7 +96,7 @@ end
 #! Where:
 #! - note_ptr is a pointer to the data section of the output note.
 #! - ATTACHMENTS_COMMITMENT is the commitment of the note's attachments.
-pub proc compute_attachments_commitment(note_ptr: ptr<OutputNoteData>) -> Digest
+pub proc compute_attachments_commitment(note_ptr: ptr<OutputNoteData>) -> Commitment
     dup exec.memory::get_output_note_num_attachments
     # => [num_attachments, note_ptr]
 
@@ -126,7 +126,7 @@ end
 #! Where:
 #! - note_data_ptr is a pointer to the data section of the output note.
 #! - ASSETS_COMMITMENT is the commitment of the assets of the output note located at note_data_ptr.
-pub proc compute_output_note_assets_commitment(note_data_ptr: ptr<OutputNoteData>) -> Digest
+pub proc compute_output_note_assets_commitment(note_data_ptr: ptr<OutputNoteData>) -> Commitment
     # get the assets commitment dirty flag and decide whether we need to recompute the commitment
     dup exec.memory::get_output_note_dirty_flag
     # => [dirty_flag, note_data_ptr]
@@ -179,7 +179,7 @@ end
 #! Where:
 #! - note_data_ptr is a pointer to the data section of the output note.
 #! - NOTE_DETAILS_COMMITMENT is the commitment to the note's details.
-proc compute_output_note_details_commitment(note_data_ptr: ptr<OutputNoteData>) -> Digest
+proc compute_output_note_details_commitment(note_data_ptr: ptr<OutputNoteData>) -> Commitment
     # compute assets commitment
     dup exec.compute_output_note_assets_commitment
     # => [ASSETS_COMMITMENT, note_data_ptr]
@@ -204,7 +204,7 @@ end
 #!
 #! Where:
 #! - OUTPUT_NOTES_COMMITMENT is the commitment to the notes output by the transaction.
-pub proc compute_output_notes_commitment() -> Digest
+pub proc compute_output_notes_commitment() -> Commitment
     # get the number of output notes from memory
     exec.memory::get_num_output_notes
     # => [num_notes]

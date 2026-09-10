@@ -1,4 +1,4 @@
-use {TokenConfig, TokenSymbol} from miden::standards::types
+use {TokenSymbol} from miden::standards::faucets
 use {Asset, AssetAmount, Bool, NoteRecipient, NoteTag, NoteType} from miden::protocol::types
 # miden::standards::faucets::fungible
 #
@@ -19,6 +19,13 @@ use miden::standards::assets::fungible_asset
 use miden::standards::faucets::policies::policy_manager
 use miden::standards::faucets
 use miden::standards::access::pausable
+
+pub type TokenConfig = struct {
+    supply: AssetAmount,
+    max_supply: AssetAmount,
+    decimals: u8,
+    symbol: TokenSymbol
+}
 
 # =================================================================================================
 # CONSTANTS — slot names

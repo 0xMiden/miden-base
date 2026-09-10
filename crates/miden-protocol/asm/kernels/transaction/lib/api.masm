@@ -17,7 +17,7 @@ use {
     StorageSlotId,
     TransactionScriptRoot,
 } from miden::protocol_utils::types
-use {Digest, InputNoteData} from miden::tx_kernel_core::types
+use {Commitment, InputNoteData} from miden::tx_kernel_core::types
 use miden::tx_kernel_core::asset
 use miden::tx_kernel_core::account
 use miden::tx_kernel_core::account_update
@@ -141,7 +141,7 @@ end
 #! - the current active account is not the native account of the transaction.
 #!
 #! Invocation: dynexec
-pub proc account_get_initial_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_get_initial_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
 
@@ -170,7 +170,7 @@ end
 #! - the invocation of this procedure does not originate from the account context.
 #!
 #! Invocation: dynexec
-pub proc account_compute_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_compute_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [pad(16)]
@@ -207,7 +207,7 @@ end
 #! - the vault delta or storage patch is not empty but the nonce increment is zero.
 #!
 #! Invocation: dynexec
-pub proc account_compute_delta_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_compute_delta_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # These two checks are strictly redundant here: a non-empty delta requires the nonce to be
     # incremented, which is already gated to the auth procedure, and an empty delta only ever
     # commits to the (public) empty word. We keep them for consistency with the other account
@@ -240,7 +240,7 @@ end
 #! - the current active account is not the native account of the transaction.
 #!
 #! Invocation: dynexec
-pub proc account_upgrade(code_upgrade_commitment: Digest, storage_upgrade_commitment: Digest, padding: [felt; 8]) -> [felt; 16]
+pub proc account_upgrade(code_upgrade_commitment: Commitment, storage_upgrade_commitment: Commitment, padding: [felt; 8]) -> [felt; 16]
     # TODO(code_upgrades): Account upgrades must ensure the same conditions hold for an upgraded
     # account as validated in account::{validate_storage, validate_procedures}.
     # The same applies to the asset callback rule validated in
@@ -381,7 +381,7 @@ end
 #! - CODE_COMMITMENT is the commitment of the account code.
 #!
 #! Invocation: dynexec
-pub proc account_get_code_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_get_code_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # assert that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [pad(16)]
@@ -408,7 +408,7 @@ end
 #! - the current active account is not the native account of the transaction.
 #!
 #! Invocation: dynexec
-pub proc account_get_initial_storage_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_get_initial_storage_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
 
@@ -434,7 +434,7 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: dynexec
-pub proc account_compute_storage_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_compute_storage_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [pad(16)]
@@ -652,7 +652,7 @@ end
 #! - the current active account is not the native account of the transaction.
 #!
 #! Invocation: dynexec
-pub proc account_get_initial_vault_root(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_get_initial_vault_root(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
 
@@ -681,7 +681,7 @@ end
 #! - the invocation of this procedure does not originate from the account context.
 #!
 #! Invocation: dynexec
-pub proc account_get_vault_root(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc account_get_vault_root(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
     # => [pad(16)]
@@ -1405,7 +1405,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-pub proc input_note_get_storage_info(is_active_note: Bool, note_index: u16, padding: [felt; 14]) -> (Digest, u16, [felt; 11])
+pub proc input_note_get_storage_info(is_active_note: Bool, note_index: u16, padding: [felt; 14]) -> (Commitment, u16, [felt; 11])
     # get the input note pointer depending on whether the requested note is current or it was
     # requested by index.
     exec.get_requested_note_ptr
@@ -1489,7 +1489,7 @@ end
 #!   attachments from incorrect context).
 #!
 #! Invocation: dynexec
-pub proc input_note_get_attachments_commitment(is_active_note: Bool, note_index: u16, padding: [felt; 14]) -> (Digest, [felt; 12])
+pub proc input_note_get_attachments_commitment(is_active_note: Bool, note_index: u16, padding: [felt; 14]) -> (Commitment, [felt; 12])
     # get the input note pointer depending on whether the requested note is current or it was
     # requested by index.
     exec.get_requested_note_ptr
@@ -1644,7 +1644,7 @@ end
 #! - the note index is greater or equal to the total number of output notes.
 #!
 #! Invocation: dynexec
-pub proc output_note_get_attachments_commitment(note_index: u16, padding: [felt; 15]) -> (Digest, [felt; 12])
+pub proc output_note_get_attachments_commitment(note_index: u16, padding: [felt; 15]) -> (Commitment, [felt; 12])
     # assert that the provided note index is less than the total number of output notes
     exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
@@ -1738,7 +1738,7 @@ end
 #! - INPUT_NOTES_COMMITMENT is the input notes commitment hash.
 #!
 #! Invocation: dynexec
-pub proc tx_get_input_notes_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc tx_get_input_notes_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     exec.tx::get_input_notes_commitment
     # => [INPUT_NOTES_COMMITMENT, pad(16)]
 
@@ -1757,7 +1757,7 @@ end
 #! - OUTPUT_NOTES_COMMITMENT is the output notes commitment.
 #!
 #! Invocation: dynexec
-pub proc tx_get_output_notes_commitment(padding: [felt; 16]) -> (Digest, [felt; 12])
+pub proc tx_get_output_notes_commitment(padding: [felt; 16]) -> (Commitment, [felt; 12])
     # get the output notes commitment
     exec.tx::get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, pad(16)]
@@ -1838,7 +1838,7 @@ end
 #! - fee_amount is the computed fee amount of the transaction in the fee asset.
 #!
 #! Invocation: dynexec
-pub proc tx_compute_fee(num_extra_cycles: u32, exclude_notes_commitment: Digest, padding: [felt; 11]) -> (felt, [felt; 15])
+pub proc tx_compute_fee(num_extra_cycles: u32, exclude_notes_commitment: Commitment, padding: [felt; 11]) -> (felt, [felt; 15])
     # compute the fee, consuming num_extra_cycles and the exclude notes commitment
     exec.tx::compute_fee
     # => [fee_amount, pad(15)]
@@ -1877,7 +1877,7 @@ end
 #! - block_number exceeds the transaction reference block number.
 #!
 #! Invocation: dynexec
-pub proc tx_get_block_commitment(block_number: BlockNumber, padding: [felt; 15]) -> (Digest, [felt; 12])
+pub proc tx_get_block_commitment(block_number: BlockNumber, padding: [felt; 15]) -> (Commitment, [felt; 12])
     exec.tx::get_block_commitment
     # => [BLOCK_COMMITMENT, pad(15)]
 

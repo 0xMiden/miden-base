@@ -1,4 +1,3 @@
-use {RoleSymbol} from miden::standards::types
 # miden::standards::access::role_symbol
 #
 # Encoding of the role symbols used by role-based access control.
@@ -13,6 +12,8 @@ use {RoleSymbol} from miden::standards::types
 # Keep the constants below in sync with `RoleSymbol` on the Rust side.
 
 use miden::core::math::u64
+
+pub type RoleSymbol = felt
 
 # CONSTANTS
 # =================================================================================================

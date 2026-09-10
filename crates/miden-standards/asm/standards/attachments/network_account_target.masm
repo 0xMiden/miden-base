@@ -2,11 +2,16 @@
 #!
 #! Provides a standardized way to work with network account targets.
 
-use {NetworkAccountTarget} from miden::standards::types
 use {AccountId, Bool} from miden::protocol::types
 use miden::protocol::account_id
 use miden::protocol::active_account
 use miden::protocol::active_note
+
+pub type NetworkAccountTarget = struct {
+    account: AccountId,
+    execution_hint: felt,
+    padding: felt
+}
 
 # CONSTANTS
 # ================================================================================================

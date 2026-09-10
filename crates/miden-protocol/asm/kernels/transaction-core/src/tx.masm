@@ -1,5 +1,5 @@
 use {AccountId, AssetAmount, BlockNumber} from miden::protocol_utils::types
-use {Digest} from miden::tx_kernel_core::types
+use {Commitment} from miden::tx_kernel_core::types
 use miden::tx_kernel_core::account
 use miden::tx_kernel_core::memory
 use miden::core::collections::mmr
@@ -93,7 +93,7 @@ pub use {get_tx_script_root} from miden::tx_kernel_core::memory
 #! - block_number exceeds the transaction reference block number.
 #!
 #! Invocation: exec
-pub proc get_block_commitment(block_number: BlockNumber) -> Digest
+pub proc get_block_commitment(block_number: BlockNumber) -> Commitment
     u32assert.err=ERR_TX_BLOCK_NUMBER_NOT_U32
     # => [block_number]
 
@@ -304,7 +304,7 @@ end
 #!   unsorted or contains duplicates).
 #!
 #! Invocation: exec
-pub proc compute_fee(num_extra_cycles: u32, exclude_notes_commitment: Digest) -> AssetAmount
+pub proc compute_fee(num_extra_cycles: u32, exclude_notes_commitment: Commitment) -> AssetAmount
     # make sure the number of extra cycles is a u32 so the addition below cannot overflow the field
     u32assert.err=ERR_TX_COMPUTE_FEE_EXTRA_CYCLES_NOT_U32
     # => [num_extra_cycles, EXCLUDE_NOTES_COMMITMENT]
@@ -360,7 +360,7 @@ end
 #!
 #! Invocation: exec
 @locals(1024)
-proc compute_output_notes_fee(exclude_notes_commitment: Digest) -> AssetAmount
+proc compute_output_notes_fee(exclude_notes_commitment: Commitment) -> AssetAmount
     locaddr.0 movdn.4
     # => [EXCLUDE_NOTES_COMMITMENT, exclude_notes_ptr]
 
@@ -401,7 +401,7 @@ end
 #! - the committed indices do not match EXCLUDE_NOTES_COMMITMENT.
 #!
 #! Invocation: exec
-proc write_exclude_notes(exclude_notes_commitment: Digest, exclude_notes_ptr: ptr<u16>) -> u16
+proc write_exclude_notes(exclude_notes_commitment: Commitment, exclude_notes_ptr: ptr<u16>) -> u16
     # an empty commitment means there are no notes to exclude
     exec.word::testz
     # => [is_empty, EXCLUDE_NOTES_COMMITMENT, exclude_notes_ptr]

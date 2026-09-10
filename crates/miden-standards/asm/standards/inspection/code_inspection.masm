@@ -1,4 +1,3 @@
-use {CodeCommitment} from miden::standards::types
 use {AccountProcedureRoot, Bool} from miden::protocol::types
 # miden::standards::inspection::code_inspection
 #
@@ -9,6 +8,8 @@ use {AccountProcedureRoot, Bool} from miden::protocol::types
 # account can do without being granted access to the account's storage or vault.
 
 use miden::protocol::active_account
+
+pub type CodeCommitment = word
 
 #! Returns the binary flag indicating whether the procedure with the provided root is available on
 #! the active account.

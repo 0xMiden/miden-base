@@ -1,5 +1,5 @@
 use {AccountId, BlockNumber, NoteId} from miden::protocol_utils::types
-use {Digest, HashState, InputNoteData} from miden::tx_kernel_core::types
+use {Commitment, HasherState, InputNoteData} from miden::tx_kernel_core::types
 use miden::core::mem
 use miden::core::collections::mmr
 use miden::core::crypto::hashes::poseidon2
@@ -121,7 +121,7 @@ const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH =
 #!   accounts.
 #! - INPUT_NOTES_COMMITMENT is the commitment to the input notes. See the
 #!   `tx_get_input_notes_commitment` kernel procedure for details.
-proc process_global_inputs(block_commitment: Digest, initial_account_commitment: Digest, input_notes_commitment: Digest, account_id: AccountId, block_num: BlockNumber) -> BlockNumber
+proc process_global_inputs(block_commitment: Commitment, initial_account_commitment: Commitment, input_notes_commitment: Commitment, account_id: AccountId, block_num: BlockNumber) -> BlockNumber
     exec.memory::set_block_commitment dropw
     exec.memory::set_init_account_commitment dropw
     exec.memory::set_nullifier_commitment dropw
@@ -726,7 +726,7 @@ end
 #! - NOTE_METADATA is the note's metadata.
 #! - NOTE_ATTACHMENTS_COMMITMENT is the note's attachments commitment.
 #! - NULLIFIER is the nullifier of the input note.
-proc process_input_note_details(idx: u16) -> Digest
+proc process_input_note_details(idx: u16) -> Commitment
     # get the input note core data pointer
     dup exec.memory::get_input_note_ptr exec.memory::get_input_note_core_ptr
     # => [note_data_ptr, idx]
@@ -783,7 +783,7 @@ end
 #! Panics if:
 #! - the metadata encodes an unknown version.
 #! - the metadata has its reserved bit set.
-proc process_note_metadata(note_ptr: ptr<InputNoteData>) -> Digest
+proc process_note_metadata(note_ptr: ptr<InputNoteData>) -> Commitment
     # load the attachments commitment onto the stack
     dup exec.memory::get_input_note_attachments_commitment
     # => [NOTE_ATTACHMENTS_COMMITMENT, note_ptr]
@@ -979,7 +979,7 @@ end
 #! Where:
 #! - note_ptr is the memory location for the input note.
 #! - NOTE_DETAILS_COMMITMENT is the commitment of the input note details.
-proc compute_input_note_details_commitment(note_ptr: ptr<InputNoteData>) -> Digest
+proc compute_input_note_details_commitment(note_ptr: ptr<InputNoteData>) -> Commitment
     # load all inputs on the stack
     dup exec.memory::get_input_note_assets_commitment
     dup.4 exec.memory::get_input_note_storage_commitment
@@ -1062,7 +1062,7 @@ end
 #!   - BLOCK_SUB_COMMITMENT is the block's sub_commitment for which the note was created.
 #!   - NOTE_ROOT is the merkle root of the note's tree.
 #!   - note_index is the input note's position in the notes tree.
-proc process_input_note(idx: u16, capacity: word) -> HashState
+proc process_input_note(idx: u16, capacity: word) -> HasherState
     # note args
     # ---------------------------------------------------------------------------------------------
     dup exec.memory::get_input_note_ptr
@@ -1378,7 +1378,7 @@ end
 #! - data provided by the advice provider does not match global inputs.
 #! - the account data is invalid.
 #! - any of the input notes do note exist in the note db.
-pub proc prepare_transaction(block_commitment: Digest, initial_account_commitment: Digest, input_notes_commitment: Digest, account_id: AccountId, block_num: BlockNumber)
+pub proc prepare_transaction(block_commitment: Commitment, initial_account_commitment: Commitment, input_notes_commitment: Commitment, account_id: AccountId, block_num: BlockNumber)
     exec.process_global_inputs
     # => [block_num]
 

@@ -1,4 +1,4 @@
-use {MetadataStringCommitment} from miden::standards::types
+use {MetadataStringCommitment} from miden::standards::faucets
 use {NoteArgs} from miden::protocol::types
 use miden::core::crypto::hashes::poseidon2
 use miden::protocol::active_note

@@ -1,4 +1,5 @@
-use {AttachmentRecord, SendNotesPayloadCommitment} from miden::standards::types
+use {SendNotesPayloadCommitment} from miden::standards::tx_scripts::send_notes
+use {NoteAttachmentCommitment} from miden::protocol::types
 # Shared payload handling for the canonical `send_notes` transaction scripts.
 #
 # This module is private to `send_notes`: it is the shared implementation behind the
@@ -23,6 +24,13 @@ use {AttachmentRecord, SendNotesPayloadCommitment} from miden::standards::types
 use miden::core::mem
 use miden::protocol::output_note
 use miden::protocol::tx
+
+# One send-notes attachment record: a padded scheme followed by its commitment.
+pub type AttachmentRecord = struct {
+    scheme: u32,
+    padding: [felt; 3],
+    commitment: NoteAttachmentCommitment
+}
 
 # CONSTANTS
 # =================================================================================================

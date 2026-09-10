@@ -5,10 +5,10 @@ pub use {AccountProcedureRoot} from ::miden::protocol_utils::types
 use {AccountId, StorageSlotId} from ::miden::protocol_utils::types
 
 #! A cryptographic commitment or Merkle root.
-pub type Digest = word
+pub type Commitment = word
 
 #! Poseidon2 sponge state in operand-stack order.
-pub type HashState = struct { rate0: word, rate1: word, capacity: word }
+pub type HasherState = struct { rate0: word, rate1: word, capacity: word }
 
 #! Account header in memory and operand-stack order.
 pub type AccountMetadata = struct {
@@ -28,20 +28,20 @@ pub type StorageSlot = struct {
 #! The fixed header at the beginning of an account's memory segment.
 pub type AccountData = struct {
     metadata: AccountMetadata,
-    vault_root: Digest,
-    storage_commitment: Digest,
-    code_commitment: Digest,
+    vault_root: Commitment,
+    storage_commitment: Commitment,
+    code_commitment: Commitment,
 }
 
 #! The fixed header at the beginning of an input note's memory segment.
 pub type InputNoteData = struct {
-    details_commitment: Digest,
+    details_commitment: Commitment,
     serial_number: word,
     script_root: word,
-    storage_commitment: Digest,
-    assets_commitment: Digest,
+    storage_commitment: Commitment,
+    assets_commitment: Commitment,
     metadata: word,
-    attachments_commitment: Digest,
+    attachments_commitment: Commitment,
     recipient: word,
     id: word,
     args: word,
@@ -53,7 +53,7 @@ pub type InputNoteData = struct {
 
 #! The fixed header at the beginning of an output note's memory segment.
 pub type OutputNoteData = struct {
-    details_commitment: Digest,
+    details_commitment: Commitment,
     metadata: word,
     recipient: word,
     # Each flag/count occupies a separate felt in kernel memory.
@@ -65,8 +65,8 @@ pub type OutputNoteData = struct {
     num_attachments_padding: [u8; 3],
     total_attachment_words: u16,
     total_attachment_words_padding: [u8; 2],
-    attachment_commitments: [Digest; 4],
-    assets_commitment: Digest,
+    attachment_commitments: [Commitment; 4],
+    assets_commitment: Commitment,
 }
 
 #! A sorted link-map entry, including the ownership and linkage metadata.
