@@ -73,7 +73,7 @@ pub proc auth_tx(auth_args: word)
     # => [num_extra_cycles, CONVERSION_INFO, scheme_id, pad(12)]
 
     exec.tx::get_reference_block_number movdn.5
-    # => [num_extra_cycles, CONVERSION_INFO, fee_note_block, scheme_id, pad(12)]
+    # => [num_extra_cycles, CONVERSION_INFO, serial_number_block, scheme_id, pad(12)]
 
     exec.fee::pay_fee drop
     # => [scheme_id, pad(12)]

@@ -167,7 +167,7 @@ pub proc auth_network_transaction(auth_args: word)
     #     sponsor_unlimited, pad(16)]
 
     exec.tx::get_reference_block_number movdn.5
-    # => [num_extra_cycles, CONVERSION_INFO, fee_note_block, collected_fee_amount,
+    # => [num_extra_cycles, CONVERSION_INFO, serial_number_block, collected_fee_amount,
     #     is_fee_asset_id_match, sponsor_unlimited, pad(16)]
 
     exec.fee::pay_fee

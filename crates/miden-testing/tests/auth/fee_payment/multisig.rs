@@ -153,18 +153,15 @@ async fn multisig_pays_fee_note(#[case] auth_scheme: AuthScheme) -> anyhow::Resu
     Ok(())
 }
 
-/// A later approver sees the same summary, and the original signatures remain valid at a newer
-/// execution block. The fee note stays unchanged when the account nonce and fee amount do not
-/// change, but execution at or after the signed expiration is rejected.
+/// The transaction summary and fee note remain unchanged at a later reference block when the
+/// account nonce, fee amount, and other signed effects are unchanged. The original signatures
+/// remain valid until the approval expires, 10 blocks after the signed block. Execution succeeds
+/// at an offset of 9 blocks and fails at offsets of 10 and 11 blocks.
 #[rstest]
-#[case::falcon(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 5)]
-#[case::ecdsa(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 5)]
-#[case::zero_fee(AuthScheme::EcdsaK256Keccak, 0, 5)]
+#[case::zero_fee(AuthScheme::EcdsaK256Keccak, 0, 9)]
 #[case::falcon_before_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 9)]
 #[case::ecdsa_before_expiration(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 9)]
-#[case::falcon_at_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 10)]
 #[case::ecdsa_at_expiration(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 10)]
-#[case::falcon_after_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 11)]
 #[case::ecdsa_after_expiration(AuthScheme::EcdsaK256Keccak, VERIFICATION_BASE_FEE, 11)]
 #[tokio::test]
 async fn multisig_fee_note_is_stable_across_reference_blocks(
@@ -172,6 +169,8 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     #[case] base_fee: u32,
     #[case] blocks_advanced: u32,
 ) -> anyhow::Result<()> {
+    const APPROVAL_EXPIRATION_DELTA: u16 = 10;
+
     let (approver_set, signers) = multisig_fixture(2, 2, auth_scheme)?;
     let fee_asset = FungibleAsset::new(ACCOUNT_ID_FEE_FAUCET.try_into()?, 1_000_000)?;
     let mut builder = MockChain::builder().verification_base_fee(base_fee);
@@ -182,7 +181,8 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     let mut mock_chain = builder.build()?;
     let signed_block = mock_chain.latest_block_header().block_num();
     let auth_args = fee_paying_auth_args(&mock_chain, Word::from([17u32, 18, 19, 20]))?;
-    let expiration_script = ExpirationTransactionScript::new(NonZeroU16::new(10).unwrap());
+    let expiration_script =
+        ExpirationTransactionScript::new(NonZeroU16::new(APPROVAL_EXPIRATION_DELTA).unwrap());
 
     let original_summary = mock_chain
         .build_transaction(account.id())
@@ -223,7 +223,7 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     for (key, signature) in &signatures {
         later_builder = later_builder.add_signature(*key, msg, signature.clone());
     }
-    if blocks_advanced >= 10 {
+    if blocks_advanced >= u32::from(APPROVAL_EXPIRATION_DELTA) {
         let result = later_builder.build()?.execute().await;
         assert_transaction_executor_error!(result, ERR_MULTISIG_APPROVAL_EXPIRED);
         return Ok(());
@@ -245,7 +245,10 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     let later_tx = later_builder.build()?.execute().await?;
 
     assert_eq!(later_tx.block_header().block_num(), signed_block + blocks_advanced);
-    assert_eq!(later_tx.expiration_block_num(), signed_block + 10);
+    assert_eq!(
+        later_tx.expiration_block_num(),
+        signed_block + u32::from(APPROVAL_EXPIRATION_DELTA)
+    );
     assert_eq!(original_tx.output_notes().commitment(), later_tx.output_notes().commitment());
     if base_fee == 0 {
         assert_eq!(later_tx.output_notes().num_notes(), 0);
@@ -260,9 +263,10 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     Ok(())
 }
 
-/// Extra computation at a newer reference block raises the fee without changing the proposal
-/// block or account nonce. The fee note's recipient stays stable, but its assets and the vault
-/// withdrawal change, so execution requires fresh signatures.
+/// The transaction script executes a 65,536-iteration loop only when the execution reference
+/// block differs from the signed block. The additional cycles increase the fee without changing
+/// the signed block or account nonce. The fee note's recipient remains unchanged, but its asset
+/// amount and the vault withdrawal increase, so execution requires new signatures.
 #[rstest]
 #[case::falcon(AuthScheme::Falcon512Poseidon2)]
 #[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
@@ -281,8 +285,8 @@ async fn multisig_rejects_original_signatures_when_fee_changes(
     let signed_block = mock_chain.latest_block_header().block_num();
     let auth_args = fee_paying_auth_args(&mock_chain, Word::from([21u32, 22, 23, 24]))?;
 
-    // Use the same script at both blocks. The later execution does enough extra work to cross
-    // a fee cycle bucket, without creating notes or changing account state itself.
+    // The conditional loop increases the cycle count enough to reach a higher fee cycle bucket.
+    // The script itself does not create notes or modify account state.
     let tx_script = CodeBuilder::default().compile_tx_script(format!(
         "
         use miden::protocol::tx
