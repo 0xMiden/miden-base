@@ -140,23 +140,26 @@ impl TxFeeNote {
     /// Derives the serial number that `miden::standards::fee::pay_fee` uses for
     /// the TX_FEE note it creates during a transaction.
     ///
-    /// The serial number is `hash(FEE_DOMAIN || [ref_block_num, initial_nonce,
+    /// The serial number is `hash(FEE_DOMAIN || [serial_number_block, initial_nonce,
     /// account_id_suffix, account_id_prefix])` with the FEE domain tag `[0xFEE, 0, 0, 0]`. It is
     /// unique per (account, nonce) pair and lets clients precompute the note's recipient before
     /// executing the transaction, while the domain tag separates it from serial numbers derived
     /// from similar tuples in other contexts.
+    ///
+    /// For multisigs, `serial_number_block` is the block bound by the signed summary. Other
+    /// standard auth components use the execution reference block.
     ///
     /// This derivation must be kept in sync with `create_and_fund_fee_note` in the
     /// `miden::standards::fee` MASM module.
     pub fn derive_serial_number(
         sender: AccountId,
         initial_nonce: Felt,
-        ref_block_num: BlockNumber,
+        serial_number_block: BlockNumber,
     ) -> Word {
         // Domain-separation tag for the fee note's serial number ("fee" in hex).
         let fee_domain = Word::from([Felt::from(Self::TAG_ID), Felt::ZERO, Felt::ZERO, Felt::ZERO]);
         let tuple = Word::from([
-            Felt::from(ref_block_num.as_u32()),
+            Felt::from(serial_number_block.as_u32()),
             initial_nonce,
             sender.suffix(),
             sender.prefix().as_felt(),

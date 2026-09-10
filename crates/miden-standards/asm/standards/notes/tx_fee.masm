@@ -1,3 +1,4 @@
+use {NoteRecipient, NoteSerialNumber, NoteTag, NoteType} from miden::protocol::types
 use miden::protocol::active_note
 use miden::protocol::note
 use {NOTE_TYPE_PUBLIC} from miden::protocol::note
@@ -35,7 +36,7 @@ const TX_FEE_NOTE_TAG = 0xFEE
 #! Panics if:
 #! - the note carries a non-zero number of storage items.
 @note_script
-pub proc main
+pub proc main()
     # make sure the note carries no storage items
     push.NUM_STORAGE_ITEMS push.STORAGE_PTR exec.active_note::get_bounded_storage drop
     # => []
@@ -65,7 +66,7 @@ end
 #! - RECIPIENT is the computed recipient digest of the note (4 elements).
 #!
 #! Invocation: exec
-pub proc prepare_note
+pub proc prepare_note(serial_num: NoteSerialNumber) -> (NoteTag, NoteType, NoteRecipient)
     procref.main
     # => [SCRIPT_ROOT, SERIAL_NUM]
 
@@ -104,7 +105,7 @@ end
 #! - note_idx is the index of the created note.
 #!
 #! Invocation: exec
-pub proc create_output_note
+pub proc create_output_note(serial_num: NoteSerialNumber) -> u16
     exec.prepare_note
     # => [tag, note_type, RECIPIENT]
 
