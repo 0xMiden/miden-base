@@ -155,8 +155,9 @@ async fn multisig_pays_fee_note(#[case] auth_scheme: AuthScheme) -> anyhow::Resu
 
 /// The transaction summary and fee note remain unchanged at a later reference block when the
 /// account nonce, fee amount, and other signed effects are unchanged. The original signatures
-/// remain valid until the approval expires, 10 blocks after the signed block. Execution succeeds
-/// at an offset of 9 blocks and fails at offsets of 10 and 11 blocks.
+/// remain valid until the approval expires. This test sets the expiration to 10 blocks after the
+/// signed block. Execution succeeds at an offset of 9 blocks and fails at offsets of 10 and 11
+/// blocks.
 #[rstest]
 #[case::zero_fee(AuthScheme::EcdsaK256Keccak, 0, 9)]
 #[case::falcon_before_expiration(AuthScheme::Falcon512Poseidon2, VERIFICATION_BASE_FEE, 9)]
@@ -263,10 +264,11 @@ async fn multisig_fee_note_is_stable_across_reference_blocks(
     Ok(())
 }
 
-/// The transaction script executes a 65,536-iteration loop only when the execution reference
-/// block differs from the signed block. The additional cycles increase the fee without changing
-/// the signed block or account nonce. The fee note's recipient remains unchanged, but its asset
-/// amount and the vault withdrawal increase, so execution requires new signatures.
+/// This test uses a transaction script that executes a 65,536-iteration loop only when the
+/// execution reference block differs from the signed block. The additional cycles increase the
+/// fee without changing the signed block or account nonce. The fee note's recipient remains
+/// unchanged, but its asset amount and the vault withdrawal increase, so execution requires new
+/// signatures.
 #[rstest]
 #[case::falcon(AuthScheme::Falcon512Poseidon2)]
 #[case::ecdsa(AuthScheme::EcdsaK256Keccak)]
