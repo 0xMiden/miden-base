@@ -811,7 +811,8 @@ impl MockChainBuilder {
     /// Creates a new TX_FEE note from the provided parameters and adds it to the list of genesis
     /// notes.
     ///
-    /// In the created [`MockChain`], the note will be immediately spendable by any account.
+    /// In the created [`MockChain`], the note can be consumed right away by an account whose own
+    /// code collects its assets.
     pub fn add_tx_fee_note(
         &mut self,
         sender_account_id: AccountId,
