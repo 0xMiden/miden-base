@@ -9,6 +9,7 @@ use crate::account::auth::{
     AuthMultisig,
     AuthMultisigSmart,
     AuthNetworkAccount,
+    AuthPassThrough,
     AuthSingleSig,
     NoAuth,
 };
@@ -37,6 +38,7 @@ pub enum StandardAccountComponent {
     AuthGuardedMultisig,
     AuthNoAuth,
     AuthNetworkAccount,
+    AuthPassThrough,
 }
 
 impl StandardAccountComponent {
@@ -57,6 +59,7 @@ impl StandardAccountComponent {
             Self::AuthGuardedMultisig => AuthGuardedMultisig::code(),
             Self::AuthNoAuth => NoAuth::code(),
             Self::AuthNetworkAccount => AuthNetworkAccount::code(),
+            Self::AuthPassThrough => AuthPassThrough::code(),
         };
 
         code.procedure_roots()
@@ -118,6 +121,9 @@ impl StandardAccountComponent {
                 Self::AuthNetworkAccount => {
                     component_interface_vec.push(AccountComponentInterface::AuthNetworkAccount)
                 },
+                Self::AuthPassThrough => {
+                    component_interface_vec.push(AccountComponentInterface::AuthPassThrough)
+                },
             }
         }
     }
@@ -143,5 +149,6 @@ impl StandardAccountComponent {
         Self::AuthMultisigSmart.extract_component(procedures_set, component_interface_vec);
         Self::AuthNoAuth.extract_component(procedures_set, component_interface_vec);
         Self::AuthNetworkAccount.extract_component(procedures_set, component_interface_vec);
+        Self::AuthPassThrough.extract_component(procedures_set, component_interface_vec);
     }
 }
