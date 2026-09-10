@@ -6,9 +6,11 @@ use miden_protocol::errors::MasmError;
 use miden_protocol::errors::tx_kernel::ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY;
 use miden_protocol::note::{Note, NoteAssets, NoteTag, NoteType};
 use miden_protocol::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_SENDER};
+use miden_protocol::transaction::TransactionScript;
 use miden_protocol::{Felt, Word};
 use miden_standards::account::auth::AuthPassThrough;
 use miden_standards::account::wallets::BasicWallet;
+use miden_standards::code_builder::CodeBuilder;
 use miden_standards::errors::standards::{
     ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS,
     ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED,
@@ -79,7 +81,7 @@ fn add_pass_through_account_with(
     )
 }
 
-/// Adds the wallet the P2ID notes in these tests are addressed to.
+/// Adds the wallet the P2ID notes in these tests go to.
 fn add_target(builder: &mut MockChainBuilder) -> anyhow::Result<Account> {
     builder.add_existing_wallet(Auth::BasicAuth {
         auth_scheme: AuthScheme::Falcon512Poseidon2,
@@ -89,6 +91,27 @@ fn add_target(builder: &mut MockChainBuilder) -> anyhow::Result<Account> {
 /// Adds a TX_FEE note carrying the given assets.
 fn add_fee_note(builder: &mut MockChainBuilder, assets: &[Asset]) -> anyhow::Result<Note> {
     Ok(builder.add_tx_fee_note(ACCOUNT_ID_SENDER.try_into()?, assets)?)
+}
+
+/// A transaction script that deposits `asset` into the account's wallet, changing its vault.
+fn deposit_script(asset: Asset) -> anyhow::Result<TransactionScript> {
+    let source = format!(
+        r#"
+        use miden::core::sys
+
+        @transaction_script
+        pub proc main
+            push.{asset_value}
+            push.{asset_id}
+            call.::miden::standards::wallets::basic::receive_asset
+            exec.sys::truncate_stack
+        end
+        "#,
+        asset_value = asset.to_value_word(),
+        asset_id = asset.to_id_word(),
+    );
+
+    Ok(CodeBuilder::default().compile_tx_script(source)?)
 }
 
 /// The auth args addressing a public P2ID note to `target`.
@@ -110,7 +133,7 @@ fn pass_through_setup() -> anyhow::Result<(Account, AccountId, Note, MockChain)>
 // FORWARDING TESTS
 // ================================================================================================
 
-/// The auth procedure merges the assets of several fee notes into one P2ID note addressed to the
+/// The auth procedure merges the assets of several fee notes into one P2ID note for the
 /// target, leaving the account untouched.
 #[tokio::test]
 async fn pass_through_auth_forwards_several_fee_notes_into_one_p2id_note() -> anyhow::Result<()> {
@@ -330,14 +353,32 @@ async fn pass_through_auth_rejects_a_note_carrying_two_assets() -> anyhow::Resul
 // STATE TESTS
 // ================================================================================================
 
-/// A transaction that leaves the account holding what an input note deposited is rejected: the
-/// commitment changed.
+/// A transaction that changes the account's vault is rejected: the commitment changed.
 #[tokio::test]
 async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = add_pass_through_account(&mut builder)?;
+    let mock_chain = builder.build()?;
 
-    // a plain P2ID note deposits into the account's wallet
+    let result = mock_chain
+        .build_transaction(account.id())
+        .tx_script(deposit_script(fee_asset())?)
+        .build()?
+        .execute()
+        .await;
+
+    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED);
+
+    Ok(())
+}
+
+/// A consumed note that moved its asset out itself (a P2ID note deposits into the wallet) leaves
+/// nothing for the auth procedure to forward, so the transaction is rejected.
+#[tokio::test]
+async fn pass_through_auth_rejects_a_note_that_moved_its_asset_out() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = add_pass_through_account(&mut builder)?;
+
     let note = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into()?,
         account.id(),
@@ -353,7 +394,7 @@ async fn pass_through_auth_rejects_a_state_change() -> anyhow::Result<()> {
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED);
+    assert_transaction_executor_error!(result, ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET);
 
     Ok(())
 }
@@ -506,19 +547,11 @@ async fn pass_through_auth_can_create_an_account_and_forward_in_one_transaction(
 async fn pass_through_auth_rejects_an_account_created_holding_assets() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = add_pass_through_account_with(&mut builder, [49; 32], [], AccountState::New)?;
-
-    // a plain P2ID note deposits into the account while it is being created
-    let note = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into()?,
-        account.id(),
-        &[fee_asset()],
-        NoteType::Public,
-    )?;
     let mock_chain = builder.build()?;
 
     let result = mock_chain
         .build_transaction(account.clone())
-        .authenticated_input_note(note.id())
+        .tx_script(deposit_script(fee_asset())?)
         .build()?
         .execute()
         .await;

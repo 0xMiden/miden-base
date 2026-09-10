@@ -68,8 +68,9 @@ pub enum Auth {
     Noop,
 
     /// Pass-through authentication: forwards the single asset of every consumed note into one P2ID
-    /// note addressed by the auth args, verifies a signature over the transaction summary and
-    /// leaves the account unchanged (the nonce is only incremented when the account is created).
+    /// note for the target given by the auth args, verifies a signature over the transaction
+    /// summary and leaves the account unchanged (the nonce is only incremented when the account is
+    /// created).
     ///
     /// Creates a secret key and a [BasicAuthenticator] to sign with, like [`Auth::BasicAuth`].
     PassThrough { auth_scheme: AuthScheme },

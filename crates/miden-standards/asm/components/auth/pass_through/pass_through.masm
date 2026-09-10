@@ -4,6 +4,7 @@
 
 use miden::core::crypto::hashes::poseidon2
 use miden::protocol::active_account
+use miden::protocol::asset
 use miden::protocol::input_note
 use miden::protocol::native_account
 use miden::protocol::output_note
@@ -19,6 +20,9 @@ const PUBLIC_KEY_COMMITMENT_SLOT = word("miden::standards::auth::pass_through::p
 
 # The slot in this component's storage layout where the corresponding signature scheme is stored.
 const SIGNATURE_SCHEME_SLOT = word("miden::standards::auth::pass_through::signature_scheme")
+
+# The local of forward_note_assets that a consumed note's asset is removed into.
+const ASSET_LOC = 0
 
 # ERRORS
 # =================================================================================================
@@ -41,14 +45,13 @@ const ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET = "every note a pass-throu
 #!
 #! The account is left exactly as the transaction found it: the assets move from the input notes
 #! straight into the P2ID note, the nonce is never incremented (except once, when the account is
-#! created, since the kernel rejects a final nonce of 0) and no TX_FEE note is created. Nothing
-#! can therefore alter the account, so transactions against it never conflict with one another
-#! and can be built concurrently.
+#! created) and no TX_FEE note is created. The account is stateless after deployment, and
+#! transactions against it can be built concurrently.
 #!
-#! The P2ID note is addressed by the auth args. Its serial number is
-#! hash(AUTH_ARGS || INPUT_NOTES_COMMITMENT), which is unique per transaction. No P2ID note is
-#! created when the transaction consumes no notes, which the kernel only accepts for the
-#! transaction creating the account.
+#! The P2ID note goes to the target given by the auth args. Its serial number is
+#! hash(AUTH_ARGS || INPUT_NOTES_COMMITMENT), which is unique per transaction. A transaction
+#! consuming no notes is rejected, except for the one creating the account, which then creates no
+#! P2ID note.
 #!
 #! Replay protection comes from the input notes the signed transaction summary binds; see
 #! signature::authenticate_transaction_with_user_params.
@@ -57,53 +60,22 @@ const ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET = "every note a pass-throu
 #! Outputs: [pad(16)]
 #!
 #! Where:
-#! - AUTH_ARGS is [target_id_suffix, target_id_prefix, tag, note_type]: the account the P2ID note
-#!   is addressed to, the note's tag and its type.
+#! - AUTH_ARGS is [target_id_suffix, target_id_prefix, tag, note_type]: the target account of the
+#!   P2ID note, the note's tag and its type.
 #!
 #! Panics if:
-#! - the account already exists and its commitment differs from the one it had at the start of the
-#!   transaction.
-#! - the account is being created and the transaction leaves assets in its vault.
 #! - a consumed note does not carry exactly one asset.
 #! - the P2ID note cannot take an asset: it already holds the maximum number of assets or the same
 #!   non-fungible asset, or a fungible amount would overflow.
+#! - the account already exists and its commitment differs from the one it had at the start of the
+#!   transaction.
+#! - the account is being created and the transaction leaves assets in its vault.
 #! - the signature over the transaction summary does not verify against the stored public key.
 #!
 #! Invocation: call
 @auth_script
 pub proc auth_pass_through(auth_args: word)
     # => [AUTH_ARGS, pad(12)]
-
-    # nonce = 0 means account deployment
-    exec.active_account::get_nonce eq.0
-    # => [is_new_account, AUTH_ARGS, pad(12)]
-
-    if.true
-        exec.native_account::incr_nonce drop
-        # => [AUTH_ARGS, pad(12)]
-
-        # account creation changes the nonce, so we use the vault check instead of full commitment
-        # check; assets the account holds once created could never be moved out again, since every
-        # later transaction has to leave the account untouched
-        exec.native_account::get_initial_vault_root
-        # => [INITIAL_VAULT_ROOT, AUTH_ARGS, pad(12)]
-
-        exec.active_account::get_vault_root
-        # => [CURRENT_VAULT_ROOT, INITIAL_VAULT_ROOT, AUTH_ARGS, pad(12)]
-
-        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS
-        # => [AUTH_ARGS, pad(12)]
-    else
-        exec.native_account::get_initial_commitment
-        # => [INITIAL_COMMITMENT, AUTH_ARGS, pad(12)]
-
-        exec.active_account::compute_commitment
-        # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, AUTH_ARGS, pad(12)]
-
-        # kernel would catch this, but we assert here for a clearer error
-        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED
-        # => [AUTH_ARGS, pad(12)]
-    end
 
     # Forward the consumed notes' assets, if any notes were consumed.
     # ---------------------------------------------------------------------------------------------
@@ -116,6 +88,40 @@ pub proc auth_pass_through(auth_args: word)
         # => [pad(16)]
     else
         drop dropw
+        # => [pad(16)]
+    end
+
+    # Assert the account is unchanged.
+    # ---------------------------------------------------------------------------------------------
+
+    # nonce = 0 means account deployment
+    exec.active_account::get_nonce eq.0
+    # => [is_new_account, pad(16)]
+
+    if.true
+        exec.native_account::incr_nonce drop
+        # => [pad(16)]
+
+        # account creation changes the nonce, so we use the vault check instead of full commitment
+        # check; assets the account holds once created could never be moved out again, since every
+        # later transaction has to leave the account untouched
+        exec.native_account::get_initial_vault_root
+        # => [INITIAL_VAULT_ROOT, pad(16)]
+
+        exec.active_account::get_vault_root
+        # => [CURRENT_VAULT_ROOT, INITIAL_VAULT_ROOT, pad(16)]
+
+        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_CREATED_WITH_ASSETS
+        # => [pad(16)]
+    else
+        exec.native_account::get_initial_commitment
+        # => [INITIAL_COMMITMENT, pad(16)]
+
+        exec.active_account::compute_commitment
+        # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
+
+        # kernel would catch this, but we assert here for a clearer error
+        assert_eqw.err=ERR_AUTH_PASS_THROUGH_ACCOUNT_STATE_CHANGED
         # => [pad(16)]
     end
 
@@ -144,8 +150,8 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
-#! Creates the P2ID note described by AUTH_ARGS and moves the single asset of every input note
-#! into it.
+#! Creates the P2ID note for the target given by AUTH_ARGS and moves the single asset of every
+#! input note into it.
 #!
 #! Inputs:  [num_input_notes, AUTH_ARGS]
 #! Outputs: []
@@ -159,6 +165,7 @@ end
 #! - the P2ID note cannot take an asset, see auth_pass_through.
 #!
 #! Invocation: exec
+@locals(8)
 proc forward_note_assets
     movdn.4
     # => [AUTH_ARGS, num_input_notes]
@@ -189,30 +196,21 @@ proc forward_note_assets
     while.true
         # => [note_idx, num_input_notes, out_note_idx]
 
-        dup exec.input_note::get_initial_num_assets
+        # remove the note's asset; every consumed note carries exactly one
+        dup locaddr.ASSET_LOC exec.input_note::remove_all_assets
         # => [num_assets, note_idx, num_input_notes, out_note_idx]
 
         eq.1 assert.err=ERR_AUTH_PASS_THROUGH_NOTE_MUST_CARRY_ONE_ASSET
         # => [note_idx, num_input_notes, out_note_idx]
 
-        # add the note's asset to the P2ID note
-        dup push.0 exec.input_note::get_asset
+        # and add it to the P2ID note
+        locaddr.ASSET_LOC exec.asset::load
         # => [ASSET_ID, ASSET_VALUE, note_idx, num_input_notes, out_note_idx]
 
         dup.10 movdn.8
         # => [ASSET_ID, ASSET_VALUE, out_note_idx, note_idx, num_input_notes, out_note_idx]
 
         exec.output_note::add_asset
-        # => [note_idx, num_input_notes, out_note_idx]
-
-        # and take it out of the input note
-        dup push.0 exec.input_note::get_asset
-        # => [ASSET_ID, ASSET_VALUE, note_idx, num_input_notes, out_note_idx]
-
-        dup.8 movdn.8
-        # => [ASSET_ID, ASSET_VALUE, note_idx, note_idx, num_input_notes, out_note_idx]
-
-        exec.input_note::remove_asset dropw
         # => [note_idx, num_input_notes, out_note_idx]
 
         add.1 dup.1 dup.1 neq

@@ -41,22 +41,22 @@ static SIGNATURE_SCHEME_SLOT_NAME: LazyLock<StorageSlotName> = LazyLock::new(|| 
 /// transaction.
 ///
 /// It exports the procedure `auth_pass_through`, which:
-/// - Creates a P2ID note addressed by the auth args (see [`Self::auth_args`]) and moves the single
-///   asset of every consumed note into it, straight from the note; the account's vault is never
-///   touched. No P2ID note is created when the transaction consumes no notes, which the kernel only
-///   accepts for the transaction creating the account.
+/// - Creates a P2ID note for the target given by the auth args (see [`Self::auth_args`]) and moves
+///   the single asset of every consumed note into it, straight from the note; the account's vault
+///   is never touched. A transaction consuming no notes is rejected, except for the one creating
+///   the account, which then creates no P2ID note.
+/// - Asserts the account's commitment is the one it had at the start of the transaction.
+/// - Never increments the nonce, except once when the account is created. That transaction is
+///   checked against the vault instead of the full commitment, so the account cannot be created
+///   holding assets.
 /// - Verifies a signature over the transaction summary against the public key in storage, under the
 ///   signature scheme stored alongside it.
-/// - Asserts the account's commitment is the one it had at the start of the transaction.
-/// - Never increments the nonce, except once when the account is created (the kernel rejects a
-///   final nonce of 0). That transaction is checked against the vault instead of the full
-///   commitment, so the account cannot be created holding assets.
 /// - Creates no TX_FEE note.
 ///
-/// Nothing can alter the account once it exists, so transactions against it never conflict with
-/// one another and can be built concurrently. A batch builder collects the TX_FEE notes of many
-/// batches this way: each transaction consumes one batch's fee notes and forwards their assets to
-/// the builder's own account.
+/// The account is stateless after deployment, and transactions against it can be built
+/// concurrently. A batch builder collects the TX_FEE notes of many batches this way: each
+/// transaction consumes one batch's fee notes and forwards their assets to the builder's own
+/// account.
 ///
 /// Replay protection comes from the input notes the signed transaction summary binds: a
 /// transaction leaving the account unchanged must consume at least one input note to be valid, and
@@ -127,7 +127,7 @@ impl AuthPassThrough {
         self.approver
     }
 
-    /// Returns the auth args addressing the P2ID note the auth procedure creates to `target`.
+    /// Returns the auth args that make the auth procedure create its P2ID note for `target`.
     ///
     /// The word is `[target_id_suffix, target_id_prefix, tag, note_type]`, with the tag derived
     /// from `target` as by [`NoteTag::with_account_target`]. Pass it as the transaction's auth
