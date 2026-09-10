@@ -19,6 +19,7 @@
 
 ### Changes
 
+- Moved `MAX_ASSETS_PER_NOTE` into `miden::protocol_utils::constants` ([#3821](https://github.com/0xMiden/protocol/pull/3821)).
 - [BREAKING] Added a `serial_number_block` argument to `fee::pay_fee` and `fee::create_and_fund_fee_note`. Multisigs use the signed proposal block to keep fee-note serial numbers stable across execution reference blocks; other standard auth components use the execution reference block ([#3836](https://github.com/0xMiden/protocol/issues/3836)).
 - Added a check that the guardian public key is not one of the approver public keys ([#3764](https://github.com/0xMiden/protocol/pull/3764)).
 - [BREAKING] Updated the Miden VM and crypto crate family to v0.31.0 and `midenc-hir-type` to v0.13.0. Execution proofs now include a format version and compatible VM and PVM verifier roots, and protocol deserialization rejects unversioned proof bytes from earlier releases. Verifier outcomes now report separate VM and precompile security parameters ([#3806](https://github.com/0xMiden/protocol/pull/3806)).
