@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Added a per-procedure pause to the `Authority` component ([#3855](https://github.com/0xMiden/protocol/pull/3855)).
+
 ### Changes
 
 - Added type signatures where missing throughout the protocol and standards Miden Assembly libraries
