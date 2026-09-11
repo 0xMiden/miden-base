@@ -1,6 +1,5 @@
-//! Tests for the `Authority` circuit breakers: the account-wide emergency switch
-//! (`freeze` / `unfreeze`) and the per-procedure pause (`pause_procedure` /
-//! `unpause_procedure`).
+//! Tests for the `Authority` account-wide emergency switch (`freeze` / `unfreeze`) and the
+//! per-procedure pause (`pause_procedure` / `unpause_procedure`).
 
 use std::collections::BTreeMap;
 
@@ -589,7 +588,8 @@ async fn non_owner_cannot_pause_a_procedure() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// The two breakers are independent: unfreezing does not clear a per-procedure pause.
+/// The emergency switch and the per-procedure pause are independent: unfreezing does not clear a
+/// paused procedure.
 #[tokio::test]
 async fn unfreeze_does_not_clear_a_paused_procedure() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -624,7 +624,7 @@ async fn unfreeze_does_not_clear_a_paused_procedure() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Pausing `unpause_procedure` must not brick the account: both mutators bypass the breakers.
+/// Pausing `unpause_procedure` must not brick the account: both mutators bypass both checks.
 #[tokio::test]
 async fn pausing_unpause_procedure_does_not_brick_the_account() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();

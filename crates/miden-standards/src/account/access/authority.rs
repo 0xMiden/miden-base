@@ -123,7 +123,8 @@ const RBAC_CONTROLLED: u8 = 2;
 /// entry is not paused, so an account that pauses nothing behaves exactly as before.
 ///
 /// Both mutators are gated on the same emergency authority as `freeze` / `unfreeze` and bypass
-/// both breakers, so `unpause_procedure` can never itself be paused.
+/// both the frozen flag and the per-procedure pause, so `unpause_procedure` can never itself be
+/// paused.
 ///
 /// # Emergency switch (`is_frozen`)
 ///
@@ -261,15 +262,17 @@ impl Authority {
     /// Returns the procedure root of `pause_procedure`.
     ///
     /// Gated on the same emergency authority as [`Authority::freeze_root`], and like it bypasses
-    /// both breakers so the authority can never be locked out of its own switches.
+    /// both the frozen flag and the per-procedure pause, so the authority can never be locked out
+    /// of its own switches.
     pub fn pause_procedure_root() -> AccountProcedureRoot {
         *AUTHORITY_PAUSE_PROCEDURE
     }
 
     /// Returns the procedure root of `unpause_procedure`.
     ///
-    /// Gated on the same emergency authority as [`Authority::unfreeze_root`], and like it bypasses
-    /// both breakers so the authority can never be locked out of its own switches.
+    /// Gated on the same emergency authority as [`Authority::unfreeze_root`], and like it
+    /// bypasses both the frozen flag and the per-procedure pause, so the authority can never be
+    /// locked out of its own switches.
     pub fn unpause_procedure_root() -> AccountProcedureRoot {
         *AUTHORITY_UNPAUSE_PROCEDURE
     }
