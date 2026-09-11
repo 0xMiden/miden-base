@@ -476,7 +476,7 @@ pub proc auth_tx(num_own_output_notes: u16, user_params: [felt; 7])
     # ------ Verifying approver signatures ------
     push.APPROVER_PUBLIC_KEYS_SLOT[0..2]
     push.APPROVER_SCHEME_ID_SLOT[0..2]
-    push.1 exec.::miden::standards::auth::signature::verify_signatures
+    exec.::miden::standards::auth::signature::verify_signatures
     # => [num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
     # ------ Computing final transaction threshold ------
