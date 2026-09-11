@@ -6,9 +6,12 @@ mod scripts;
 mod standards;
 mod wallet;
 
-use miden_protocol::Word;
+use std::iter;
+use std::sync::Arc;
+
 use miden_protocol::account::AccountId;
 use miden_protocol::asset::FungibleAsset;
+use miden_protocol::batch::ProposedBatch;
 use miden_protocol::crypto::utils::Serializable;
 use miden_protocol::errors::TransactionVerifierError;
 use miden_protocol::note::{
@@ -24,6 +27,7 @@ use miden_protocol::transaction::{ExecutedTransaction, ProvenTransaction, Transa
 use miden_protocol::utils::serde::Deserializable;
 #[cfg(test)]
 use miden_protocol::vm::VerificationOutcome;
+use miden_protocol::{MIN_PROOF_SECURITY_LEVEL, Word};
 use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain};
 use miden_tx::{LocalTransactionProver, Prover};
@@ -36,7 +40,7 @@ use rstest::rstest;
 pub async fn prove_and_verify_transaction_deferred(
     executed_transaction: ExecutedTransaction,
 ) -> Result<(), TransactionVerifierError> {
-    let outcome = prove_and_verify_transaction(executed_transaction).await?;
+    let (_, outcome) = prove_and_verify_transaction(executed_transaction).await?;
     assert!(!outcome.is_complete());
     Ok(())
 }
@@ -46,16 +50,17 @@ pub async fn prove_and_verify_transaction_deferred(
 pub async fn prove_and_verify_transaction_complete(
     executed_transaction: ExecutedTransaction,
 ) -> Result<(), TransactionVerifierError> {
-    let outcome = prove_and_verify_transaction(executed_transaction).await?;
+    let (_, outcome) = prove_and_verify_transaction(executed_transaction).await?;
     assert!(outcome.is_complete());
     Ok(())
 }
 
-/// Proves `executed_transaction` locally, round-trips it and verifies it.
+/// Proves `executed_transaction` locally, round-trips it and verifies it, returning the proven
+/// transaction together with its verification outcome.
 #[cfg(test)]
 pub async fn prove_and_verify_transaction(
     executed_transaction: ExecutedTransaction,
-) -> Result<VerificationOutcome, TransactionVerifierError> {
+) -> Result<(ProvenTransaction, VerificationOutcome), TransactionVerifierError> {
     use miden_protocol::transaction::TransactionHeader;
 
     let executed_transaction_id = executed_transaction.id();
@@ -78,12 +83,15 @@ pub async fn prove_and_verify_transaction(
 
     let outcome = verifier.verify(&proven_transaction)?;
 
-    Ok(outcome)
+    Ok((proven_transaction, outcome))
 }
 
 /// The local prover leaves precompile claims for the batch prover, so a transaction that
 /// authenticates with ECDSA verifies while its precompile obligation is still outstanding. Falcon
 /// is the control: it verifies in-circuit and uses no precompile, so its proof is complete.
+///
+/// Both must also pass `ProposedBatch::new`, which verifies the proof of every transaction it
+/// batches.
 #[rstest]
 #[case::ecdsa(Auth::basic_ecdsa(), false)]
 #[case::falcon(Auth::basic_falcon(), true)]
@@ -104,11 +112,21 @@ async fn prove_and_verify_defers_precompile_claims(
         .execute()
         .await?;
 
-    if is_complete {
-        prove_and_verify_transaction_complete(executed).await?;
-    } else {
-        prove_and_verify_transaction_deferred(executed).await?;
-    }
+    let (proven_transaction, outcome) = prove_and_verify_transaction(executed).await?;
+    assert_eq!(outcome.is_complete(), is_complete);
+
+    let transactions = vec![Arc::new(proven_transaction)];
+    let (batch_reference_block, partial_blockchain, unauthenticated_note_proofs) = mock_chain
+        .get_batch_inputs(transactions.iter().map(|tx| tx.ref_block_num()), iter::empty())?;
+
+    let batch = ProposedBatch::new(
+        transactions,
+        batch_reference_block,
+        partial_blockchain,
+        unauthenticated_note_proofs,
+        MIN_PROOF_SECURITY_LEVEL,
+    )?;
+    assert_eq!(batch.transactions().len(), 1);
 
     Ok(())
 }
