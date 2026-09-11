@@ -84,6 +84,7 @@
 
 ### Fixes
 
+- `SwapNote::new` and `PswapNoteBuilder::build` now reject a zero-amount asset on either side of the exchange. A zero requested asset produced a payback note carrying nothing, and a zero offered asset produced a note whose consumer pays and receives nothing ([#3840](https://github.com/0xMiden/protocol/pull/3840)).
 - [BREAKING] `NetworkAccountTarget` decoding no longer discards the target account ID when the execution hint slot holds an unrecognized encoding ([#3811](https://github.com/0xMiden/protocol/pull/3811)).
 - Fixed `AuthNetworkAccount` accepting empty fee-only transactions, which let callers drain the account's native fee-asset vault ([#3729](https://github.com/0xMiden/protocol/pull/3729)).
 - [BREAKING] AggLayer bridge token registration now rejects keys owned by another faucet, and token-key cleanup verifies ownership before clearing a mapping ([#3754](https://github.com/0xMiden/protocol/pull/3754)).
