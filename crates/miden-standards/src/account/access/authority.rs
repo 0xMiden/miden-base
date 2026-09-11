@@ -260,19 +260,11 @@ impl Authority {
     }
 
     /// Returns the procedure root of `pause_procedure`.
-    ///
-    /// Gated on the same emergency authority as [`Authority::freeze_root`], and like it bypasses
-    /// both the frozen flag and the per-procedure pause, so the authority can never be locked out
-    /// of its own switches.
     pub fn pause_procedure_root() -> AccountProcedureRoot {
         *AUTHORITY_PAUSE_PROCEDURE
     }
 
     /// Returns the procedure root of `unpause_procedure`.
-    ///
-    /// Gated on the same emergency authority as [`Authority::unfreeze_root`], and like it
-    /// bypasses both the frozen flag and the per-procedure pause, so the authority can never be
-    /// locked out of its own switches.
     pub fn unpause_procedure_root() -> AccountProcedureRoot {
         *AUTHORITY_UNPAUSE_PROCEDURE
     }
@@ -318,10 +310,6 @@ impl Authority {
     }
 
     /// Reads the pause state of a single authority-gated procedure from account storage.
-    ///
-    /// Returns `true` if `procedure_root` is currently paused, meaning that procedure panics on
-    /// `assert_authorized` while every other gated procedure keeps working. A procedure that was
-    /// never paused has no map entry and reads as `false`.
     pub fn try_read_procedure_paused(
         storage: &AccountStorage,
         procedure_root: &AccountProcedureRoot,

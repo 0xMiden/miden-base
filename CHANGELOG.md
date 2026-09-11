@@ -4,7 +4,7 @@
 
 ### Features
 
-- Added a per-procedure pause to the `Authority` component, so a single authority-gated procedure can be taken offline without freezing the whole account ([#3855](https://github.com/0xMiden/protocol/pull/3855)).
+- Added a per-procedure pause to the `Authority` component ([#3855](https://github.com/0xMiden/protocol/pull/3855)).
 
 ### Changes
 

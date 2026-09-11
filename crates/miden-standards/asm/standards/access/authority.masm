@@ -41,10 +41,8 @@ pub const AUTHORITY_SLOT = word("miden::standards::access::authority::authority_
 # Map entries: [PROCEDURE_ROOT] -> [role_symbol, 0, 0, 0].
 pub const AUTHORITY_PROCEDURE_ROLES_SLOT = word("miden::standards::access::authority::procedure_roles")
 
-# Map slot holding the per-procedure pause. Present under every authority kind, since a paused
-# procedure is blocked regardless of how it would otherwise be authorized.
-# Map entries: [PROCEDURE_ROOT] -> [is_paused, 0, 0, 0]. An unmapped procedure reads the zero word
-# and is therefore not paused.
+# Map slot holding the per-procedure pause.
+# Map entries: [PROCEDURE_ROOT] -> [is_paused, 0, 0, 0].
 pub const AUTHORITY_PAUSED_PROCEDURES_SLOT = word("miden::standards::access::authority::paused_procedures")
 
 # Emergency-switch states for the `is_frozen` flag of `AUTHORITY_SLOT`.
@@ -101,10 +99,7 @@ pub proc unfreeze()
     # => [pad(16)]
 end
 
-#! Pauses a single authority-gated procedure, leaving the rest of the surface untouched.
-#!
-#! Pausing a root that is not a procedure of this account is a harmless no-op: the entry is stored
-#! but nothing ever reads it. Pausing an already paused procedure is also a no-op.
+#! Pauses a single authority-gated procedure.
 #!
 #! Inputs:  [PROCEDURE_ROOT, pad(12)]
 #! Outputs: [pad(16)]
@@ -126,8 +121,6 @@ pub proc pause_procedure(procedure_root: AccountProcedureRoot)
 end
 
 #! Unpauses a single authority-gated procedure.
-#!
-#! Unpausing a procedure that is not paused is a no-op.
 #!
 #! Inputs:  [PROCEDURE_ROOT, pad(12)]
 #! Outputs: [pad(16)]
@@ -236,8 +229,7 @@ end
 #! Asserts the sender may toggle the emergency switch.
 #!
 #! Reads only the authority discriminant, so it bypasses both the frozen flag and the per-procedure
-#! pause: the authority can always toggle either one. Without that, pausing `unpause_procedure`
-#! would brick the account permanently. Dispatch:
+#! pause: the authority can always toggle either one. Dispatch:
 #! - OwnerControlled → the Ownable2Step owner.
 #! - RbacControlled  → the caller procedure's configured role in the procedure-roles map (each of
 #!   `freeze`, `unfreeze`, `pause_procedure` and `unpause_procedure` may carry a distinct role,
@@ -333,10 +325,6 @@ proc write_procedure_pause_state(pause_state: word, procedure_root: AccountProce
 end
 
 #! Asserts the calling procedure is not individually paused.
-#!
-#! Resolves the calling procedure's root via `caller` and reads its entry in the paused-procedures
-#! map. A procedure with no entry reads the zero word and is therefore not paused, so an account
-#! that pauses nothing keeps the default-open behaviour.
 #!
 #! Inputs:  []
 #! Outputs: []
