@@ -1,9 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changes
+
+- Added type signatures where missing throughout the protocol and standards Miden Assembly libraries
+
 ## v0.17.0-pre.1 (2026-09-05)
 
 ### Features
 
+- Added the `AuthTxFeeCollector` auth component, which forwards the single asset of every consumed note into one P2ID note for the target given by the auth args, verifies a signature over the transaction summary and leaves the account unchanged ([#3844](https://github.com/0xMiden/protocol/pull/3844)).
 - Added `active_note::get_storage_info` and `active_note::get_bounded_storage`, and switched the standard and agglayer note scripts with a bounded storage layout over to the latter ([#3563](https://github.com/0xMiden/protocol/pull/3563)).
 - [BREAKING] AggLayer bridge and faucet accounts now map note repricing to an initial `FEE_MNGR` role instead of the built-in `ADMIN` role ([#3571](https://github.com/0xMiden/protocol/issues/3571)).
 - [BREAKING] AggLayer bridge accounts now map emergency pause to an initial `PAUSER` role, while unpause remains restricted to `ADMIN` ([#3572](https://github.com/0xMiden/protocol/issues/3572)).
@@ -13,6 +20,15 @@
 
 ### Changes
 
+- [BREAKING] TX_FEE notes leave their assets in the note for the consuming account's own code to collect ([#3843](https://github.com/0xMiden/protocol/pull/3843)).
+- Moved `MAX_ASSETS_PER_NOTE` into `miden::protocol_utils::constants` ([#3821](https://github.com/0xMiden/protocol/pull/3821)).
+- [BREAKING] Added a `serial_number_block` argument to `fee::pay_fee` and `fee::create_and_fund_fee_note`. Multisigs use the signed proposal block to keep fee-note serial numbers stable across execution reference blocks; other standard auth components use the execution reference block ([#3836](https://github.com/0xMiden/protocol/issues/3836)).
+- Added a check that the guardian public key is not one of the approver public keys ([#3764](https://github.com/0xMiden/protocol/pull/3764)).
+- [BREAKING] Updated the Miden VM and crypto crate family to v0.31.0 and `midenc-hir-type` to v0.13.0. Execution proofs now include a format version and compatible VM and PVM verifier roots, and protocol deserialization rejects unversioned proof bytes from earlier releases. Verifier outcomes now report separate VM and precompile security parameters ([#3806](https://github.com/0xMiden/protocol/pull/3806)).
+- [BREAKING] Updated the Miden VM and crypto crate family to v0.30.0 and `midenc-hir-type` to v0.12.0. `LocalTransactionProver::new` now takes `miden_prover::Prover`, `CoreLibrary` exposes one merged package, and `TransactionVerifier::verify` now returns `VerificationOutcome` so callers can handle outstanding precompile work ([#3782](https://github.com/0xMiden/protocol/pull/3782)).
+- [BREAKING] Removed the `BlockProof` placeholder in favor of `ExecutionProof` on `ProvenBlock`, matching `ProvenTransaction` and `ProvenBatch`, and `LocalBlockProver::prove` now takes an `ExecutedBlock` ([#3703](https://github.com/0xMiden/protocol/pull/3703)).
+- Added the `miden::protocol::tx::before_block_witness_load` kernel event, emitted before a block other than the reference block is read from the partial blockchain ([#3699](https://github.com/0xMiden/protocol/pull/3699)).
+- [BREAKING] Replaced `StandardNote::expected_num_storage_items` with `StandardNote::num_storage_items`, which returns the `NumStorageItems` a note kind accepts instead of a single value that was neither exact nor a bound for MINT and the config notes, whose storage size constants are now typed as `NumStorageItems` ([#3810](https://github.com/0xMiden/protocol/pull/3810)).
 - Fixed `RoleBasedAccessControl` role administration becoming permanently unmanageable when a role's admin was delegated to a memberless role ([#3476](https://github.com/0xMiden/protocol/pull/3476)).
 - [BREAKING] Moved the `note_tag` MASM module from `miden::standards::note_tag` to `miden::standards::note::note_tag` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
 - [BREAKING] Moved the `note_creator` account component MASM namespace from `miden::standards::components::wallets::note_creator` to `miden::standards::components::note::note_creator`, and moved the Rust `NoteCreator` type from `account::wallets` to `account::note_creator` ([#3473](https://github.com/0xMiden/protocol/pull/3473)).
