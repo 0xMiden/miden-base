@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 use agglayer::bridge::bridge_config
 use miden::protocol::active_note
 use miden::standards::attachments::network_account_target
@@ -42,7 +43,7 @@ const ERR_REMOVE_GER_TARGET_ACCOUNT_MISMATCH = "REMOVE_GER note attachment targe
 #! - the note sender is not the global exit root remover.
 #! - the GER is not currently registered in the bridge's GER map.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -52,7 +53,8 @@ pub proc main
     # => [pad(16)]
 
     # Load note storage to memory
-    push.STORAGE_PTR_GER_LOWER exec.active_note::get_storage
+    push.REMOVE_GER_NOTE_NUM_STORAGE_ITEMS push.STORAGE_PTR_GER_LOWER
+    exec.active_note::get_bounded_storage
     # => [num_storage_items, pad(16)]
 
     # Validate the number of storage items

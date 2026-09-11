@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 use agglayer::bridge::bridge_config
 use miden::protocol::active_note
 use miden::standards::attachments::network_account_target
@@ -39,7 +40,7 @@ const ERR_DEREGISTER_AGG_FAUCET_TARGET_ACCOUNT_MISMATCH = "DEREGISTER_AGG_FAUCET
 #! - The account does not expose the deregister_faucet procedure.
 #! - The faucet is not currently registered (panics inside deregister_faucet).
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -49,7 +50,8 @@ pub proc main
     # => [pad(16)]
 
     # Load note storage to memory
-    push.STORAGE_START_PTR exec.active_note::get_storage
+    push.DEREGISTER_AGG_FAUCET_NUM_STORAGE_ITEMS push.STORAGE_START_PTR
+    exec.active_note::get_bounded_storage
     # => [num_storage_items, pad(16)]
 
     # Validate the number of storage items

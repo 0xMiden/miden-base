@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 use agglayer::bridge::bridge_config
 use miden::protocol::active_note
 use miden::standards::attachments::network_account_target
@@ -41,7 +42,7 @@ const ERR_UPDATE_GER_TARGET_ACCOUNT_MISMATCH = "UPDATE_GER note attachment targe
 #! - number of note storage items is not exactly 8.
 #! - the GER has already been registered in storage.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -51,7 +52,8 @@ pub proc main
     # => [pad(16)]
 
     # Load note storage to memory
-    push.STORAGE_PTR_GER_LOWER exec.active_note::get_storage
+    push.UPDATE_GER_NOTE_NUM_STORAGE_ITEMS push.STORAGE_PTR_GER_LOWER
+    exec.active_note::get_bounded_storage
     # => [num_storage_items, pad(16)]
 
     # Validate the number of storage items
@@ -61,7 +63,7 @@ pub proc main
     # Load GER_LOWER and GER_UPPER from note storage
     mem_loadw_le.STORAGE_PTR_GER_UPPER
     # => [GER_UPPER[4], pad(12)]
-    
+
     swapw mem_loadw_le.STORAGE_PTR_GER_LOWER
     # => [GER_LOWER[4], GER_UPPER[4], pad(8)]
 
