@@ -1,11 +1,12 @@
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_processor::ExecutionError;
 use miden_processor::advice::AdviceInputs;
 use miden_protocol::account::AccountId;
 use miden_protocol::block::BlockNumber;
-use miden_protocol::note::Note;
+use miden_protocol::note::{Note, NoteId};
 use miden_protocol::transaction::{
     InputNote,
     InputNotes,
@@ -13,7 +14,7 @@ use miden_protocol::transaction::{
     TransactionInputs,
     TransactionKernel,
 };
-use miden_standards::note::{NoteConsumptionStatus, StandardNote};
+use miden_standards::note::{FeeSponsorshipNote, NoteConsumptionStatus, StandardNote};
 
 use super::{ProgramExecutor, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
@@ -60,18 +61,28 @@ impl SuccessfulNote {
 #[derive(Debug)]
 pub struct FailedNote {
     note: Note,
-    error: TransactionExecutorError,
+    /// The error the failing execution produced.
+    error: Arc<TransactionExecutorError>,
     /// The number of cycles consumed by the note before it failed.
     ///
     /// This is `Some` when the failure was due to exceeding the cycle limit, and `None`
     /// for other error types where the cycle count is not meaningful.
     num_cycles: Option<usize>,
+    /// The note this one is bound to, when it failed only as collateral of that note's failure.
+    ///
+    /// See [`FailedNote::bundled_with`].
+    bundled_with: Option<NoteId>,
 }
 
 impl FailedNote {
     /// Constructs a new `FailedNote`.
     pub fn new(note: Note, error: TransactionExecutorError, num_cycles: Option<usize>) -> Self {
-        Self { note, error, num_cycles }
+        Self {
+            note,
+            error: Arc::new(error),
+            num_cycles,
+            bundled_with: None,
+        }
     }
 
     /// Returns a reference to the note.
@@ -90,6 +101,17 @@ impl FailedNote {
     /// for other error types where the cycle count is not meaningful.
     pub fn num_cycles(&self) -> Option<usize> {
         self.num_cycles
+    }
+
+    /// Returns the ID of the note this one is bound to, if it failed only because that note did.
+    ///
+    /// Some notes can only be consumed together, e.g. a FEE_SPONSORSHIP note and the feature note
+    /// it pays for. Such notes are tested as one bundle, so rejecting the bundle rejects every note
+    /// in it. This is `Some` for the notes that were not themselves blamed for the failure: they
+    /// may well be consumable in a different set, and [`FailedNote::error`] reports the error that
+    /// rejected the bundle rather than an error attributable to this note.
+    pub fn bundled_with(&self) -> Option<NoteId> {
+        self.bundled_with
     }
 }
 
@@ -124,6 +146,58 @@ impl NoteConsumptionInfo {
     /// Consumes the struct and returns the successful and failed notes.
     pub fn into_parts(self) -> (Vec<SuccessfulNote>, Vec<FailedNote>) {
         (self.successful, self.failed)
+    }
+}
+
+// NOTE BUNDLE
+// ================================================================================================
+
+/// A group of input notes that has to be tested for consumability as a unit, such as a feature note
+/// and the notes which sponsor it.
+#[derive(Debug)]
+struct NoteBundle {
+    notes: Vec<Note>,
+}
+
+impl NoteBundle {
+    /// Groups `notes` into bundles that must be consumed together.
+    ///
+    /// A FEE_SPONSORSHIP note joins the bundle of the feature note it sponsors; an unpaired
+    /// sponsorship note forms a bundle of its own, so that it fails alone rather than dropping the
+    /// notes it would otherwise have been grouped with. Every other note type forms a bundle of its
+    /// own.
+    ///
+    /// The feature note is always first in the resulting bundle (if any); bundle preserves the
+    /// relative order of the sponsorship notes in it.
+    fn group(notes: Vec<Note>) -> Vec<Self> {
+        let note_indices: BTreeMap<NoteId, usize> =
+            notes.iter().enumerate().map(|(idx, note)| (note.id(), idx)).collect();
+
+        // Put the feature notes and orphan notes to the values with keys equal to this note index
+        // in the `note_indices`. Sponsorship notes are appended to the values which contain the
+        // corresponding feature note.
+        // Keying by index rather than by note ID keeps the bundles in the caller's order.
+        let mut bundles: BTreeMap<usize, Vec<Note>> = BTreeMap::new();
+        for (idx, note) in notes.into_iter().enumerate() {
+            // A sponsorship is only bundled when the note it sponsors is actually an input;
+            // otherwise it can only be reclaimed, which is something it has to attempt on its own.
+            match FeeSponsorshipNote::try_from(&note)
+                .ok()
+                .and_then(|sponsorship| note_indices.get(&sponsorship.feature_note_id()).copied())
+            {
+                Some(head_idx) => bundles.entry(head_idx).or_default().push(note),
+                // This note heads its own bundle, so it goes first whichever side of the notes
+                // bound to it it arrives on.
+                None => bundles.entry(idx).or_default().insert(0, note),
+            }
+        }
+
+        bundles.into_values().map(|notes| Self { notes }).collect()
+    }
+
+    /// Returns the notes forming the bundle.
+    fn notes(&self) -> &[Note] {
+        &self.notes
     }
 }
 
@@ -171,7 +245,9 @@ where
     ///
     /// If a failure occurs at the epilogue phase of the transaction execution, the relevant set of
     /// otherwise-successful notes are retried in various combinations in an attempt to find a
-    /// combination that passes the epilogue phase successfully.
+    /// combination that passes the epilogue phase successfully. Notes that are only consumable
+    /// together, such as a feature note and the FEE_SPONSORSHIP notes bound to it, are grouped and
+    /// retried as a unit.
     ///
     /// Returns a list of successfully consumed notes and a list of failed notes.
     pub async fn check_notes_consumability(
@@ -339,66 +415,91 @@ where
     /// Attempts to find the largest possible combination of notes that can execute successfully
     /// together.
     ///
-    /// This method incrementally tries combinations of increasing size (1 note, 2 notes, 3 notes,
-    /// etc.) and builds upon previously successful combinations to find the maximum executable
-    /// set.
+    /// The notes are first grouped into [`NoteBundle`]s, and the search grows a known-good set one
+    /// bundle at a time: each round appends every remaining bundle to the accepted set in turn and
+    /// keeps the first bundle that lets the whole set pass, until a round adds nothing.
     async fn find_largest_executable_combination(
         &self,
-        mut remaining_notes: Vec<Note>,
+        remaining_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
         mut tx_inputs: TransactionInputs,
     ) -> NoteConsumptionInfo {
-        let mut successful_notes = Vec::new();
+        let mut remaining_bundles = NoteBundle::group(remaining_notes);
+        let mut successful_notes: Vec<Note> = Vec::new();
         let mut successful_cycle_counts = Vec::new();
         let mut failed_note_index = BTreeMap::new();
 
-        // Iterate by note count: try 1 note, then 2, then 3, etc.
-        for size in 1..=remaining_notes.len() {
-            // Can't build a combination of size N without at least N-1 successful notes.
-            if successful_notes.len() < size - 1 {
-                break;
-            }
+        // Grow the accepted set until a full pass over the remaining bundles adds nothing, at which
+        // point no bundle can extend it and the set is as large as this search can make it.
+        loop {
+            let mut extended = false;
 
-            // Try adding each remaining note to the current successful combination.
-            for (idx, note) in remaining_notes.iter().enumerate() {
-                successful_notes.push(note.clone());
+            for idx in 0..remaining_bundles.len() {
+                let bundle_notes = remaining_bundles[idx].notes().to_vec();
+                let candidate_notes: Vec<Note> =
+                    successful_notes.iter().chain(&bundle_notes).cloned().collect();
 
-                tx_inputs.set_input_notes(successful_notes.clone());
+                tx_inputs.set_input_notes(candidate_notes.clone());
                 match self.try_execute_notes(&mut tx_inputs).await {
                     Ok(cycle_counts) => {
-                        // The successfully added note might have failed earlier. Remove it from the
-                        // failed list.
-                        failed_note_index.remove(&note.id());
+                        // The notes just added might have failed earlier, either on their own or
+                        // as part of another candidate set. Remove them from the failed list.
+                        for note in bundle_notes {
+                            failed_note_index.remove(&note.id());
+                        }
                         // Store the cycle counts from the latest successful execution.
                         successful_cycle_counts = cycle_counts;
-                        // This combination succeeded; remove the most recently added note from
-                        // the remaining set.
-                        remaining_notes.remove(idx);
+                        // This combination succeeded; commit it and drop the bundle from the
+                        // remaining set.
+                        successful_notes = candidate_notes;
+                        remaining_bundles.remove(idx);
+                        extended = true;
                         break;
                     },
                     Err(error) => {
-                        // This combination failed; remove the last note from the test set and
-                        // continue to next note.
-                        let failed_note =
-                            successful_notes.pop().expect("successful notes should not be empty");
-
-                        // Extract the failed note's cycle count if available.
-                        let num_cycles = match &error {
+                        // This combination failed, so the whole bundle is rejected. Blame the note
+                        // the executor pointed at, when it pointed at one of the bundle's notes;
+                        // an epilogue failure blames no particular note, so it falls to the note
+                        // heading the bundle, the one the rest of the bundle is bound to.
+                        let (blamed_idx, num_cycles) = match &error {
                             TransactionCheckerError::NoteExecution {
+                                failed_note_index,
                                 failed_note_cycle_count,
                                 ..
-                            } => *failed_note_cycle_count,
-                            _ => None,
+                            } => (
+                                failed_note_index
+                                    .checked_sub(successful_notes.len())
+                                    .filter(|idx| *idx < bundle_notes.len())
+                                    .unwrap_or(0),
+                                *failed_note_cycle_count,
+                            ),
+                            _ => (0, None),
                         };
 
-                        // Record the failed note (overwrite previous failures for the relevant
-                        // note).
-                        failed_note_index.insert(
-                            failed_note.id(),
-                            FailedNote::new(failed_note, error.into(), num_cycles),
-                        );
+                        let error = Arc::new(TransactionExecutorError::from(error));
+                        let blamed_id = bundle_notes[blamed_idx].id();
+
+                        // Record every note of the bundle (overwriting previous failures for the
+                        // relevant notes), so the reported notes always account for all inputs.
+                        // The notes that were not blamed are marked as bound to the one that was.
+                        for (note_idx, note) in bundle_notes.iter().enumerate() {
+                            let is_blamed = note_idx == blamed_idx;
+                            failed_note_index.insert(
+                                note.id(),
+                                FailedNote {
+                                    note: note.clone(),
+                                    error: Arc::clone(&error),
+                                    num_cycles: is_blamed.then_some(num_cycles).flatten(),
+                                    bundled_with: (!is_blamed).then_some(blamed_id),
+                                },
+                            );
+                        }
                     },
                 }
+            }
+
+            if !extended {
+                break;
             }
         }
 

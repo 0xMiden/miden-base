@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Fixes
+
+- `NoteConsumptionChecker` now groups input notes into bundles that must be consumed together and searches over those bundles, so a feature note and the `FEE_SPONSORSHIP` notes bound to it are kept as a unit instead of being dropped alongside an unrelated note whose fee is uncovered ([#3801](https://github.com/0xMiden/protocol/pull/3801)).
+
 ### Changes
 
 - Added type signatures where missing throughout the protocol and standards Miden Assembly libraries
