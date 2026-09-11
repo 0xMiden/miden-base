@@ -1,15 +1,15 @@
 ---
 name: u32-assert-before-u32-ops
-description: Use when writing MASM `u32*` instructions on values from user input or untrusted sources — ensure the operands are valid u32s first.
+description: Use when writing MASM `u32*` instructions whose operands must already fit in 32 bits, especially for user input or untrusted values.
 ---
 
-# Validate u32 Operands Before u32 Instructions
+# Validate Required u32 Operands
 
 ## Rule
 
 Most MASM `u32*` arithmetic instructions require operands that fit in 32 bits. Their behavior on an out-of-range operand is undefined, so the executor may trap and the resulting proof is not valid.
 
-Before applying any `u32*` instruction to a value that is not already known to be a valid u32 (e.g. it came from the stack as input, was read from memory, or arose from a non-u32 arithmetic op), assert the bound:
+Before applying a `u32*` instruction whose documented precondition requires valid u32 operands, assert the bound of any operand that is not already known-valid (e.g. it came from the stack as input, was read from memory, or arose from a non-u32 arithmetic op):
 
 ```masm
 u32assert            # one value
@@ -17,7 +17,9 @@ u32assert2           # two top values
 u32assertw           # one word (four values)
 ```
 
-If the operand is already known-valid (just produced by another `u32*` op, or a value loaded from a slot whose layout is u32 by construction), skip the assert.
+If the operand is already known-valid (just produced as a valid-u32 output of another operation, or loaded from a slot whose layout is u32 by construction), skip the assert.
+
+`u32test`, `u32testw`, `u32cast`, and `u32split` accept arbitrary field values, so they do not require a prior u32 assertion.
 
 ## Why
 

@@ -22,8 +22,8 @@ Procedure locals are allocated and freed by the VM, so two callers of the same p
 ```masm
 # Good
 @locals(2)
-proc compute_hash
-    # allocate two local slots
+proc compute_hash(a: felt, b: felt) -> (felt, felt)
+    # store two scratch values in local slots
     loc_store.0
     loc_store.1
     # ...
@@ -33,7 +33,7 @@ end
 
 # Bad: scratch in a shared region
 const SCRATCH_PTR = 0x4000
-proc compute_hash
+proc compute_hash(value: felt)
     mem_store.SCRATCH_PTR        # collides with anyone else using SCRATCH_PTR
 end
 ```

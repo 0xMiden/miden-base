@@ -45,7 +45,7 @@ This shows up most often at the start of note scripts that don't use their input
 
 ```masm
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
     ...
@@ -125,7 +125,7 @@ These extra elements must be explicitly dropped before the procedure returns (di
 
 ## Debugging Stack Depth
 
-Use the event-based procedures in `miden::core::debug` to inspect VM state. These are ordinary procedure calls: they run and print whenever invoked, affect the program being executed, and consume cycles (`print_stack` costs 3 cycles). Remove them from production programs.
+Use the event-based procedures in `miden::core::debug` to inspect VM state. These are ordinary procedure calls: they emit print events whenever invoked, affect the program being executed, and consume cycles (`print_stack` costs 3 cycles). Remove them from production programs.
 
 ```masm
 use miden::core::debug

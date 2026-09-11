@@ -31,7 +31,7 @@ Only apply this rule to new code you write. Do not remove comments that are pres
 - Standard control flow: `if.true`, `while.true`, `end`
 
 **Do comment:**
-- Stack state after complex operations: `# => [ptr, ASSET, end_ptr]`
+- Stack state after complex operations: `# => [ptr, ASSET_ID, ASSET_VALUE, end_ptr]`
 - Purpose of a code block: `# compute the pointer at which we should stop iterating`
 - Non-obvious logic or business rules
 - TODO items and references to external specs
@@ -74,7 +74,7 @@ end
 An inline `# => [...]` tracker uses the same item names, capitalization, and `(N)` span notation as the `#!` doc block for the enclosing procedure (see masm-doc-comments skill):
 
 - Single-felt names stay lowercase: `note_idx`, `final_nonce`.
-- Word names stay UPPERCASE: `ASSET`, `RECIPIENT`.
+- Word names stay UPPERCASE: `ASSET_ID`, `ASSET_VALUE`, `RECIPIENT`.
 - `(N)` spans stay lowercase: `pad(12)`, `foreign_procedure_inputs(15)`.
 
 Composite names like `account_id_{suffix,prefix}` are a doc-block shorthand for a group of felts. In inline trackers they decompose into their individual felts since each felt occupies one stack slot:
