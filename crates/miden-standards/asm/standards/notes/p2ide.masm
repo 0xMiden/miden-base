@@ -1,3 +1,4 @@
+use {BlockNumber} from miden::protocol::types
 use miden::protocol::active_account
 use miden::protocol::account_id
 use miden::protocol::active_note
@@ -41,7 +42,10 @@ const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note becaus
 #!
 #! Inputs:  [current_block_height, timelock_block_height]
 #! Outputs: []
-proc assert_unlocked
+proc assert_unlocked(
+    current_block_height: BlockNumber,
+    timelock_block_height: BlockNumber
+)
     # check timelock_block_height <= current_block_height
     lte assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
     # => []
@@ -82,7 +86,7 @@ end
 #! - Adding a fungible asset would result in an amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 @note_script
-pub proc main
+pub proc main()
     # store the note storage to memory starting at STORAGE_PTR
     push.NUM_STORAGE_ITEMS push.STORAGE_PTR exec.active_note::get_bounded_storage
     # => [num_storage_items]

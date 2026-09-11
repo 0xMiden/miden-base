@@ -1,11 +1,10 @@
+use {AccountId, BlockNumber, NoteArgs, NoteId, NoteRecipient, NoteSerialNumber, NoteTag, NoteType} from miden::protocol::types
 use miden::protocol::active_note
 use miden::protocol::input_note
 use miden::protocol::note
 
 use miden::standards::note::reclaim
 use miden::standards::wallets::basic as basic_wallet
-
-use {AccountId, BlockNumber, NoteRecipient, NoteId, NoteTag, NoteType} from miden::protocol::types
 
 # CONSTANTS
 # =================================================================================================
@@ -91,7 +90,7 @@ const ERR_FEE_SPONSORSHIP_MUST_CONTAIN_EXACTLY_ONE_ASSET = "fee sponsorship note
 #! - the note is reclaimed and the reclaiming account does not expose the
 #!   miden::standards::wallets::basic::receive_asset procedure.
 @note_script
-pub proc main
+pub proc main(note_args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -171,7 +170,7 @@ pub proc prepare_note(
     reclaim_block_height: BlockNumber,
     tag: NoteTag,
     note_type: NoteType,
-    serial_num: word
+    serial_num: NoteSerialNumber
 ) -> (NoteTag, NoteType, NoteRecipient)
     # store the 7 storage items into locals in the layout the note script expects
     loc_storew_le.FEATURE_NOTE_ID_ITEM dropw

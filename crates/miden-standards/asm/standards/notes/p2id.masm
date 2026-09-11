@@ -1,3 +1,4 @@
+use {AccountId, NoteRecipient, NoteSerialNumber, NoteTag, NoteType} from miden::protocol::types
 use miden::protocol::active_note
 use miden::protocol::note
 use miden::standards::note::consumer
@@ -42,7 +43,7 @@ const TARGET_ACCOUNT_ID_PREFIX_PTR = STORAGE_PTR + 1
 #! - Adding a fungible asset would result in amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 @note_script
-pub proc main
+pub proc main()
     # store the note storage to memory starting at address 0
     push.NUM_STORAGE_ITEMS push.STORAGE_PTR exec.active_note::get_bounded_storage
     # => [num_storage_items]
@@ -91,7 +92,12 @@ end
 #!
 #! Invocation: exec
 @locals(2)
-pub proc prepare_note
+pub proc prepare_note(
+    target_id: AccountId,
+    tag: NoteTag,
+    note_type: NoteType,
+    serial_num: NoteSerialNumber
+) -> (NoteTag, NoteType, NoteRecipient)
     # => [target_id_suffix, target_id_prefix, tag, note_type, SERIAL_NUM]
 
     loc_store.TARGET_ACCOUNT_ID_SUFFIX_PTR loc_store.TARGET_ACCOUNT_ID_PREFIX_PTR
@@ -140,7 +146,12 @@ end
 #! - note_idx is the index of the created note.
 #!
 #! Invocation: exec
-pub proc create_output_note
+pub proc create_output_note(
+    target_id: AccountId,
+    tag: NoteTag,
+    note_type: NoteType,
+    serial_num: NoteSerialNumber
+) -> u16
     exec.prepare_note
     # => [tag, note_type, RECIPIENT]
 

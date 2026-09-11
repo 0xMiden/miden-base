@@ -1,3 +1,5 @@
+use {Commitment} from miden::standards::types
+use {NoteArgs} from miden::protocol::types
 use miden::protocol::active_note
 use miden::standards::auth::network_account
 use miden::standards::fees::fee_manager
@@ -80,7 +82,7 @@ const ERR_NETWORK_ACCOUNT_CONFIG_NOTE_IS_NOT_PUBLIC = "network account config no
 #! - the caller is not authorized per the installed `Authority` component, as checked by the
 #!   `AuthNetworkAccount` procedures.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     # drop the note script args
     dropw
     # => [pad(16)]
@@ -176,7 +178,7 @@ end
 #! - num_storage_items is not equal to the expected number.
 #!
 #! Invocation: exec
-proc load_root
+proc load_root(num_storage_items: u32, padding: [felt; 16]) -> (Commitment, [felt; 12])
     eq.NUM_STORAGE_ITEMS
     assert.err=ERR_NETWORK_ACCOUNT_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => [pad(16)]
@@ -199,7 +201,7 @@ end
 #! - the caller is not authorized per the installed `Authority` component.
 #!
 #! Invocation: exec
-proc execute_add_allowed_note_script
+proc execute_add_allowed_note_script(num_storage_items: u32)
     exec.load_root
     # => [SCRIPT_ROOT, pad(12)]
 
@@ -221,7 +223,7 @@ end
 #!   `network_account::remove_allowed_note_script`.
 #!
 #! Invocation: exec
-proc execute_remove_allowed_note_script
+proc execute_remove_allowed_note_script(num_storage_items: u32)
     exec.load_root
     # => [SCRIPT_ROOT, pad(12)]
 
@@ -243,7 +245,7 @@ end
 #!   `network_account::add_allowed_tx_script`.
 #!
 #! Invocation: exec
-proc execute_add_allowed_tx_script
+proc execute_add_allowed_tx_script(num_storage_items: u32)
     exec.load_root
     # => [SCRIPT_ROOT, pad(12)]
 
@@ -265,7 +267,7 @@ end
 #!   `network_account::remove_allowed_tx_script`.
 #!
 #! Invocation: exec
-proc execute_remove_allowed_tx_script
+proc execute_remove_allowed_tx_script(num_storage_items: u32)
     exec.load_root
     # => [SCRIPT_ROOT, pad(12)]
 
@@ -287,7 +289,7 @@ end
 #!   `fee_manager::add_allowed_fee_policy`.
 #!
 #! Invocation: exec
-proc execute_add_allowed_fee_policy
+proc execute_add_allowed_fee_policy(num_storage_items: u32)
     exec.load_root
     # => [POLICY_ROOT, pad(12)]
 
@@ -310,7 +312,7 @@ end
 #!   `fee_manager::remove_allowed_fee_policy`.
 #!
 #! Invocation: exec
-proc execute_remove_allowed_fee_policy
+proc execute_remove_allowed_fee_policy(num_storage_items: u32)
     exec.load_root
     # => [POLICY_ROOT, pad(12)]
 

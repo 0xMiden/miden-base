@@ -1,3 +1,5 @@
+use {MetadataStringCommitment} from miden::standards::faucets
+use {NoteArgs} from miden::protocol::types
 use miden::core::crypto::hashes::poseidon2
 use miden::protocol::active_note
 use miden::standards::faucets
@@ -90,7 +92,7 @@ const ERR_FAUCET_METADATA_CONFIG_NOTE_IS_NOT_PUBLIC = "faucet metadata config no
 #! - the selected field's mutability flag is not set, or the account is paused.
 #! - the caller is not authorized for the selected action per the installed `Authority` component.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -164,7 +166,7 @@ end
 #!   `fungible::set_max_supply`).
 #!
 #! Invocation: exec
-proc execute_set_max_supply
+proc execute_set_max_supply(num_storage_items: u32)
     eq.NUM_ITEMS_SET_MAX_SUPPLY
     assert.err=ERR_FAUCET_METADATA_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => []
@@ -203,7 +205,7 @@ end
 #! - num_storage_items is not NUM_ITEMS_SET_STRING.
 #!
 #! Invocation: exec
-proc prepare_string_call
+proc prepare_string_call(num_storage_items: u32) -> (MetadataStringCommitment, [felt; 12])
     eq.NUM_ITEMS_SET_STRING
     assert.err=ERR_FAUCET_METADATA_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => []
@@ -239,7 +241,7 @@ end
 #!   `faucets::set_description`).
 #!
 #! Invocation: exec
-proc execute_set_description
+proc execute_set_description(num_storage_items: u32)
     exec.prepare_string_call
     # => [DESCRIPTION_COMMITMENT, pad(12)]
 
@@ -262,7 +264,7 @@ end
 #!   `faucets::set_logo_uri`).
 #!
 #! Invocation: exec
-proc execute_set_logo_uri
+proc execute_set_logo_uri(num_storage_items: u32)
     exec.prepare_string_call
     # => [LOGO_URI_COMMITMENT, pad(12)]
 
@@ -285,7 +287,7 @@ end
 #!   `faucets::set_external_link`).
 #!
 #! Invocation: exec
-proc execute_set_external_link
+proc execute_set_external_link(num_storage_items: u32)
     exec.prepare_string_call
     # => [EXTERNAL_LINK_COMMITMENT, pad(12)]
 

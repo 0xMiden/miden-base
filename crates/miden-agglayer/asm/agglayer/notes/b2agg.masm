@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 use agglayer::bridge::bridge_out
 use miden::protocol::account_id
 use miden::protocol::active_account
@@ -54,7 +55,7 @@ const ERR_B2AGG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS="B2AGG script expects exactly
 #! - The note is not public (enforced by `bridge_out`).
 #! - The destination network ID equals Miden's AggLayer network ID.
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 

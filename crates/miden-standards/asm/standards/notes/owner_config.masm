@@ -1,3 +1,4 @@
+use {NoteArgs} from miden::protocol::types
 use miden::protocol::active_note
 use miden::standards::access::ownable2step
 use miden::standards::note::consumer
@@ -69,7 +70,7 @@ const ERR_OWNER_CONFIG_NOTE_IS_NOT_PUBLIC = "owner config note must be public"
 #! - the number of storage items does not match the selected action.
 #! - the note sender is not authorized for the selected action (per the `Ownable2Step` procedures).
 @note_script
-pub proc main
+pub proc main(args: NoteArgs)
     dropw
     # => [pad(16)]
 
@@ -131,7 +132,7 @@ end
 #! - the note sender is not the owner (per `ownable2step::transfer_ownership`).
 #!
 #! Invocation: exec
-proc execute_transfer_ownership
+proc execute_transfer_ownership(num_storage_items: u32)
     eq.NUM_ITEMS_TRANSFER_OWNERSHIP
     assert.err=ERR_OWNER_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => []
@@ -160,7 +161,7 @@ end
 #! - the note sender is not the nominated owner (per `ownable2step::accept_ownership`).
 #!
 #! Invocation: exec
-proc execute_accept_ownership
+proc execute_accept_ownership(num_storage_items: u32)
     eq.NUM_ITEMS_ACCEPT_OWNERSHIP
     assert.err=ERR_OWNER_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => []
@@ -187,7 +188,7 @@ end
 #! - the note sender is not the owner (per `ownable2step::renounce_ownership`).
 #!
 #! Invocation: exec
-proc execute_renounce_ownership
+proc execute_renounce_ownership(num_storage_items: u32)
     eq.NUM_ITEMS_RENOUNCE_OWNERSHIP
     assert.err=ERR_OWNER_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS
     # => []
