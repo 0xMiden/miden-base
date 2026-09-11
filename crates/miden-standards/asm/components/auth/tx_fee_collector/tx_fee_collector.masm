@@ -173,10 +173,10 @@ proc forward_note_assets
 
     # the serial number is unique per transaction, since no two valid transactions consume the
     # same notes
-    dupw exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, AUTH_ARGS, AUTH_ARGS, num_input_notes]
+    exec.tx::get_input_notes_commitment
+    # => [INPUT_NOTES_COMMITMENT, AUTH_ARGS, num_input_notes]
 
-    swapw exec.poseidon2::merge
+    dupw.1 exec.poseidon2::merge
     # => [SERIAL_NUM, AUTH_ARGS, num_input_notes]
 
     swapw

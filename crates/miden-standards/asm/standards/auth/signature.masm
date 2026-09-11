@@ -114,7 +114,7 @@ end
 #! - user_params are six arbitrary elements bound by the signature
 #!
 #! Invocation: exec
-pub proc authenticate_transaction_with_user_params(user_params: [felt; 6])
+pub proc authenticate_transaction_with_user_params(user_params: [felt; 6], approver: Approver)
     # Compute the message that is signed. The summary preimage is inserted into the advice map
     # for extraction by the host.
     # ---------------------------------------------------------------------------------------------
