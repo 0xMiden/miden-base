@@ -27,7 +27,7 @@ use miden_protocol::account::auth::AuthScheme;
 use miden_protocol::crypto::rand::FeltRng;
 use miden_protocol::note::Note;
 use miden_protocol::transaction::RawOutputNote;
-use miden_standards::errors::standards::ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET;
+use miden_standards::errors::standards::ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT;
 use miden_standards::interop::eth::{EthAddress, EthAmount};
 use miden_testing::{Auth, MockChain, MockChainBuilder, assert_transaction_executor_error};
 use rstest::rstest;
@@ -77,7 +77,10 @@ async fn note_addressed_to_another_bridge_cannot_be_consumed(
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET);
+    assert_transaction_executor_error!(
+        result,
+        ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT
+    );
 
     Ok(())
 }

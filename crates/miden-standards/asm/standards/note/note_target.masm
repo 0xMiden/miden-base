@@ -1,12 +1,13 @@
-#! miden::standards::note::consumer
+#! miden::standards::note::note_target
 #!
 #! Provides the standard way for a note script to enforce which account may consume the note.
 #!
 #! A note that is meant for a specific account states so in one of two ways, both of which are
 #! committed to by the note and therefore fixed at creation time:
 #!
-#! - as a `NetworkAccountTarget` attachment, enforced with `assert_target_account_attachment`.
-#! - as an account ID in the note storage, enforced with `assert_target_account_storage`.
+#! - as a `NetworkAccountTarget` attachment, enforced with
+#!   `assert_active_account_is_network_target_account`.
+#! - as an account ID the note commits to, enforced with `assert_active_account_is_target_account`.
 #!
 #! Every standard note script declares which of these it uses, or that it is open to any consumer,
 #! on a `Consumers:` line in the doc comment of its `@note_script` procedure.
@@ -18,9 +19,9 @@ use miden::standards::attachments::network_account_target
 # ERRORS
 # =================================================================================================
 
-const ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET = "the consuming account is not the target account named by the note's target attachment"
+const ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT = "the active account is not the target account named by the note's network account target attachment"
 
-const ERR_NOTE_CONSUMER_NOT_STORAGE_TARGET = "the consuming account is not the target account committed to by the note's storage"
+const ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_TARGET_ACCOUNT = "the active account is not the target account the note commits to"
 
 # PROCEDURES
 # =================================================================================================
@@ -36,18 +37,18 @@ const ERR_NOTE_CONSUMER_NOT_STORAGE_TARGET = "the consuming account is not the t
 #! - the active account is not the attachment's target account.
 #!
 #! Invocation: exec
-pub proc assert_target_account_attachment
+pub proc assert_active_account_is_network_target_account
     exec.network_account_target::active_account_matches_target_account
     # => [is_target]
 
-    assert.err=ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET
+    assert.err=ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT
     # => []
 end
 
 #! Asserts that the active account is the account identified by the given account ID.
 #!
-#! The account ID is expected to come from the active note's storage, so that the note commits to
-#! the account allowed to consume it.
+#! The account ID is expected to be one the note commits to, so that the note fixes which account
+#! may consume it.
 #!
 #! Inputs:  [target_id_suffix, target_id_prefix]
 #! Outputs: []
@@ -60,13 +61,13 @@ end
 #! - the active account is not the target account.
 #!
 #! Invocation: exec
-pub proc assert_target_account_storage
+pub proc assert_active_account_is_target_account
     exec.active_account::get_id
     # => [active_id_suffix, active_id_prefix, target_id_suffix, target_id_prefix]
 
     exec.account_id::eq
     # => [is_target]
 
-    assert.err=ERR_NOTE_CONSUMER_NOT_STORAGE_TARGET
+    assert.err=ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_TARGET_ACCOUNT
     # => []
 end

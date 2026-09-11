@@ -3,7 +3,7 @@ use miden::protocol::active_account
 use miden::protocol::account_id
 use miden::protocol::active_note
 use miden::protocol::tx
-use miden::standards::note::reclaim
+use miden::standards::note::note_reclaim
 use miden::standards::wallets::basic as basic_wallet
 
 # CONSTANTS
@@ -63,7 +63,7 @@ end
 #! Requires that the account exposes:
 #! - miden::standards::wallets::basic::receive_asset procedure.
 #!
-#! Consumers: committed accounts (storage)
+#! Consumers: committed accounts (note storage)
 #!
 #! Inputs:  []
 #! Outputs: []
@@ -123,7 +123,7 @@ pub proc main()
         mem_load.RECLAIM_HEIGHT_ITEM
         # => [reclaim_block_height, reclaimer_id_suffix, reclaimer_id_prefix]
 
-        exec.reclaim::assert_reclaimable
+        exec.note_reclaim::assert_reclaimable
         # => []
 
         exec.basic_wallet::move_note_assets_to_account

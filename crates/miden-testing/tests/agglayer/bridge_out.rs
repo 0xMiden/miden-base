@@ -33,7 +33,7 @@ use miden_protocol::transaction::RawOutputNote;
 use miden_protocol::{Felt, Word};
 use miden_standards::account::faucets::FungibleFaucet;
 use miden_standards::account::policies::MintPolicy;
-use miden_standards::errors::standards::ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET;
+use miden_standards::errors::standards::ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT;
 use miden_standards::interop::eth::EthAddress;
 use miden_standards::note::{
     FeeSponsorshipNote,
@@ -964,7 +964,8 @@ async fn b2agg_note_reclaim_scenario() -> anyhow::Result<()> {
 /// 3. Creates a user account as the sender (creator) of the B2AGG note
 /// 4. Creates a "malicious" account with a bridge interface
 /// 5. Attempts to consume the B2AGG note with the malicious account
-/// 6. Verifies that the transaction fails with ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET
+/// 6. Verifies that the transaction fails with
+///    ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT
 #[tokio::test]
 async fn b2agg_note_non_target_account_cannot_consume() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -1062,7 +1063,10 @@ async fn b2agg_note_non_target_account_cannot_consume() -> anyhow::Result<()> {
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET);
+    assert_transaction_executor_error!(
+        result,
+        ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT
+    );
 
     Ok(())
 }

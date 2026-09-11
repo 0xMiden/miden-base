@@ -1,4 +1,4 @@
-#! miden::standards::note::reclaim
+#! miden::standards::note::note_reclaim
 #!
 #! Provides the standard way for a note script to let its creator take the note's assets back.
 #!

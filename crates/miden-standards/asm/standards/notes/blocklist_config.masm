@@ -1,7 +1,7 @@
 use {NoteArgs} from miden::protocol::types
 use miden::protocol::active_note
 use miden::standards::faucets::policies::transfer::blocklist::manager
-use miden::standards::note::consumer
+use miden::standards::note::note_target
 
 # CONSTANTS
 # =================================================================================================
@@ -79,7 +79,7 @@ pub proc main(args: NoteArgs)
 
     # bind consumption to the targeted account: reject if the consuming account is not the note's
     # target account
-    exec.consumer::assert_target_account_attachment
+    exec.note_target::assert_active_account_is_network_target_account
     # => [pad(16)]
 
     # write the note storage to memory starting at STORAGE_PTR

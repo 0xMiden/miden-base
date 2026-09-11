@@ -17,7 +17,7 @@ use miden_standards::errors::standards::{
     ERR_CONSTANT_FEE_POLICY_CONFIG_NOTE_IS_NOT_PUBLIC,
     ERR_CONSTANT_FEE_POLICY_CONFIG_UNEXPECTED_NUMBER_OF_STORAGE_ITEMS,
     ERR_NETWORK_ACCOUNT_TARGET_MISSING,
-    ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET,
+    ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT,
     ERR_SENDER_NOT_OWNER,
 };
 use miden_standards::note::config::ConstantFeePolicyConfigNote;
@@ -212,7 +212,10 @@ async fn config_note_for_another_account_is_rejected() -> anyhow::Result<()> {
         .execute()
         .await;
 
-    assert_transaction_executor_error!(result, ERR_NOTE_CONSUMER_NOT_ATTACHMENT_TARGET);
+    assert_transaction_executor_error!(
+        result,
+        ERR_NOTE_ACTIVE_ACCOUNT_IS_NOT_NETWORK_TARGET_ACCOUNT
+    );
 
     Ok(())
 }

@@ -1,7 +1,7 @@
 use {NoteArgs} from miden::protocol::types
 use agglayer::bridge::bridge_config
 use miden::protocol::active_note
-use miden::standards::note::consumer
+use miden::standards::note::note_target
 
 # CONSTANTS
 # =================================================================================================
@@ -49,7 +49,7 @@ pub proc main(args: NoteArgs)
     # => [pad(16)]
 
     # Ensure note attachment targets the consuming bridge account.
-    exec.consumer::assert_target_account_attachment
+    exec.note_target::assert_active_account_is_network_target_account
     # => [pad(16)]
 
     # Load note storage to memory

@@ -4,7 +4,7 @@ use miden::protocol::account_id
 use miden::protocol::active_account
 use miden::protocol::active_note
 use miden::protocol::asset
-use miden::standards::note::consumer
+use miden::standards::note::note_target
 use miden::standards::wallets::basic as basic_wallet
 
 # CONSTANTS
@@ -75,7 +75,7 @@ pub proc main(args: NoteArgs)
         # => [pad(16)]
     else
         # Ensure note attachment targets the consuming bridge account.
-        exec.consumer::assert_target_account_attachment
+        exec.note_target::assert_active_account_is_network_target_account
         # => [pad(16)]
 
         # Store note storage -> mem[8..14]
