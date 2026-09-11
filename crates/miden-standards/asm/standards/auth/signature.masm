@@ -102,16 +102,12 @@ pub proc authenticate_transaction
     # AS => []
 end
 
-#! Verifies a signature using the supplied scheme id.
-#!
-#! Supported schemes:
-#! - 1 => ECDSA (ecdsa_k256_keccak)
-#! - 2 => Falcon (falcon512_poseidon2)
-#!
-#! Inputs:  [scheme_id, PK_COMM, MSG]
-#! Outputs: []
-#!
-#! Invocation: exec
+# Verify signature using scheme_id:
+#   1 => ECDSA (ecdsa_k256_keccak)
+#   2 => Falcon (falcon512_poseidon2)
+#
+# Inputs:  [scheme_id, PK_COMM, MSG]
+# Outputs: []
 pub proc verify_signature_by_scheme
     dup eq.ECDSA_K256_KECCAK_SCHEME_ID
     # => [is_one, scheme_id, PK_COMM, MESSAGE]
