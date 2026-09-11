@@ -122,9 +122,9 @@ const RBAC_CONTROLLED: u8 = 2;
 /// panics while its entry is set, leaving every other gated procedure working. A procedure with no
 /// entry is not paused, so an account that pauses nothing behaves exactly as before.
 ///
-/// Both mutators are gated on the same emergency authority as `freeze` / `unfreeze` and bypass
-/// both the frozen flag and the per-procedure pause, so `unpause_procedure` can never itself be
-/// paused.
+/// Both mutators are gated on the same emergency authority as `freeze` / `unfreeze` and read
+/// neither the frozen flag nor the pause map. An entry written for one of their own roots is
+/// stored but never read, so `unpause_procedure` cannot be locked out.
 ///
 /// # Emergency switch (`is_frozen`)
 ///

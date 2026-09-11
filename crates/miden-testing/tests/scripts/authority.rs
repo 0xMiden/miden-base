@@ -624,7 +624,8 @@ async fn unfreeze_does_not_clear_a_paused_procedure() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Pausing `unpause_procedure` must not brick the account: both mutators bypass both checks.
+/// An entry written for `unpause_procedure` is stored but never read, so pausing it cannot brick
+/// the account.
 #[tokio::test]
 async fn pausing_unpause_procedure_does_not_brick_the_account() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -649,8 +650,8 @@ async fn pausing_unpause_procedure_does_not_brick_the_account() -> anyhow::Resul
         &Authority::unpause_procedure_root()
     )?);
 
-    // It still runs, because it is gated on the emergency authority rather than
-    // `assert_authorized`, and so clears its own pause.
+    // Gated on the emergency authority rather than `assert_authorized`, it never
+    // reads the pause map, and clears its own entry.
     execute_note_on_faucet(&mut mock_chain, faucet.id(), &unpause_unpause_note).await?;
     assert!(!is_procedure_paused(
         &mock_chain,
