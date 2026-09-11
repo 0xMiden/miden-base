@@ -22,17 +22,40 @@ use miden_protocol::note::{
 use miden_protocol::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_protocol::transaction::{ExecutedTransaction, ProvenTransaction, TransactionVerifier};
 use miden_protocol::utils::serde::Deserializable;
+#[cfg(test)]
+use miden_protocol::vm::VerificationOutcome;
 use miden_standards::code_builder::CodeBuilder;
 use miden_testing::{Auth, MockChain};
 use miden_tx::{LocalTransactionProver, Prover};
+use rstest::rstest;
 
 // HELPER FUNCTIONS
 // ================================================================================================
 
 #[cfg(test)]
-pub async fn prove_and_verify_transaction(
+pub async fn prove_and_verify_transaction_deferred(
     executed_transaction: ExecutedTransaction,
 ) -> Result<(), TransactionVerifierError> {
+    let outcome = prove_and_verify_transaction(executed_transaction).await?;
+    assert!(!outcome.is_complete());
+    Ok(())
+}
+
+/// Proves `executed_transaction` locally, round-trips it and verifies it.
+#[cfg(test)]
+pub async fn prove_and_verify_transaction_complete(
+    executed_transaction: ExecutedTransaction,
+) -> Result<(), TransactionVerifierError> {
+    let outcome = prove_and_verify_transaction(executed_transaction).await?;
+    assert!(outcome.is_complete());
+    Ok(())
+}
+
+/// Proves `executed_transaction` locally, round-trips it and verifies it.
+#[cfg(test)]
+pub async fn prove_and_verify_transaction(
+    executed_transaction: ExecutedTransaction,
+) -> Result<VerificationOutcome, TransactionVerifierError> {
     use miden_protocol::transaction::TransactionHeader;
 
     let executed_transaction_id = executed_transaction.id();
@@ -54,10 +77,38 @@ pub async fn prove_and_verify_transaction(
     let verifier = TransactionVerifier::new(miden_protocol::MIN_PROOF_SECURITY_LEVEL);
 
     let outcome = verifier.verify(&proven_transaction)?;
-    assert!(
-        outcome.is_complete(),
-        "the local transaction prover must settle precompile work"
-    );
+
+    Ok(outcome)
+}
+
+/// The local prover leaves precompile claims for the batch prover, so a transaction that
+/// authenticates with ECDSA verifies while its precompile obligation is still outstanding. Falcon
+/// is the control: it verifies in-circuit and uses no precompile, so its proof is complete.
+#[rstest]
+#[case::ecdsa(Auth::basic_ecdsa(), false)]
+#[case::falcon(Auth::basic_falcon(), true)]
+#[tokio::test]
+async fn prove_and_verify_defers_precompile_claims(
+    #[case] auth: Auth,
+    #[case] is_complete: bool,
+) -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(auth)?;
+    let note = builder.add_p2any_note(account.id(), NoteType::Public, [])?;
+    let mock_chain = builder.build()?;
+
+    let executed = mock_chain
+        .build_transaction(account.id())
+        .authenticated_input_note(note.id())
+        .build()?
+        .execute()
+        .await?;
+
+    if is_complete {
+        prove_and_verify_transaction_complete(executed).await?;
+    } else {
+        prove_and_verify_transaction_deferred(executed).await?;
+    }
 
     Ok(())
 }
