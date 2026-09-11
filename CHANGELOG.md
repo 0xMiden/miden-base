@@ -85,6 +85,9 @@
 
 ### Fixes
 
+- The faucet factories now reject a `TokenPolicyManager` whose policies read a storage slot the account does not install ([#3527](https://github.com/0xMiden/protocol/pull/3527)).
+
+## v0.16.0 (2026-08-06)
 - [BREAKING] `NetworkAccountTarget` decoding no longer discards the target account ID when the execution hint slot holds an unrecognized encoding ([#3811](https://github.com/0xMiden/protocol/pull/3811)).
 - Fixed `AuthNetworkAccount` accepting empty fee-only transactions, which let callers drain the account's native fee-asset vault ([#3729](https://github.com/0xMiden/protocol/pull/3729)).
 - [BREAKING] AggLayer bridge token registration now rejects keys owned by another faucet, and token-key cleanup verifies ownership before clearing a mapping ([#3754](https://github.com/0xMiden/protocol/pull/3754)).
