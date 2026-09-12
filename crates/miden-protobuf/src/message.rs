@@ -1,3 +1,4 @@
+use alloc::format;
 use core::error::Error;
 
 use crate::ConversionError;
@@ -50,9 +51,9 @@ pub type Decoded<P> = <P as DecodeMessage>::Decoded;
 /// method requires only its corresponding capability on the decoded representation. These methods
 /// consume an already parsed wire message; they do not decode Protobuf bytes.
 ///
-/// All methods return [`ConversionError`]. Structural decoding errors retain their field paths
-/// and sources. Construction errors are wrapped with [`ConversionError::new`], preserving their
-/// sources without adding a wire path or nesting an existing conversion error. Call
+/// All methods return [`ConversionError`] with a stage prefix: `failed to decode fields`,
+/// `failed to verify`, or `failed to build unchecked`. The original error, including any field
+/// path, is preserved in the source chain. Stage labels are separate from wire paths. Call
 /// [`DecodeMessage::decode_fields`] and the construction method separately when typed domain
 /// errors are needed directly.
 pub trait DecodeMessageExt: DecodeMessage {
@@ -73,7 +74,8 @@ pub trait DecodeMessageExt: DecodeMessage {
     where
         Self::Decoded: Verify,
     {
-        self.decode_fields()?.verify().map_err(ConversionError::new)
+        let decoded = self.decode_fields().map_err(|error| stage_error("decode fields", error))?;
+        decoded.verify().map_err(|error| stage_error("verify", error))
     }
 
     /// Decodes fields, then verifies with borrowed or owned caller-supplied context.
@@ -102,7 +104,8 @@ pub trait DecodeMessageExt: DecodeMessage {
     where
         Self::Decoded: VerifyWith<C>,
     {
-        self.decode_fields()?.verify_with(context).map_err(ConversionError::new)
+        let decoded = self.decode_fields().map_err(|error| stage_error("decode fields", error))?;
+        decoded.verify_with(context).map_err(|error| stage_error("verify", error))
     }
 
     /// Decodes fields, then constructs with [`BuildUnchecked::build_unchecked`].
@@ -132,11 +135,16 @@ pub trait DecodeMessageExt: DecodeMessage {
     where
         Self::Decoded: BuildUnchecked,
     {
-        self.decode_fields()?.build_unchecked().map_err(ConversionError::new)
+        let decoded = self.decode_fields().map_err(|error| stage_error("decode fields", error))?;
+        decoded.build_unchecked().map_err(|error| stage_error("build unchecked", error))
     }
 }
 
 impl<P: DecodeMessage> DecodeMessageExt for P {}
+
+fn stage_error(stage: &'static str, error: impl Error + Send + Sync + 'static) -> ConversionError {
+    ConversionError::with_source(format!("failed to {stage}: {error}"), error)
+}
 
 /// Checks domain invariants and constructs the verified type using ordinary Rust.
 ///
