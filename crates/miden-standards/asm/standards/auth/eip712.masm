@@ -1,0 +1,80 @@
+use miden::core::crypto::dsa::ecdsa_k256_keccak
+
+# CONSTANTS
+# =================================================================================================
+
+# EIP-191 prefix for EIP-712 typed data, encoded as a little-endian u16.
+const EIP712_PREFIX=0x0119
+
+# 2-byte EIP-191 prefix + 32-byte domain separator + 32-byte struct hash.
+const EIP712_PREIMAGE_LENGTH=66
+
+# Local memory layout for verify:
+#   0..24   EIP-712 digest preimage, zero-padded to three 32-byte chunks
+#   24..28  public-key commitment
+const DIGEST_PREIMAGE_LOC=0
+const PUBLIC_KEY_COMMITMENT_LOC=24
+
+# EIP-712 hashes 0x1901 || domainSeparator || structHash. The two hashes contain 16 u32 limbs in
+# total. Since the two-byte prefix shifts them by half a limb, each iteration writes one limb and
+# carries the upper 16 bits into the next one.
+
+# PROCEDURES
+# =================================================================================================
+
+#! Verifies an ECDSA signature over an EIP-712 typed-data digest.
+#!
+#! Inputs:
+#!   Operand stack: [PK_COMM, DOMAIN_SEPARATOR_U32[8], STRUCT_HASH_U32[8]]
+#!   Advice stack:  [QX[8] | QY[8] | SIG_R[8] | SIG_S[8]]
+#! Outputs:
+#!   Operand stack: []
+#!
+#! Where both hashes are little-endian u32 limbs with limb 0 on top. The caller must derive them
+#! from trusted state.
+#!
+#! Panics if the public key, signature, or hash limbs are malformed, the public-key commitment is
+#! invalid, or signature verification fails.
+#!
+#! Invocation: exec
+@locals(28)
+pub proc verify
+    loc_storew_le.PUBLIC_KEY_COMMITMENT_LOC dropw
+    # => [DOMAIN_SEPARATOR_U32[8], STRUCT_HASH_U32[8]]
+
+    # Clear the final preimage chunk because verify_bytes reads complete 32-byte chunks.
+    padw locaddr.DIGEST_PREIMAGE_LOC add.16 mem_storew_le dropw
+    padw locaddr.DIGEST_PREIMAGE_LOC add.20 mem_storew_le dropw
+    # => [DOMAIN_SEPARATOR_U32[8], STRUCT_HASH_U32[8]]
+
+    # Build the EIP-712 preimage.
+    push.EIP712_PREFIX locaddr.DIGEST_PREIMAGE_LOC
+    # => [ptr, carry, DOMAIN_SEPARATOR_U32[8], STRUCT_HASH_U32[8]]
+
+    repeat.16
+        movup.2
+        # => [limb, ptr, carry, remaining_limbs]
+
+        dup u32shr.16 movdn.3
+        # => [limb, ptr, carry, next_carry, remaining_limbs]
+
+        u32shl.16 movup.2 add
+        # => [preimage_limb, ptr, next_carry, remaining_limbs]
+
+        dup.1 mem_store add.1
+        # => [ptr + 1, next_carry, remaining_limbs]
+    end
+    # => [ptr, carry]
+
+    mem_store
+    # => []
+
+    push.EIP712_PREIMAGE_LENGTH locaddr.DIGEST_PREIMAGE_LOC
+    padw loc_loadw_le.PUBLIC_KEY_COMMITMENT_LOC
+    # OS => [PK_COMM, 66, DIGEST_PREIMAGE_LOC]
+    # AS => [QX[8] | QY[8] | SIG_R[8] | SIG_S[8]]
+
+    exec.ecdsa_k256_keccak::verify_bytes
+    # OS => []
+    # AS => []
+end
