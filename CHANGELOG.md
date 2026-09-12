@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Features
+
+- Improved Protobuf conversion ergonomics with `decode_and_verify`, `decode_and_verify_with`, and `decode_and_build_unchecked` helpers, combining field decoding and domain construction without repetitive error mapping.
+
 ### Changes
 
 - Added type signatures where missing throughout the protocol and standards Miden Assembly libraries
