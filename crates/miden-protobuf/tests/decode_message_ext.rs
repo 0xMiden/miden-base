@@ -63,7 +63,7 @@ fn decoding_errors_report_the_stage_and_preserve_the_field_path_and_source() {
         Message(u64::MAX).decode_and_verify_with(&0).unwrap_err(),
         Message(u64::MAX).decode_and_build_unchecked().unwrap_err(),
     ] {
-        assert_eq!(error.to_string(), format!("failed to decode fields: value: {source}"));
+        assert_eq!(error.to_string(), format!("failed to decode: value: {source}"));
         let original = error.source().unwrap().source().unwrap();
         assert!(original.is::<ConversionError>());
         assert_eq!(original.to_string(), format!("value: {source}"));

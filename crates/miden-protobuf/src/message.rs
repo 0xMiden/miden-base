@@ -51,7 +51,7 @@ pub type Decoded<P> = <P as DecodeMessage>::Decoded;
 /// method requires only its corresponding capability on the decoded representation. These methods
 /// consume an already parsed wire message; they do not decode Protobuf bytes.
 ///
-/// All methods return [`ConversionError`] with a stage prefix: `failed to decode fields`,
+/// All methods return [`ConversionError`] with a stage prefix: `failed to decode`,
 /// `failed to verify`, or `failed to build unchecked`. The original error, including any field
 /// path, is preserved in the source chain. Stage labels are separate from wire paths. Call
 /// [`DecodeMessage::decode_fields`] and the construction method separately when typed domain
@@ -74,7 +74,7 @@ pub trait DecodeMessageExt: DecodeMessage {
     where
         Self::Decoded: Verify,
     {
-        let decoded = self.decode_fields().map_err(|error| stage_error("decode fields", error))?;
+        let decoded = self.decode_fields().map_err(|error| stage_error("decode", error))?;
         decoded.verify().map_err(|error| stage_error("verify", error))
     }
 
@@ -104,7 +104,7 @@ pub trait DecodeMessageExt: DecodeMessage {
     where
         Self::Decoded: VerifyWith<C>,
     {
-        let decoded = self.decode_fields().map_err(|error| stage_error("decode fields", error))?;
+        let decoded = self.decode_fields().map_err(|error| stage_error("decode", error))?;
         decoded.verify_with(context).map_err(|error| stage_error("verify", error))
     }
 
@@ -135,7 +135,7 @@ pub trait DecodeMessageExt: DecodeMessage {
     where
         Self::Decoded: BuildUnchecked,
     {
-        let decoded = self.decode_fields().map_err(|error| stage_error("decode fields", error))?;
+        let decoded = self.decode_fields().map_err(|error| stage_error("decode", error))?;
         decoded.build_unchecked().map_err(|error| stage_error("build unchecked", error))
     }
 }

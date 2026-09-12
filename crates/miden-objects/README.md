@@ -53,7 +53,7 @@ fn decode_block_number(message: proto::blockchain::BlockNumber) -> Result<BlockN
 
 `decode_and_verify_with(context)` and `decode_and_build_unchecked()` select the other capabilities.
 Each helper is available only when the decoded type implements the corresponding trait. They
-consume parsed Protobuf messages and return `ConversionError` with a `failed to decode fields`,
+consume parsed Protobuf messages and return `ConversionError` with a `failed to decode`,
 `failed to verify`, or `failed to build unchecked` prefix. The original error, including structural
 field paths and domain error sources, is preserved in the source chain. Call `decode_fields()` and
 the construction method separately when the intermediate record or typed domain error is needed.
